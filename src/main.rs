@@ -2,7 +2,7 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::{command, value_parser, Parser, Subcommand};
 use dotenvy;
-use scamplers2::{sync_files, sync_nf_tenx};
+use scamplers::{sync_files, sync_nf_tenx};
 use std::env;
 
 #[derive(Debug, Parser)]
