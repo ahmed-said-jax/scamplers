@@ -62,7 +62,7 @@ pub struct Library {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Sample {
     pub name: String,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_received: Option<NaiveDate>,
 
@@ -70,5 +70,5 @@ pub struct Sample {
     pub targeted_cell_recovery: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub estimated_number_of_cells: Option<u32>
+    pub estimated_number_of_cells: Option<u32>,
 }
