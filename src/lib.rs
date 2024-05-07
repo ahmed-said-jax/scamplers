@@ -123,8 +123,6 @@ pub fn sync_10x(scamplers_config: ScamplersConfig) -> Result<()> {
                 }
             };
 
-
-
             let mut reader = Reader::from_path(metrics_summary_file).with_context(|| "a usefule error message")?;
             let metrics = PipelineMetrics::from_metrics(reader)?;
 
@@ -133,7 +131,7 @@ pub fn sync_10x(scamplers_config: ScamplersConfig) -> Result<()> {
 
         upsert_data_sets(&collection, data_sets)?;
     }
-    
+
     Ok(())
 }
 

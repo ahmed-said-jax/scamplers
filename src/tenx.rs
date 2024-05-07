@@ -36,17 +36,17 @@ pub fn validate_glob_pattern(db: &Database, pattern: &String) -> Result<()> {
 
 
 pub fn get_metrics_file(data_set: &DataSet, pattern: &str) -> Result<PathBuf> {
-    let delivery_dir = data_set.delivery_dir.with_context(|| "no delivery dir set")?;
+    let delivery_dir = data_set.delivery_dir.clone().with_context(|| "no delivery dir set")?;
     let pattern = pattern.replace("{data_set.delivery_dir}", &delivery_dir);
 
-    let matching_paths: Vec<Result<PathBuf, GlobError>> = glob(&pattern).with_context(|| format!("invalid pattern {pattern}"))?.collect();
+    let matching_paths: Vec<PathBuf> = glob(&pattern).with_context(|| format!("invalid pattern {pattern}"))?.map(|p| p.unwrap()).collect();
     let n_paths = matching_paths.len();
 
     if n_paths != 1 {
         return Err(Error::msg(format!("{pattern} must match exactly one file, but {n_paths} files were found")))
     }
 
-    Ok(matching_paths[0]?)
+    Ok(matching_paths[0].clone())
 }
 
 // TODO: add validation for the fields here?

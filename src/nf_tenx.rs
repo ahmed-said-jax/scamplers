@@ -45,7 +45,7 @@ fn cellranger_multi_to_samples(cellranger_multi_dir: &Utf8PathBuf) -> Result<Vec
             metrics_summary_file
         )))?;
 
-        let n_cells: u32 = n_cells.replace(",", "").parse()?;
+        let n_cells: u64 = n_cells.replace(",", "").parse()?;
 
         let sample_name = Utf8PathBuf::try_from(sample_dir.path())?
             .file_name()
@@ -100,7 +100,7 @@ pub fn pipeline_metadata_to_data_set(pipeline_metadata_file: &PathBuf) -> Result
                 let n_cells = n_cells.as_str().ok_or(Error::msg(format!(
                     "could not convert {metrics_source} to str"
                 )))?;
-                let n_cells: u32 = n_cells.replace(",", "").parse()?;
+                let n_cells: u64 = n_cells.replace(",", "").parse()?;
 
                 let sample = Sample {
                     name: pipeline_metadata.record.sample_name.clone(),
@@ -129,12 +129,14 @@ pub fn pipeline_metadata_to_data_set(pipeline_metadata_file: &PathBuf) -> Result
         };
         libraries.push(library);
     }
+    let delivery_dir = pipeline_metadata_file.parent().unwrap().to_str().unwrap().to_string();
 
     let ds = DataSet {
         libraries,
         samples: updated_samples,
         lab_name: None,
         date_delivered: None,
+        delivery_dir: Some(delivery_dir)
     };
 
     Ok(ds)
