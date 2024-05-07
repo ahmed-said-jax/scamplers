@@ -4,6 +4,7 @@ use clap::{command, value_parser, Parser, Subcommand};
 use dotenvy;
 use scamplers::{sync_10x, sync_files, sync_nf_tenx, ScamplersConfig};
 use std::env;
+// TODO: change all String in parameter definitions to &str
 
 #[derive(Debug, Parser)]
 #[command(version, arg_required_else_help = true)]

@@ -1,20 +1,31 @@
 mod models;
 mod mongo;
 mod nf_tenx;
+mod tenx;
 use anyhow::{bail, Context, Result};
 use camino::Utf8PathBuf;
-use glob::glob;
+use glob::{glob, GlobError};
 use models::DataSet;
 use mongo::{get_db, upsert_data_sets, upsert_labs};
 use nf_tenx::pipeline_metadata_to_data_set;
-use std::fs;
+use std::{fs, path::{Path, PathBuf}};
 use serde::{Deserialize, Serialize};
+use tenx::{get_metrics_file};
+use mongodb::{bson::doc, sync::Collection};
+use camino::Utf8Path;
+use csv::Reader;
+
+use crate::tenx::PipelineMetrics;
+
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ScamplersConfig {
     db_name: String,
     db_uri: String,
     nf_10x_pipeline_metadata_pattern: String,
+
+    #[serde(rename = "10x_metrics_summary_patterns")]
+    tenx_metrix_summary_patterns: Vec<String>,
 }
 
 impl ScamplersConfig {
@@ -44,6 +55,9 @@ pub fn sync_files(scamplers_config: ScamplersConfig, files: Vec<Utf8PathBuf>) ->
         let load_error_message = format!("could not load data from {f}");
         let upsert_error_message = format!("could not insert data from {f}");
 
+        // TODO: should we change the design such that each input file actually has to be an instance of a data_set or lab,
+        // rather than a list of those? That enables very parallel processing
+
         if file_stem == "data_set" {
             let data_sets: Vec<models::DataSet> =
                 serde_json::from_str(&contents).with_context(|| load_error_message)?;
@@ -51,7 +65,7 @@ pub fn sync_files(scamplers_config: ScamplersConfig, files: Vec<Utf8PathBuf>) ->
 
             upsert_data_sets(&collection, data_sets).with_context(|| upsert_error_message)?;
         }
-        
+
         else {
             let labs: Vec<models::Lab> =
                 serde_json::from_str(&contents).with_context(|| load_error_message)?;
@@ -91,10 +105,35 @@ pub fn sync_nf_tenx(scamplers_config: ScamplersConfig) -> Result<()> {
 }
 
 pub fn sync_10x(scamplers_config: ScamplersConfig) -> Result<()> {
-    let config_path = config_dir.join("scamplers.json");
-    let scamplers_config = ScamplersConfig::from_file(&config_path)
-        .with_context(|| format!("could not load configuration from {config_path}"))?;
+    let db = get_db(&scamplers_config.db_uri, &scamplers_config.db_name).with_context(|| format!("could not connect to database {} at {}", scamplers_config.db_name, scamplers_config.db_uri))?;
 
+    for pattern in scamplers_config.tenx_metrix_summary_patterns {
+        // TODO: factor out data_set-getting into a separate function
+        let collection: Collection<DataSet> = db.collection("data_set");
+        let mut data_sets: Vec<DataSet> = collection.find(doc! { "date_delivered": "$exists"}, None).with_context(|| "could not get data_sets")?.map(|ds| ds.unwrap()).collect();
+
+        // TODO: probably separate out various concerns and package into modular functions that can be easily tested
+        for mut ds in &data_sets {
+            let metrics_summary_file = match get_metrics_file(&ds, &pattern) {
+                Ok(path) => path,
+                Err(error) => {
+                    // TODO: proper logging
+                    println!("\n{}", error.to_string());
+                    continue;
+                }
+            };
+
+
+
+            let mut reader = Reader::from_path(metrics_summary_file).with_context(|| "a usefule error message")?;
+            let metrics = PipelineMetrics::from_metrics(reader)?;
+
+            ds = ds.with_metrics(metrics, None)?;
+        }
+
+        upsert_data_sets(&collection, data_sets)?;
+    }
+    
     Ok(())
 }
 

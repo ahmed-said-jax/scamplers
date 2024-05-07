@@ -2,6 +2,9 @@ use camino::Utf8PathBuf;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
+use crate::tenx::PipelineMetrics;
+use anyhow::Result;
+
 // TODO: add validation to all these models
 // TODO: add defaults and new methods
 #[derive(Debug, Deserialize, Serialize)]
@@ -32,6 +35,7 @@ pub struct Lab {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DataSet {
+    pub delivery_dir: Option<String>,
     pub libraries: Vec<Library>,
     pub samples: Vec<Sample>,
 
@@ -70,5 +74,20 @@ pub struct Sample {
     pub targeted_cell_recovery: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub estimated_number_of_cells: Option<u32>,
+    pub estimated_number_of_cells: Option<u64>,
+}
+
+
+impl DataSet {
+    pub fn with_metrics(&mut self, metrics: PipelineMetrics, sample_name: Option<String>) -> Result<&DataSet> {
+        match metrics {
+            PipelineMetrics::CellRangerCount(cellranger_count_metrics) => {
+                self.samples[0].estimated_number_of_cells = Some(cellranger_count_metrics.estimated_number_of_cells);
+
+                Ok(self)
+            }
+
+            _ => Ok(self)
+        }
+    }
 }

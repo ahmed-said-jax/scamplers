@@ -12,7 +12,7 @@ use std::fmt::Debug;
 
 pub fn get_db(db_uri: &String, db_name: &String) -> Result<Database> {
     let client = Client::with_uri_str(db_uri)?;
-    Ok(client.database(&db_name)) //TODO: explore options and add permissions to prevent messing about
+    Ok(client.database(&db_name)) //TODO: add permissions and roles and a username/password authentication here using ClientOptions and Credentials
 }
 
 fn upsert_many<T: DeserializeOwned + Serialize + Debug>(
@@ -73,3 +73,5 @@ pub fn upsert_labs(collection: &Collection<Lab>, labs: Vec<Lab>) -> Result<()> {
 
     Ok(())
 }
+
+pub fn get_data_set(collection: &Collection<DataSet>) {}
