@@ -1,8 +1,6 @@
-mod config;
 mod models;
 mod mongo;
 mod nf_tenx;
-use crate::config::ScamplersConfig;
 use anyhow::{bail, Context, Result};
 use camino::Utf8PathBuf;
 use glob::glob;
@@ -10,12 +8,24 @@ use models::DataSet;
 use mongo::{get_db, upsert_data_sets, upsert_labs};
 use nf_tenx::pipeline_metadata_to_data_set;
 use std::fs;
+use serde::{Deserialize, Serialize};
 
-pub fn sync_files(config_dir: Utf8PathBuf, files: Vec<Utf8PathBuf>) -> Result<()> {
-    let config_path = config_dir.join("scamplers.json");
-    let scamplers_config = ScamplersConfig::from_file(&config_path)
-        .with_context(|| format!("could not load configuration from {config_path}"))?;
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ScamplersConfig {
+    db_name: String,
+    db_uri: String,
+    nf_10x_pipeline_metadata_pattern: String,
+}
 
+impl ScamplersConfig {
+    pub fn from_file(path: &Utf8PathBuf) -> Result<ScamplersConfig> {
+        let contents = fs::read_to_string(path)?;
+
+        Ok(serde_json::from_str(&contents)?)
+    }
+}
+
+pub fn sync_files(scamplers_config: ScamplersConfig, files: Vec<Utf8PathBuf>) -> Result<()> {
     let db = get_db(&scamplers_config.db_uri, &scamplers_config.db_name)
         .with_context(|| "could not connect to database")?;
 
@@ -40,7 +50,9 @@ pub fn sync_files(config_dir: Utf8PathBuf, files: Vec<Utf8PathBuf>) -> Result<()
             let collection = db.collection("data_set");
 
             upsert_data_sets(&collection, data_sets).with_context(|| upsert_error_message)?;
-        } else {
+        }
+        
+        else {
             let labs: Vec<models::Lab> =
                 serde_json::from_str(&contents).with_context(|| load_error_message)?;
             let collection = db.collection("lab");
@@ -52,11 +64,7 @@ pub fn sync_files(config_dir: Utf8PathBuf, files: Vec<Utf8PathBuf>) -> Result<()
     Ok(())
 }
 
-pub fn sync_nf_tenx(config_dir: Utf8PathBuf) -> Result<()> {
-    let config_path = config_dir.join("scamplers.json");
-    let scamplers_config = ScamplersConfig::from_file(&config_path)
-        .with_context(|| format!("could not load configuration from {config_path}"))?;
-
+pub fn sync_nf_tenx(scamplers_config: ScamplersConfig) -> Result<()> {
     let db = get_db(&scamplers_config.db_uri, &scamplers_config.db_name)
         .with_context(|| "could not connect to database")?;
 
@@ -82,7 +90,7 @@ pub fn sync_nf_tenx(config_dir: Utf8PathBuf) -> Result<()> {
     upsert_data_sets(&db.collection("data_set"), data_sets)
 }
 
-pub fn sync_10x(config_dir: Utf8PathBuf) -> Result<()> {
+pub fn sync_10x(scamplers_config: ScamplersConfig) -> Result<()> {
     let config_path = config_dir.join("scamplers.json");
     let scamplers_config = ScamplersConfig::from_file(&config_path)
         .with_context(|| format!("could not load configuration from {config_path}"))?;
