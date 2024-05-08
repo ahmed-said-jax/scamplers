@@ -1,9 +1,10 @@
+use crate::tenx::{format_metrics_summary_file, CellrangerCountMetrics, Pipeline};
+use anyhow::{Context, Error, Result};
 use camino::Utf8PathBuf;
 use chrono::NaiveDate;
 use glob::glob;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use crate::tenx::{CellrangerCountMetrics, Pipeline};
-use anyhow::{Error, Result};
+use std::fmt::Debug;
 
 // TODO: add validation to all these models
 // TODO: add defaults and new methods
@@ -85,7 +86,7 @@ impl DataSet {
 
         for path in matches {
             let path = Utf8PathBuf::try_from(path?)?;
-            metrics_summary_files.push(path)
+            metrics_summary_files.push(path);
         }
 
         Ok(metrics_summary_files)
@@ -93,11 +94,11 @@ impl DataSet {
 
     fn pipeline(&self) -> Result<Pipeline> {
         let metrics_summary_files = self.metrics_summary_files()?;
-        
+
         if metrics_summary_files.len() > 1 {
             return Err(Error::msg("not implemented yet"));
         }
-        
+
         let metrics_summary_file = metrics_summary_files[0].to_owned();
         let mut reader = csv::Reader::from_path(metrics_summary_file)?;
 
@@ -123,10 +124,11 @@ impl DataSet {
             "Median UMI Counts per Cell",
         ]);
 
-        match reader.headers() {
-            cellranger_count_header => Ok(Pipeline::CellrangerCount),
-            _ => Err(Error::msg("not implemented yet pipeline selection"))
-        }        
+        if reader.headers()?.to_owned() == cellranger_count_header {
+            return Ok(Pipeline::CellrangerCount);
+        } else {
+            return Err(Error::msg("not supported"));
+        }
     }
 
     fn metrics_summaries<T: DeserializeOwned + Copy>(&self) -> Result<T> {
@@ -136,13 +138,14 @@ impl DataSet {
             return Err(Error::msg("not implemented yet"));
         }
 
+        // These 3 lines of code are a hack
         let metrics_summary_file = metrics_summary_files[0].to_owned();
-        let mut reader = csv::Reader::from_path(metrics_summary_file)?;
+        let (header, records) = format_metrics_summary_file(metrics_summary_file)
+            .with_context(|| "something else ba")?;
 
         let mut rows: Vec<T> = Vec::new();
-
-        for result in reader.deserialize() {
-            let line: T = result?;
+        for record in records {
+            let line: T = record.deserialize(Some(&header))?;
             rows.push(line);
         }
 
@@ -153,17 +156,36 @@ impl DataSet {
         Ok(rows[0])
     }
 
-    pub fn with_metrics(mut self) -> Result<DataSet> {        
+    pub fn with_metrics(mut self) -> Result<DataSet> {
         let pipeline = self.pipeline()?;
 
         match pipeline {
             Pipeline::CellrangerCount => {
                 let metrics_summaries: CellrangerCountMetrics = self.metrics_summaries()?;
-                self.samples[0].estimated_number_of_cells = Some(metrics_summaries.estimated_number_of_cells);
+                self.samples[0].estimated_number_of_cells =
+                    Some(metrics_summaries.estimated_number_of_cells);
             }
-            _ => {self.samples[0].estimated_number_of_cells = Some(0);}
+            _ => {
+                self.samples[0].estimated_number_of_cells = Some(0);
+            }
         };
 
         Ok(self)
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use tempfile::tempdir;
+//     use camino::Utf8PathBuf;
+
+//     use crate::tenx::CellrangerCountMetrics;
+
+//     #[test]
+//     fn data_set_with_metrics() {
+//         let data_set_path = tempdir().unwrap();
+//         let data_set_path = data_set_path.path();
+
+//         let metrics_summary_file = Utf8PathBuf::try_from(data_set_path.join("metrics_summary.csv")).unwrap();
+//     }
+// }

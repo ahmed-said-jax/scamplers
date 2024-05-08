@@ -1,0 +1,39 @@
+[
+    {
+        "lab": {
+            "name": "Ahmed Said Lab",
+            "pi": {
+                "first_name": "Ahmed",
+                "last_name": "Said",
+                "email": "ahmed.said@jax.org"
+            },
+            "members": [],
+            "delivery_dir": "ahmed_said",
+            "institution": {
+                "name": "Jackson Laboratory for Genomic Medicine",
+                "country": "US",
+                "state": "CT",
+                "city": "Farmington"
+            }
+        },
+        "path": "./SC9900000_sample",
+        "libraries": [
+            {
+                "_id": "SC9900000",
+                "status": "complete",
+                "date_cdna_prepared": "1999-01-01",
+                "date_prepared": "1999-01-01",
+                "date_submitted_to_gt": "1999-01-01",
+                "date_sequencing_data_returned": "1999-01-01"
+            }
+        ],
+        "samples": [
+            {
+                "date_received": "1999-01-01",
+                "name": "sample",
+                "targeted_cell_recovery": 1000
+            }
+        ],
+        "date_delivered": "1999-01-01"
+    }
+]

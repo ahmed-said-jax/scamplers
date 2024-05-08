@@ -11,7 +11,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
 pub fn get_db(db_uri: &String, db_name: &String) -> Result<Database> {
-    let client = Client::with_uri_str(db_uri).with_context(|| format!("could not connect to database {db_name} at {db_uri}"))?;
+    let client = Client::with_uri_str(db_uri)
+        .with_context(|| format!("could not connect to database {db_name} at {db_uri}"))?;
     Ok(client.database(&db_name)) //TODO: add permissions and roles and a username/password authentication here using ClientOptions and Credentials
 }
 
@@ -75,7 +76,9 @@ pub fn upsert_labs(collection: &Collection<Lab>, labs: Vec<Lab>) -> Result<()> {
 }
 
 pub fn get_delivered_data_sets(collection: &Collection<DataSet>) -> Result<Vec<DataSet>> {
-    let data_set_cursor = collection.find(doc! {"date_delivered": "$exists"}, None).with_context(|| "could not retrieve delivered data_sets from database")?;
+    let data_set_cursor = collection
+        .find(doc! {"date_delivered": {"$exists": true} }, None)
+        .with_context(|| "could not retrieve delivered data_sets from database")?;
 
     let mut data_sets = Vec::new();
     for ds in data_set_cursor {

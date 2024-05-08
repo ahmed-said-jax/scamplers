@@ -48,6 +48,6 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::SyncFiles { files } => sync_files(scamplers_config, files),
         Commands::SyncGoogleSheets {} => Ok(()),
-        Commands::Sync10X {} => sync_10x(scamplers_config)
+        Commands::Sync10X {} => sync_10x(scamplers_config),
     }
 }
