@@ -1,9 +1,9 @@
 use camino::Utf8PathBuf;
 use chrono::NaiveDate;
-use serde::{Deserialize, Serialize};
-
-use crate::tenx::PipelineMetrics;
-use anyhow::Result;
+use glob::glob;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use crate::tenx::{CellrangerCountMetrics, Pipeline};
+use anyhow::{Error, Result};
 
 // TODO: add validation to all these models
 // TODO: add defaults and new methods
@@ -35,12 +35,10 @@ pub struct Lab {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DataSet {
-    pub delivery_dir: Option<String>,
+    pub path: Utf8PathBuf,
     pub libraries: Vec<Library>,
     pub samples: Vec<Sample>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub lab_name: Option<String>,
+    pub lab: Lab,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_delivered: Option<NaiveDate>,
@@ -77,17 +75,95 @@ pub struct Sample {
     pub estimated_number_of_cells: Option<u64>,
 }
 
-
 impl DataSet {
-    pub fn with_metrics(&mut self, metrics: PipelineMetrics, sample_name: Option<String>) -> Result<&DataSet> {
-        match metrics {
-            PipelineMetrics::CellRangerCount(cellranger_count_metrics) => {
-                self.samples[0].estimated_number_of_cells = Some(cellranger_count_metrics.estimated_number_of_cells);
+    fn metrics_summary_files(&self) -> Result<Vec<Utf8PathBuf>> {
+        let data_set_path = self.path.to_string();
+        let pattern = format!("{data_set_path}/**/metrics_summary.csv");
 
-                Ok(self)
-            }
+        let matches = glob(&pattern)?;
+        let mut metrics_summary_files = Vec::new();
 
-            _ => Ok(self)
+        for path in matches {
+            let path = Utf8PathBuf::try_from(path?)?;
+            metrics_summary_files.push(path)
         }
+
+        Ok(metrics_summary_files)
+    }
+
+    fn pipeline(&self) -> Result<Pipeline> {
+        let metrics_summary_files = self.metrics_summary_files()?;
+        
+        if metrics_summary_files.len() > 1 {
+            return Err(Error::msg("not implemented yet"));
+        }
+        
+        let metrics_summary_file = metrics_summary_files[0].to_owned();
+        let mut reader = csv::Reader::from_path(metrics_summary_file)?;
+
+        let cellranger_count_header = csv::StringRecord::from_iter([
+            "Estimated Number of Cells",
+            "Mean Reads per Cell",
+            "Median Genes per Cell",
+            "Number of Reads",
+            "Valid Barcodes",
+            "Sequencing Saturation",
+            "Q30 Bases in Barcode",
+            "Q30 Bases in RNA Read",
+            "Q30 Bases in UMI",
+            "Reads Mapped to Genome",
+            "Reads Mapped Confidently to Genome",
+            "Reads Mapped Confidently to Intergenic Regions",
+            "Reads Mapped Confidently to Intronic Regions",
+            "Reads Mapped Confidently to Exonic Regions",
+            "Reads Mapped Confidently to Transcriptome",
+            "Reads Mapped Antisense to Gene",
+            "Fraction Reads in Cells",
+            "Total Genes Detected",
+            "Median UMI Counts per Cell",
+        ]);
+
+        match reader.headers() {
+            cellranger_count_header => Ok(Pipeline::CellrangerCount),
+            _ => Err(Error::msg("not implemented yet pipeline selection"))
+        }        
+    }
+
+    fn metrics_summaries<T: DeserializeOwned + Copy>(&self) -> Result<T> {
+        let metrics_summary_files = self.metrics_summary_files()?;
+
+        if metrics_summary_files.len() > 1 {
+            return Err(Error::msg("not implemented yet"));
+        }
+
+        let metrics_summary_file = metrics_summary_files[0].to_owned();
+        let mut reader = csv::Reader::from_path(metrics_summary_file)?;
+
+        let mut rows: Vec<T> = Vec::new();
+
+        for result in reader.deserialize() {
+            let line: T = result?;
+            rows.push(line);
+        }
+
+        if rows.len() > 1 {
+            return Err(Error::msg("expected just one row"));
+        }
+
+        Ok(rows[0])
+    }
+
+    pub fn with_metrics(mut self) -> Result<DataSet> {        
+        let pipeline = self.pipeline()?;
+
+        match pipeline {
+            Pipeline::CellrangerCount => {
+                let metrics_summaries: CellrangerCountMetrics = self.metrics_summaries()?;
+                self.samples[0].estimated_number_of_cells = Some(metrics_summaries.estimated_number_of_cells);
+            }
+            _ => {self.samples[0].estimated_number_of_cells = Some(0);}
+        };
+
+        Ok(self)
     }
 }
