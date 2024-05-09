@@ -74,13 +74,13 @@ pub struct Library {
     pub date_sequencing_data_returned: Option<NaiveDate>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub atac_confidently_mapped_read_pairs: Option<f32>,
+    pub atac_confidently_mapped_read_pairs: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub gex_reads_mapped_confidently_to_genome: Option<f32>,
+    pub gex_reads_mapped_confidently_to_genome: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reads_mapped_confidently_to_genome: Option<f32>,
+    pub reads_mapped_confidently_to_genome: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -91,10 +91,10 @@ pub struct Sample {
     pub date_received: Option<NaiveDate>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub targeted_cell_recovery: Option<u32>,
+    pub targeted_cell_recovery: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub estimated_number_of_cells: Option<u64>,
+    pub estimated_number_of_cells: Option<f64>,
 }
 
 impl DataSet {
@@ -143,6 +143,7 @@ impl DataSet {
         reader.set_headers(header);
 
         let mut metrics: Vec<PipelineMetrics> = Vec::new();
+        // TODO: the below processing should be wrapped into a function
         for result in reader.deserialize() {
             let record: HashMap<String, String> = result?;
             let mut formatted_record = Map::new();
@@ -150,26 +151,18 @@ impl DataSet {
             // This loop is such a hack
             for (key, raw_value) in record.iter() {
                 let raw_value = raw_value.replace(",", "");
+                let mut value: f64;
 
-                // TODO: improve all these error messages
-                if raw_value.contains(".") {
-                    let value: f64;
-
-                    if raw_value.contains("%") {
-                        value = raw_value.replace("%", "").parse()?;
-                    } else {
-                        value = raw_value.parse()?;
-                    }
-
-                    let value = Number::from_f64(value).unwrap();
-                    formatted_record.insert(key.to_string(), Value::Number(value));
+                if raw_value.contains("%") {
+                    value = raw_value.replace("%", "").parse()?;
+                    value = value / 100.0;
                 } else {
-                    let value: u64 = raw_value.parse()?;
-                    let value = Number::from(value);
-                    formatted_record.insert(key.to_string(), Value::Number(value));
+                    value = raw_value.parse()?;
                 }
-            }
 
+                let value = Number::from_f64(value).unwrap();
+                formatted_record.insert(key.to_string(), Value::Number(value));
+            }
             let as_json_value = serde_json::to_value(formatted_record)?;
             let metric = serde_json::from_value(as_json_value)?;
 
