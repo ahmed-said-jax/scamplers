@@ -5,6 +5,7 @@
         "libraries": [
             {
                 "_id": "SC9900000",
+                "type": "Gene Expression",
                 "status": "complete",
                 "date_cdna_prepared": "1999-01-01",
                 "date_prepared": "1999-01-01",
@@ -27,6 +28,7 @@
         "libraries": [
             {
                 "_id": "SC9900001",
+                "type": "Gene Expression",
                 "status": "complete",
                 "date_cdna_prepared": "1999-01-01",
                 "date_prepared": "1999-01-01",
@@ -35,6 +37,7 @@
             },
             {
                 "_id": "SC9900002",
+                "type": "Chromatin Accessibility",
                 "status": "complete",
                 "date_cdna_prepared": "1999-01-01",
                 "date_prepared": "1999-01-01",
