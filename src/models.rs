@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Number, Value};
 use std::{collections::HashMap, fmt::Debug};
 
+// TODO: add validation to all these models
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum InsertableCollection {
@@ -24,8 +25,6 @@ pub struct Lab {
     pub delivery_dir: Utf8PathBuf,
 }
 
-// TODO: add validation to all these models
-// TODO: add defaults and new methods
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Institution {
     pub name: String,
@@ -158,16 +157,13 @@ impl DataSet {
 
                     if raw_value.contains("%") {
                         value = raw_value.replace("%", "").parse()?;
-                    }
-                    else {
+                    } else {
                         value = raw_value.parse()?;
                     }
 
                     let value = Number::from_f64(value).unwrap();
                     formatted_record.insert(key.to_string(), Value::Number(value));
-                } 
-
-                else {
+                } else {
                     let value: u64 = raw_value.parse()?;
                     let value = Number::from(value);
                     formatted_record.insert(key.to_string(), Value::Number(value));
@@ -217,7 +213,8 @@ impl DataSet {
                 median_umi_counts_per_cell,
             } => {
                 self.samples[0].estimated_number_of_cells = Some(*estimated_number_of_cells);
-                self.libraries[0].reads_mapped_confidently_to_genome = Some(*reads_mapped_confidently_to_genome); // TODO: should metrics that are actually the same be called the same thing across different types of libraries?
+                self.libraries[0].reads_mapped_confidently_to_genome =
+                    Some(*reads_mapped_confidently_to_genome); // TODO: should metrics that are actually the same be called the same thing across different types of libraries?
 
                 Ok(self)
             }
@@ -270,15 +267,16 @@ impl DataSet {
 
                 for lib in &mut self.libraries {
                     if lib.type_ == "Gene Expression" {
-                        lib.gex_reads_mapped_confidently_to_genome = Some(*gex_reads_mapped_confidently_to_genome);
-                    }
-                    else if lib.type_ == "Chromatin Accessibility" {
-                        lib.atac_confidently_mapped_read_pairs = Some(*atac_confidently_mapped_read_pairs);
+                        lib.gex_reads_mapped_confidently_to_genome =
+                            Some(*gex_reads_mapped_confidently_to_genome);
+                    } else if lib.type_ == "Chromatin Accessibility" {
+                        lib.atac_confidently_mapped_read_pairs =
+                            Some(*atac_confidently_mapped_read_pairs);
                     }
                 }
 
                 Ok(self)
-            },
+            }
             _ => Err(Error::msg("not implemented other metrics types")),
         }
     }

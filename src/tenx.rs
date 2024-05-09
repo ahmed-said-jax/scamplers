@@ -74,12 +74,12 @@ pub enum PipelineMetrics {
         median_umi_counts_per_cell: u64,
     },
     CellrangerMultiMetrics {
-        some_multi_metric: u64
+        some_multi_metric: u64,
     },
     CellrangerVdjMetrics {
         some_vdj_metrics: u64,
     },
     SpacerangerCountMetrics {
-        some_spatial_metric: u32
+        some_spatial_metric: u32,
     },
 }
