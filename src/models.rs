@@ -62,7 +62,7 @@ pub struct Library {
     pub type_: String, // TODO: make this sophisticated and limited
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<String>, // Create a controlled vocabulary for this
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_cdna_prepared: Option<NaiveDate>,
