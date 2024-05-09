@@ -20,5 +20,35 @@
             }
         ],
         "date_delivered": "1999-01-01"
+    },
+    {
+        "lab_name": "Ahmed Said Lab",
+        "path": "./SC9900001-SC9900002_sample",
+        "libraries": [
+            {
+                "_id": "SC9900001",
+                "status": "complete",
+                "date_cdna_prepared": "1999-01-01",
+                "date_prepared": "1999-01-01",
+                "date_submitted_to_gt": "1999-01-01",
+                "date_sequencing_data_returned": "1999-01-01"
+            },
+            {
+                "_id": "SC9900002",
+                "status": "complete",
+                "date_cdna_prepared": "1999-01-01",
+                "date_prepared": "1999-01-01",
+                "date_submitted_to_gt": "1999-01-01",
+                "date_sequencing_data_returned": "1999-01-01"
+            }
+        ],
+        "samples": [
+            {
+                "date_received": "1999-01-01",
+                "name": "sample",
+                "targeted_cell_recovery": 1000
+            }
+        ],
+        "date_delivered": "1999-01-01"
     }
 ]
