@@ -3,7 +3,7 @@ use std::iter::zip;
 use crate::models::{DataSet, Lab};
 use anyhow::{Context, Result};
 use mongodb::{
-    bson::{doc, Document, to_bson},
+    bson::{doc, to_bson, Document},
     options::FindOneAndUpdateOptions,
     sync::{Client, Collection, Database},
 };
@@ -26,9 +26,8 @@ fn upsert_many<T: DeserializeOwned + Serialize + Debug>(
         .build();
 
     for (item, filter) in zip(data, filters) {
-        let item = to_bson(&item).with_context(|| {
-            format!("could not convert data to BSON:\n{:#?}", item)
-        })?;
+        let item = to_bson(&item)
+            .with_context(|| format!("could not convert data to BSON:\n{:#?}", item))?;
         let update = doc! {"$set": item};
 
         collection.find_one_and_update(filter, update, options.clone())?;

@@ -11,7 +11,7 @@ use std::{collections::HashMap, fmt::Debug};
 #[serde(untagged)]
 pub enum InsertableCollection {
     DataSet(Vec<DataSet>),
-    Lab(Vec<Lab>)
+    Lab(Vec<Lab>),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -147,10 +147,7 @@ impl DataSet {
         Ok(metrics)
     }
 
-    pub fn with_metrics(
-        mut self,
-        metrics_summaries: Option<Vec<PipelineMetrics>>,
-    ) -> Result<Self> {
+    pub fn with_metrics(mut self, metrics_summaries: Option<Vec<PipelineMetrics>>) -> Result<Self> {
         let metrics_summaries = match metrics_summaries {
             Some(metrics) => metrics,
             None => self.metrics_summaries(None)?,

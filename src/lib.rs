@@ -22,12 +22,18 @@ pub fn sync_files(scamplers_config: ScamplersConfig, files: Vec<Utf8PathBuf>) ->
     for f in files {
         let contents = fs::read_to_string(&f).with_context(|| format!("could not read {f}"))?;
 
-        let data: InsertableCollection = serde_json::from_str(&contents).with_context(|| format!("could not load data from {f}"))?;
+        let data: InsertableCollection = serde_json::from_str(&contents)
+            .with_context(|| format!("could not load data from {f}"))?;
         let insertion_error = format!("could not insert data from {f}");
 
         match data {
-            InsertableCollection::DataSet(data_sets) => upsert_data_sets(&db.collection("data_set"), data_sets).with_context(|| insertion_error)?,
-            InsertableCollection::Lab(labs) => upsert_labs(&db.collection("lab"), labs).with_context(|| insertion_error)?
+            InsertableCollection::DataSet(data_sets) => {
+                upsert_data_sets(&db.collection("data_set"), data_sets)
+                    .with_context(|| insertion_error)?
+            }
+            InsertableCollection::Lab(labs) => {
+                upsert_labs(&db.collection("lab"), labs).with_context(|| insertion_error)?
+            }
         }
     }
 
