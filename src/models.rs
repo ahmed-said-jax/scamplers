@@ -5,6 +5,7 @@ use chrono::NaiveDate;
 use csv::StringRecord;
 use glob::glob;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Number, Value};
 use std::{collections::HashMap, fmt::Debug};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -87,7 +88,7 @@ pub struct Sample {
 impl DataSet {
     pub fn metrics_summary_files(&self) -> Result<Vec<Utf8PathBuf>> {
         let data_set_path = self.path.to_string();
-        let pattern = format!("{data_set_path}/**/metrics_summary.csv");
+        let pattern = format!("{data_set_path}/**/*summary.csv");
 
         let matches =
             glob(&pattern).with_context(|| format!("glob pattern {pattern} is malformed"))?;
@@ -125,25 +126,46 @@ impl DataSet {
         let header: StringRecord = reader
             .headers()?
             .iter()
-            .map(|column| column.replace(" ", "_").to_lowercase())
+            .map(|column| column.replace(" ", "_").replace("-", "_").to_lowercase())
             .collect();
+        reader.set_headers(header);
 
         let mut metrics: Vec<PipelineMetrics> = Vec::new();
-        for result in reader.records() {
-            // TODO: the following three lines are a bit of a hack
-            let record = result?;
-            let record: StringRecord = record
-                .iter()
-                .map(|value| value.replace(",", "").replace("%", ""))
-                .collect();
-            let record: HashMap<String, String> = record.deserialize(Some(&header))?;
+        for result in reader.deserialize() {
+            let record: HashMap<String, String> = result?;
+            let mut formatted_record = Map::new();
 
-            let as_json_value = serde_json::to_value(record)?;
+            // This loop is such a hack
+            for (key, raw_value) in record.iter() {
+                let raw_value = raw_value.replace(",", "");
+
+                // TODO: improve all these error messages
+                if raw_value.contains(".") {
+                    let value: f64;
+
+                    if raw_value.contains("%") {
+                        value = raw_value.replace("%", "").parse()?;
+                    }
+                    else {
+                        value = raw_value.parse()?;
+                    }
+
+                    let value = Number::from_f64(value).unwrap();
+                    formatted_record.insert(key.to_string(), Value::Number(value));
+                } 
+
+                else {
+                    let value: u64 = raw_value.parse()?;
+                    let value = Number::from(value);
+                    formatted_record.insert(key.to_string(), Value::Number(value));
+                }
+            }
+
+            let as_json_value = serde_json::to_value(formatted_record)?;
             let metric = serde_json::from_value(as_json_value)?;
 
-            metrics.push(metric);
+            metrics.push(metric)
         }
-
         Ok(metrics)
     }
 
@@ -185,6 +207,55 @@ impl DataSet {
 
                 Ok(self)
             }
+            PipelineMetrics::CellrangerArcMetrics {
+                estimated_number_of_cells,
+                feature_linkages_detected,
+                linked_genes,
+                linked_peaks,
+                atac_confidently_mapped_read_pairs,
+                atac_fraction_of_genome_in_peaks,
+                atac_fraction_of_high_quality_fragments_in_cells,
+                atac_fraction_of_high_quality_fragments_overlapping_tss,
+                atac_fraction_of_high_quality_fragments_overlapping_peaks,
+                atac_fraction_of_transposition_events_in_peaks_in_cells,
+                atac_mean_raw_read_pairs_per_cell,
+                atac_median_high_quality_fragments_per_cell,
+                atac_non_nuclear_read_pairs,
+                atac_number_of_peaks,
+                atac_percent_duplicates,
+                atac_q30_bases_in_barcode,
+                atac_q30_bases_in_read_1,
+                atac_q30_bases_in_read_2,
+                atac_q30_bases_in_sample_index_i1,
+                atac_sequenced_read_pairs,
+                atac_tss_enrichment_score,
+                atac_unmapped_read_pairs,
+                atac_valid_barcodes,
+                gex_fraction_of_transcriptomic_reads_in_cells,
+                gex_mean_raw_reads_per_cell,
+                gex_median_umi_counts_per_cell,
+                gex_median_genes_per_cell,
+                gex_percent_duplicates,
+                gex_q30_bases_in_umi,
+                gex_q30_bases_in_barcode,
+                gex_q30_bases_in_read_2,
+                gex_reads_mapped_antisense_to_gene,
+                gex_reads_mapped_confidently_to_exonic_regions,
+                gex_reads_mapped_confidently_to_genome,
+                gex_reads_mapped_confidently_to_intergenic_regions,
+                gex_reads_mapped_confidently_to_intronic_regions,
+                gex_reads_mapped_confidently_to_transcriptome,
+                gex_reads_mapped_to_genome,
+                gex_reads_with_tso,
+                gex_sequenced_read_pairs,
+                gex_total_genes_detected,
+                gex_valid_umis,
+                gex_valid_barcodes,
+            } => {
+                self.samples[0].estimated_number_of_cells = Some(*estimated_number_of_cells);
+
+                Ok(self)
+            },
             _ => Err(Error::msg("not implemented other metrics types")),
         }
     }

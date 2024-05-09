@@ -7,67 +7,118 @@ use serde_with::{serde_as, DisplayFromStr};
 #[serde(untagged)]
 pub enum PipelineMetrics {
     CellrangerArcMetrics {
-        some_metric: String,
+        estimated_number_of_cells: u64,
+        feature_linkages_detected: u64,
+        linked_genes: u64,
+        linked_peaks: u64,
+        atac_confidently_mapped_read_pairs: f32,
+        atac_fraction_of_genome_in_peaks: f32,
+        atac_fraction_of_high_quality_fragments_in_cells: f32,
+        atac_fraction_of_high_quality_fragments_overlapping_tss: f32,
+        atac_fraction_of_high_quality_fragments_overlapping_peaks: f32,
+        atac_fraction_of_transposition_events_in_peaks_in_cells: f32,
+        atac_mean_raw_read_pairs_per_cell: f32,
+        atac_median_high_quality_fragments_per_cell: f32,
+        atac_non_nuclear_read_pairs: f32,
+        atac_number_of_peaks: u64,
+        atac_percent_duplicates: f32,
+        atac_q30_bases_in_barcode: f32,
+        atac_q30_bases_in_read_1: f32,
+        atac_q30_bases_in_read_2: f32,
+        atac_q30_bases_in_sample_index_i1: f32,
+        atac_sequenced_read_pairs: u64,
+        atac_tss_enrichment_score: f32,
+        atac_unmapped_read_pairs: f32,
+        atac_valid_barcodes: f32,
+        gex_fraction_of_transcriptomic_reads_in_cells: f32,
+        gex_mean_raw_reads_per_cell: f32,
+        gex_median_umi_counts_per_cell: f32,
+        gex_median_genes_per_cell: f32,
+        gex_percent_duplicates: f32,
+        gex_q30_bases_in_umi: f32,
+        gex_q30_bases_in_barcode: f32,
+        gex_q30_bases_in_read_2: f32,
+        gex_reads_mapped_antisense_to_gene: f32,
+        gex_reads_mapped_confidently_to_exonic_regions: f32,
+        gex_reads_mapped_confidently_to_genome: f32,
+        gex_reads_mapped_confidently_to_intergenic_regions: f32,
+        gex_reads_mapped_confidently_to_intronic_regions: f32,
+        gex_reads_mapped_confidently_to_transcriptome: f32,
+        gex_reads_mapped_to_genome: f32,
+        gex_reads_with_tso: f32,
+        gex_sequenced_read_pairs: u64,
+        gex_total_genes_detected: u64,
+        gex_valid_umis: f32,
+        gex_valid_barcodes: f32,
     },
     CellrangerAtacMetrics {
         some_other_metric: String,
     },
     CellrangerCountMetrics {
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         estimated_number_of_cells: u64,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         mean_reads_per_cell: u64,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         median_genes_per_cell: u64,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         number_of_reads: u64,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         valid_barcodes: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         sequencing_saturation: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         q30_bases_in_barcode: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         q30_bases_in_rna_read: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         q30_bases_in_umi: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_to_genome: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_confidently_to_genome: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_confidently_to_intergenic_regions: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_confidently_to_intronic_regions: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_confidently_to_exonic_regions: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_confidently_to_transcriptome: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         reads_mapped_antisense_to_gene: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         fraction_reads_in_cells: f32,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         total_genes_detected: u64,
 
-        #[serde_as(deserialize_as = "DisplayFromStr")]
+        // #[serde_as(deserialize_as = "DisplayFromStr")]
         median_umi_counts_per_cell: u64,
+    },
+    CellrangerMultiMetrics {
+        some_multi_metric: u64
+    },
+    CellrangerVdjMetrics {
+        some_vdj_metrics: u64,
+    },
+    SpacerangerMetrics {
+        some_spatial_metric: u32
     },
 }
