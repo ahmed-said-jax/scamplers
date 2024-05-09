@@ -54,9 +54,13 @@ pub struct DataSet {
     pub date_delivered: Option<NaiveDate>,
 }
 
+// TODO: should this be an enum for different types of libraries?
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Library {
     pub _id: String,
+
+    #[serde(rename = "type")]
+    pub type_: String, // TODO: make this sophisticated and limited
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
@@ -69,6 +73,15 @@ pub struct Library {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_sequencing_data_returned: Option<NaiveDate>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub atac_confidently_mapped_read_pairs: Option<f32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gex_reads_mapped_confidently_to_genome: Option<f32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reads_mapped_confidently_to_genome: Option<f32>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -204,10 +217,11 @@ impl DataSet {
                 median_umi_counts_per_cell,
             } => {
                 self.samples[0].estimated_number_of_cells = Some(*estimated_number_of_cells);
+                self.libraries[0].reads_mapped_confidently_to_genome = Some(*reads_mapped_confidently_to_genome); // TODO: should metrics that are actually the same be called the same thing across different types of libraries?
 
                 Ok(self)
             }
-            PipelineMetrics::CellrangerArcMetrics {
+            PipelineMetrics::CellrangerarcCountMetrics {
                 estimated_number_of_cells,
                 feature_linkages_detected,
                 linked_genes,
@@ -253,6 +267,15 @@ impl DataSet {
                 gex_valid_barcodes,
             } => {
                 self.samples[0].estimated_number_of_cells = Some(*estimated_number_of_cells);
+
+                for lib in &mut self.libraries {
+                    if lib.type_ == "Gene Expression" {
+                        lib.gex_reads_mapped_confidently_to_genome = Some(*gex_reads_mapped_confidently_to_genome);
+                    }
+                    else if lib.type_ == "Chromatin Accessibility" {
+                        lib.atac_confidently_mapped_read_pairs = Some(*atac_confidently_mapped_read_pairs);
+                    }
+                }
 
                 Ok(self)
             },

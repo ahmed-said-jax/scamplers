@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum PipelineMetrics {
-    CellrangerArcMetrics {
+    CellrangerarcCountMetrics {
         estimated_number_of_cells: u64,
         feature_linkages_detected: u64,
         linked_genes: u64,
@@ -49,7 +49,7 @@ pub enum PipelineMetrics {
         gex_valid_umis: f32,
         gex_valid_barcodes: f32,
     },
-    CellrangerAtacMetrics {
+    CellrangeratacCountMetrics {
         some_other_metric: String,
     },
     CellrangerCountMetrics {
@@ -79,7 +79,7 @@ pub enum PipelineMetrics {
     CellrangerVdjMetrics {
         some_vdj_metrics: u64,
     },
-    SpacerangerMetrics {
+    SpacerangerCountMetrics {
         some_spatial_metric: u32
     },
 }
