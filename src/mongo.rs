@@ -27,8 +27,7 @@ fn upsert_many<T: DeserializeOwned + Serialize + Debug>(
 
     for (item, filter) in zip(data, filters) {
         collection
-            .find_one_and_replace(filter, item, options.clone())
-            .with_context(|| "could not update/insert data")?;
+            .find_one_and_replace(filter, item, options.clone())?;
     }
 
     Ok(())

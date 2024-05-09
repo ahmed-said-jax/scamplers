@@ -7,6 +7,22 @@ use glob::glob;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum InsertableCollection {
+    DataSet(Vec<DataSet>),
+    Lab(Vec<Lab>)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Lab {
+    pub name: String,
+    pub pi: Person,
+    pub institution: Institution,
+    pub members: Vec<Person>,
+    pub delivery_dir: Utf8PathBuf,
+}
+
 // TODO: add validation to all these models
 // TODO: add defaults and new methods
 #[derive(Debug, Deserialize, Serialize)]
@@ -24,15 +40,6 @@ pub struct Person {
     pub last_name: String,
     pub email: String,
     pub orcid: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Lab {
-    pub name: String,
-    pub pi: Person,
-    pub institution: Institution,
-    pub members: Vec<Person>,
-    pub delivery_dir: Utf8PathBuf,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -143,7 +150,7 @@ impl DataSet {
     pub fn with_metrics(
         mut self,
         metrics_summaries: Option<Vec<PipelineMetrics>>,
-    ) -> Result<DataSet> {
+    ) -> Result<Self> {
         let metrics_summaries = match metrics_summaries {
             Some(metrics) => metrics,
             None => self.metrics_summaries(None)?,
