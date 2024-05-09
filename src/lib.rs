@@ -75,7 +75,7 @@ pub fn sync_10x(scamplers_config: ScamplersConfig) -> Result<()> {
     let mut updated_data_sets: Vec<DataSet> = Vec::new();
 
     for ds in data_sets {
-        updated_data_sets.push(ds.with_metrics()?);
+        updated_data_sets.push(ds.with_metrics(None)?);
     }
 
     upsert_data_sets(&collection, updated_data_sets)?;
