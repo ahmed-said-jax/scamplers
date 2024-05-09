@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use camino::Utf8PathBuf;
 use clap::{command, value_parser, Parser, Subcommand};
+use config::Config;
 use dotenvy;
 use scamplers::{sync_10x, sync_files, ScamplersConfig};
 use std::env;
@@ -33,15 +34,15 @@ enum Commands {
 
 fn main() -> Result<()> {
     dotenvy::dotenv().unwrap_or_default();
+    let config_path = env::var("SCAMPLERS_CONFIG_PATH")
+        .unwrap_or("/sc/service/etc/.config/scamplers".to_string());
 
-    // TODO: explore confy to make this cleaner
-    let config_dir = Utf8PathBuf::from(
-        env::var("SCAMPLERS_CONFIG_DIR").unwrap_or("/sc/service/etc/.config/scamplers".into()),
-    );
-
-    let scamplers_config_path = config_dir.join("scamplers.json");
-    let scamplers_config = ScamplersConfig::from_file(&scamplers_config_path)
-        .with_context(|| format!("could not read config file from {scamplers_config_path}"))?;
+    let config = Config::builder()
+        .set_default("db_name", "test")?
+        .add_source(config::File::with_name(&config_path).required(false))
+        .add_source(config::Environment::with_prefix("SCAMPLERS"))
+        .build()?;
+    let scamplers_config: ScamplersConfig = config.try_deserialize().with_context(|| format!("could not load configuration from of environment and file. Fix the fields in {config_path} or set environment variables prefixed by 'SCAMPLERS'"))?;
 
     let cli = CLI::parse();
 

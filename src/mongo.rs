@@ -3,8 +3,8 @@ use std::iter::zip;
 use crate::models::{DataSet, Lab};
 use anyhow::{Context, Result};
 use mongodb::{
-    bson::{doc, to_bson, Document},
-    options::FindOneAndUpdateOptions,
+    bson::{doc, Document},
+    options::FindOneAndReplaceOptions,
     sync::{Client, Collection, Database},
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -21,22 +21,14 @@ fn upsert_many<T: DeserializeOwned + Serialize + Debug>(
     data: Vec<T>,
     filters: Vec<Document>,
 ) -> Result<()> {
-    let options = FindOneAndUpdateOptions::builder()
+    let options = FindOneAndReplaceOptions::builder()
         .upsert(Some(true))
         .build();
 
     for (item, filter) in zip(data, filters) {
-        let item = to_bson(&item).with_context(|| {
-            format!("could not convert the following data to BSON:\n{:#?}", item)
-        })?;
-
-        let update = doc! {"$set": item.clone()};
-
         collection
-            .find_one_and_update(filter, update, options.clone())
-            .with_context(|| {
-                format!("could not upsert the following data:\n{:#?}", item.clone())
-            })?;
+            .find_one_and_replace(filter, item, options.clone())
+            .with_context(|| "could not update/insert data")?;
     }
 
     Ok(())

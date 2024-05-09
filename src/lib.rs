@@ -10,22 +10,10 @@ use mongodb::{bson::doc, sync::Collection};
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ScamplersConfig {
     db_name: String,
     db_uri: String,
-    nf_10x_pipeline_metadata_pattern: String,
-
-    #[serde(rename = "10x_metrics_summary_patterns")]
-    tenx_metrix_summary_patterns: Vec<String>,
-}
-
-impl ScamplersConfig {
-    pub fn from_file(path: &Utf8PathBuf) -> Result<ScamplersConfig> {
-        let contents = fs::read_to_string(path)?;
-
-        Ok(serde_json::from_str(&contents)?)
-    }
 }
 
 pub fn sync_files(scamplers_config: ScamplersConfig, files: Vec<Utf8PathBuf>) -> Result<()> {

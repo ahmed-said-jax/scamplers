@@ -40,7 +40,7 @@ pub struct DataSet {
     pub path: Utf8PathBuf,
     pub libraries: Vec<Library>,
     pub samples: Vec<Sample>,
-    pub lab: Lab,
+    pub lab_name: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_delivered: Option<NaiveDate>,
@@ -123,6 +123,7 @@ impl DataSet {
 
         let mut metrics: Vec<PipelineMetrics> = Vec::new();
         for result in reader.records() {
+            // TODO: the following three lines are a bit of a hack
             let record = result?;
             let record: StringRecord = record
                 .iter()

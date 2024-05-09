@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
+// TODO: the repetition here can be improved by writing a custom deserializer
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
