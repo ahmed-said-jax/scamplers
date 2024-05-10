@@ -1,3 +1,4 @@
+# This doesn't work yet. The solution is probably to have a container with mongo, start it for the test, and then feed its connection URI to scamplers
 name: Rust
 
 on:
