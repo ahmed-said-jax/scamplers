@@ -78,6 +78,7 @@ pub fn sync_10x(scamplers_config: &ScamplersConfig) -> Result<()> {
     Ok(())
 }
 
+// These tests only work if you're running the test from the root of the crate
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -98,8 +99,6 @@ mod tests {
             .parent()
             .unwrap()
             .join("test_data")
-            .canonicalize_utf8()
-            .unwrap()
     }
 
     fn fill_db(db_name: &str) -> (Database, ScamplersConfig) {
