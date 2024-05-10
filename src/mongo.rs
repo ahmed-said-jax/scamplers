@@ -28,7 +28,7 @@ fn upsert_many<T: DeserializeOwned + Serialize + Debug>(
     for (item, filter) in zip(data, filters) {
         let item = to_bson(&item)
             .with_context(|| format!("could not convert data to BSON:\n{:#?}", item))?;
-        let update = doc! {"$set": item};
+        let update = doc! { "$set": item };
 
         collection.find_one_and_update(filter, update, options.clone())?;
     }
@@ -46,7 +46,7 @@ pub fn upsert_data_sets(collection: &Collection<DataSet>, data_sets: Vec<DataSet
             .map(|lib| lib._id.clone())
             .collect();
 
-        let filter = doc! {"libraries": {"$elemMatch": { "_id": { "$in": library_ids } }}};
+        let filter = doc! { "libraries": { "$elemMatch": { "_id": { "$in": library_ids } } } };
 
         filters.push(filter);
     }
@@ -69,9 +69,10 @@ pub fn upsert_labs(collection: &Collection<Lab>, labs: Vec<Lab>) -> Result<()> {
     Ok(())
 }
 
+// TODO: this is ugly and can be made a little more idiomatic
 pub fn get_delivered_data_sets(collection: &Collection<DataSet>) -> Result<Vec<DataSet>> {
     let data_set_cursor = collection
-        .find(doc! {"date_delivered": {"$exists": true} }, None)
+        .find(doc! { "date_delivered": { "$exists": true } }, None)
         .with_context(|| "could not retrieve delivered data_sets from database")?;
 
     let mut data_sets = Vec::new();

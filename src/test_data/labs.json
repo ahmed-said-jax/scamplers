@@ -1,0 +1,19 @@
+[
+    {
+        "name": "Ahmed Said Lab",
+        "pi": {
+            "first_name": "Ahmed",
+            "last_name": "Said",
+            "email": "ahmed.said@jax.org",
+            "orcid": "0009-0008-3754-6150"
+        },
+        "institution": {
+            "name": "Jackson Laboratory for Genomic Medicine",
+            "country": "US",
+            "state": "CT",
+            "city": "Farmington"
+        },
+        "delivery_dir": "ahmed_said",
+        "members": []
+    }
+]

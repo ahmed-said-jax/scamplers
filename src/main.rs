@@ -1,15 +1,25 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::{command, value_parser, Parser, Subcommand};
-use config::Config;
-use dotenvy;
 use scamplers::{sync_10x, sync_files, ScamplersConfig};
-use std::env;
-// TODO: change all String in parameter definitions to &str
+
+// LONG-TERM TODOS:
+// review all function parameters and ensure that they receive references when they don't need to own data, rather than to copy stuff
+// figure out how to parallelize things
+// add logging (some kind of structured, machine-readable output?)
+// related to above - do not fail blindly on one bad record, instead, skip it and log
+// develop some kind of methodology for where to put error context - does it go in calling functions, or should it go in called functions, or both?
+// related to above - add context for all errors
+// Utf8PathBufs should probably just be Utf8Path. Since this is not an owned type, everything needs to become a reference to that
+
+// SHORT-TERM TODOS:
+// finish metrics ingestion from all *ranger pipelines
+// write some tests to ensure that the internal API developed makes sense
+// modularize more things
 
 #[derive(Debug, Parser)]
 #[command(version, arg_required_else_help = true)]
-struct CLI {
+struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
@@ -32,23 +42,15 @@ enum Commands {
     Sync10X {},
 }
 
+// is it a good design to have main load the config and then pass it into these functions? or should the functions just load the config on their own?
 fn main() -> Result<()> {
-    dotenvy::dotenv().unwrap_or_default();
-    let config_path = env::var("SCAMPLERS_CONFIG_PATH")
-        .unwrap_or("/sc/service/etc/.config/scamplers".to_string());
+    let scamplers_config = ScamplersConfig::load()?;
 
-    let config = Config::builder()
-        .set_default("db_name", "test")?
-        .add_source(config::File::with_name(&config_path).required(false))
-        .add_source(config::Environment::with_prefix("SCAMPLERS"))
-        .build()?;
-    let scamplers_config: ScamplersConfig = config.try_deserialize().with_context(|| format!("could not load configuration from of environment and file. Fix the fields in {config_path} or set environment variables prefixed by 'SCAMPLERS'"))?;
-
-    let cli = CLI::parse();
+    let cli = Cli::parse();
 
     match cli.command {
-        Commands::SyncFiles { files } => sync_files(scamplers_config, files),
+        Commands::SyncFiles { files } => sync_files(&scamplers_config, files),
         Commands::SyncGoogleSheets {} => Ok(()),
-        Commands::Sync10X {} => sync_10x(scamplers_config),
+        Commands::Sync10X {} => sync_10x(&scamplers_config),
     }
 }

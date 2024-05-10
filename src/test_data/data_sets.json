@@ -1,7 +1,7 @@
 [
     {
         "lab_name": "Ahmed Said Lab",
-        "path": "./SC9900000_sample",
+        "path": "src/test_data/SC9900000_sample",
         "libraries": [
             {
                 "_id": "SC9900000",
@@ -24,7 +24,7 @@
     },
     {
         "lab_name": "Ahmed Said Lab",
-        "path": "./SC9900001-SC9900002_sample",
+        "path": "src/test_data/SC9900001-SC9900002_sample",
         "libraries": [
             {
                 "_id": "SC9900001",
