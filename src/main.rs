@@ -4,8 +4,8 @@ use clap::{command, value_parser, Parser, Subcommand};
 use scamplers::{sync_10x, sync_files, ScamplersConfig};
 
 // LONG-TERM TODOS:
-// review all function parameters and ensure that they receive references when they don't need to own data, rather than to copy stuff
-// figure out how to parallelize things
+// review all function parameters and ensure that functions receive references when they don't need to own data (performance)
+// figure out how to parallelize things (performance)
 // add logging (some kind of structured, machine-readable output?)
 // related to above - do not fail blindly on one bad record, instead, skip it and log
 // develop some kind of methodology for where to put error context - does it go in calling functions, or should it go in called functions, or both?
@@ -15,7 +15,7 @@ use scamplers::{sync_10x, sync_files, ScamplersConfig};
 // SHORT-TERM TODOS:
 // finish metrics ingestion from all *ranger pipelines
 // write some tests to ensure that the internal API developed makes sense
-// modularize more things
+// modularize
 
 #[derive(Debug, Parser)]
 #[command(version, arg_required_else_help = true)]

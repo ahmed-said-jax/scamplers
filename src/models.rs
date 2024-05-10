@@ -9,7 +9,6 @@ use serde_json::{Map, Number, Value};
 use std::{collections::HashMap, fmt::Debug};
 
 // TODO: add validation to all these models
-
 // TODO: we can make this more flexible by accepting a file that is a list of DataSet/Lab, or a file that is just one DataSet/Lab. That will enable parallelization and easier command-line usage
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
