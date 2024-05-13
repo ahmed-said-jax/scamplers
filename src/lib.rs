@@ -85,7 +85,7 @@ pub fn sync_10x(db: Database) -> Result<()> {
     Ok(())
 }
 
-// TODO: is rstest worth looking into for pytest-style fixtures?
+// TODO: is rstest worth looking into rstest for pytest-style fixtures?
 // I think the way to answer the question is to rewrite these tests using rstest and see which are more ergonomic/easy to read
 #[cfg(test)]
 mod tests {
