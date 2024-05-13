@@ -1,13 +1,13 @@
 mod models;
-mod mongo;
+pub mod mongo;
 mod tenx;
 use anyhow::{Context, Result};
 use camino::Utf8PathBuf;
 use config::Config;
 use models::{DataSet, InsertableCollection};
 use mongo::get_delivered_data_sets;
-use mongo::{get_db, upsert_data_sets, upsert_labs};
-use mongodb::{bson::doc, sync::Collection};
+use mongo::{upsert_data_sets, upsert_labs};
+use mongodb::{bson::doc, sync::{Collection, Database}};
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
 
@@ -15,8 +15,8 @@ use std::{env, fs};
 
 #[derive(Deserialize, Serialize)]
 pub struct ScamplersConfig {
-    db_name: String,
-    db_uri: String,
+    pub db_name: String,
+    pub db_uri: String,
 }
 
 impl ScamplersConfig {
@@ -36,11 +36,10 @@ impl ScamplersConfig {
 }
 
 pub fn sync_files(
-    scamplers_config: &ScamplersConfig,
+    db: Database,
     files: impl IntoIterator<Item = Utf8PathBuf>,
+    overwrite_data_sets: bool
 ) -> Result<()> {
-    let db = get_db(&scamplers_config.db_uri, &scamplers_config.db_name)?;
-
     for f in files {
         let contents = fs::read_to_string(&f).with_context(|| format!("could not read {f}"))?;
 
@@ -50,11 +49,20 @@ pub fn sync_files(
 
         match data {
             InsertableCollection::DataSets(data_sets) => {
-                upsert_data_sets(&db.collection("data_set"), data_sets.into_iter().filter(|ds| ds.date_delivered.is_some()).collect())
-                    .with_context(|| insertion_error)?
+                let collection = db.collection("data_set");
+
+                if !overwrite_data_sets {
+                    let data_sets: Vec<DataSet> = data_sets.into_iter().filter(|ds| ds.date_delivered.is_none()).collect();
+                    upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
+                }
+
+                else {
+                    upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
+                }
             }
+
             InsertableCollection::Labs(labs) => {
-                upsert_labs(&db.collection("lab"), labs).with_context(|| insertion_error)?
+                upsert_labs(&db.collection("lab"), labs).with_context(|| insertion_error)?;
             }
         }
     }
@@ -62,8 +70,7 @@ pub fn sync_files(
     Ok(())
 }
 
-pub fn sync_10x(scamplers_config: &ScamplersConfig) -> Result<()> {
-    let db = get_db(&scamplers_config.db_uri, &scamplers_config.db_name)?;
+pub fn sync_10x(db: Database) -> Result<()> {
     let collection: Collection<DataSet> = db.collection("data_set");
     let data_sets = get_delivered_data_sets(&collection)?;
 
@@ -78,7 +85,8 @@ pub fn sync_10x(scamplers_config: &ScamplersConfig) -> Result<()> {
     Ok(())
 }
 
-
+// TODO: is rstest worth looking into for pytest-style fixtures?
+// I think the way to answer the question is to rewrite these tests using rstest and see which are more ergonomic/easy to read
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -90,38 +98,31 @@ mod tests {
     use camino::Utf8PathBuf;
     use mongodb::{
         bson::doc,
-        sync::{Collection, Database},
+        sync::Collection,
     };
 
-    fn data_dir() -> Utf8PathBuf {
+    fn data_files() -> [Utf8PathBuf; 2] {
         let current_file = file!();
-        Utf8PathBuf::from(current_file)
+        let test_data_dir = Utf8PathBuf::from(current_file)
             .parent()
             .unwrap()
-            .join("test_data")
-    }
+            .join("test_data");
 
-    fn fill_db(db_name: &str) -> (Database, ScamplersConfig) {
-        let mut scamplers_config = ScamplersConfig::load().unwrap();
-        scamplers_config.db_name = db_name.to_string();
-
-        let test_data_dir = data_dir();
         let files = [
             test_data_dir.join("data_sets.json"),
             test_data_dir.join("labs.json"),
         ];
 
-        sync_files(&scamplers_config, files).unwrap();
-
-        (
-            get_db(&scamplers_config.db_uri, &scamplers_config.db_name).unwrap(),
-            scamplers_config,
-        )
+        files
     }
 
     #[test]
     fn test_sync_files() -> Result<()> {
-        let (db, _) = fill_db("test_sync-files");
+        let scamplers_config = ScamplersConfig::load().unwrap();
+        let db = get_db(&scamplers_config.db_uri, &"test_sync-files".to_string()).unwrap();
+        let files = data_files();
+
+        sync_files(db.clone(), files, true)?;
 
         let ds_collection: Collection<DataSet> = db.collection("data_set");
         assert_eq!(ds_collection.estimated_document_count(None)?, 2);
@@ -136,8 +137,12 @@ mod tests {
 
     #[test]
     fn test_sync_10x() -> Result<()> {
-        let (db, scamplers_config) = fill_db("test_sync-10x");
-        sync_10x(&scamplers_config)?;
+        let scamplers_config = ScamplersConfig::load().unwrap();
+        let db = get_db(&scamplers_config.db_uri, &"test_sync-10x".to_string()).unwrap();
+        let files = data_files();
+
+        sync_files(db.clone(), files, true)?;
+        sync_10x(db.clone())?;
 
         let collection: Collection<DataSet> = db.collection("data_set");
         let filter = doc! { "samples": { "$all": [ { "$elemMatch": { "estimated_number_of_cells": { "$exists": true } } } ] } };
@@ -152,11 +157,22 @@ mod tests {
 
     #[test]
     fn test_sync_10x_then_sync_files() -> Result<()> {
-        let (_, scamplers_config) = fill_db("test_sync-10x");
-        sync_10x(&scamplers_config)?;
+        let scamplers_config = ScamplersConfig::load().unwrap();
+        let db = get_db(&scamplers_config.db_uri, &"test_sync-10x_then_sync-files".to_string()).unwrap();
+        let files = data_files();
 
-        fill_db("test_sync-10x");
-        
-        test_sync_files()
+        sync_files(db.clone(), files.clone(), true)?;
+        sync_10x(db.clone())?;
+        sync_files(db.clone(), files, false)?;
+
+        let collection: Collection<DataSet> = db.collection("data_set");
+        let filter = doc! { "samples": { "$all": [ { "$elemMatch": { "estimated_number_of_cells": { "$exists": true } } } ] } };
+
+        let count = collection.count_documents(filter, None)?;
+        assert_eq!(count, 2);
+
+        db.drop(None)?;
+
+        Ok(())
     }
 }
