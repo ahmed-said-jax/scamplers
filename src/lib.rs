@@ -149,4 +149,14 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_sync_10x_then_sync_files() -> Result<()> {
+        let (_, scamplers_config) = fill_db("test_sync-10x");
+        sync_10x(&scamplers_config)?;
+
+        fill_db("test_sync-10x");
+        
+        test_sync_files()
+    }
 }
