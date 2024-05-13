@@ -49,11 +49,11 @@ pub fn sync_files(
         let insertion_error = format!("could not insert data from {f}");
 
         match data {
-            InsertableCollection::DataSet(data_sets) => {
-                upsert_data_sets(&db.collection("data_set"), data_sets)
+            InsertableCollection::DataSets(data_sets) => {
+                upsert_data_sets(&db.collection("data_set"), data_sets.into_iter().filter(|ds| ds.date_delivered.is_some()).collect())
                     .with_context(|| insertion_error)?
             }
-            InsertableCollection::Lab(labs) => {
+            InsertableCollection::Labs(labs) => {
                 upsert_labs(&db.collection("lab"), labs).with_context(|| insertion_error)?
             }
         }
@@ -78,7 +78,7 @@ pub fn sync_10x(scamplers_config: &ScamplersConfig) -> Result<()> {
     Ok(())
 }
 
-// These tests only work if you're running the test from the root of the crate
+
 #[cfg(test)]
 mod tests {
     use crate::{

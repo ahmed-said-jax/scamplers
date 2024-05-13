@@ -13,8 +13,8 @@ use std::{collections::HashMap, fmt::Debug};
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum InsertableCollection {
-    DataSet(Vec<DataSet>),
-    Lab(Vec<Lab>),
+    DataSets(Vec<DataSet>),
+    Labs(Vec<Lab>),
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -18,7 +18,7 @@ pub fn get_db(db_uri: &String, db_name: &String) -> Result<Database> {
 
 fn upsert_many<T: DeserializeOwned + Serialize + Debug>(
     collection: &Collection<T>,
-    data: Vec<T>,
+    data: impl IntoIterator<Item = T>,
     filters: Vec<Document>,
 ) -> Result<()> {
     let options = FindOneAndUpdateOptions::builder()

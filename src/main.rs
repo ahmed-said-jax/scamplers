@@ -42,7 +42,7 @@ enum Commands {
     Sync10X {},
 }
 
-// is it a good design to have main load the config and then pass it into these functions? or should the functions just load the config on their own?
+
 fn main() -> Result<()> {
     let scamplers_config = ScamplersConfig::load()?;
 
