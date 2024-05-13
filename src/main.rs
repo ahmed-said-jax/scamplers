@@ -34,7 +34,7 @@ enum Commands {
         files: Vec<Utf8PathBuf>,
 
         #[arg(long, short, value_parser = value_parser!(bool))]
-        overwrite_data_sets: bool
+        overwrite_data_sets: bool,
     },
 
     /// TODO
@@ -53,7 +53,10 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::SyncFiles { files , overwrite_data_sets} => sync_files(db, files, overwrite_data_sets),
+        Commands::SyncFiles {
+            files,
+            overwrite_data_sets,
+        } => sync_files(db, files, overwrite_data_sets),
         Commands::SyncGoogleSheets {} => Ok(()),
         Commands::Sync10X {} => sync_10x(db),
     }

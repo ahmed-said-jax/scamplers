@@ -1,4 +1,12 @@
+use anyhow::Result;
+use csv::{Reader, StringRecord};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Number, Value};
+use std::collections::HashMap;
+use std::io::Read;
+use regex::Regex;
+
+use crate::models::LibraryType;
 
 // TODO: the repetition here can be improved by writing a custom deserializer
 #[derive(Debug, Deserialize, Serialize)]
@@ -74,7 +82,12 @@ pub enum PipelineMetrics {
         median_umi_counts_per_cell: f64,
     },
     CellrangerMultiMetrics {
-        some_multi_metric: f64,
+        category: CellrangerMultiMetricsCategory,
+        library_type: LibraryType,
+        grouped_by: String,
+        group_name: String,
+        metric_name: String,
+        metric_value: f64
     },
     CellrangerVdjMetrics {
         some_vdj_metrics: f64,
@@ -82,4 +95,74 @@ pub enum PipelineMetrics {
     SpacerangerCountMetrics {
         some_spatial_metric: f64,
     },
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum CellrangerMultiMetricsCategory {
+    Cells,
+    Library
+}
+
+impl PipelineMetrics {
+    // TODO: this needs better error-handling
+    // TODO: this needs to be modularized significantly so we can test each part of the code
+    pub fn from_csv_reader(mut reader: Reader<impl Read>) -> Result<Vec<Self>> {
+        let header: StringRecord = reader
+            .headers()?
+            .iter()
+            .map(|column| column.replace(" ", "_").replace("-", "_").to_lowercase())
+            .collect();
+        reader.set_headers(header);
+
+        let mut metrics: Vec<PipelineMetrics> = Vec::new();
+        for result in reader.deserialize() {
+            let record: HashMap<String, String> = result?;
+            let mut formatted_record = Map::new();
+
+            // This loop is such a hack. Also, there are multiple things going on:
+            // 1. we match a certain format of value and accommodate for it
+            // 2. we replace dumb characters
+            // 3. we convert percentages to fractions
+            // 4. we convert strings to floats
+            // 5. we convert the float to a JSON Number
+            // 6. we put that json number into a map
+            // 7. we conver that map into one of our defined structs
+            // 8. there's even more
+            for (key, raw_value) in record.iter() {
+                let mut no_comma = raw_value.replace(",", "");
+                
+                let re = Regex::new(r"^(\d+)\s\(\d{1,2}\.\d+%\)$").unwrap();
+                let matches = re.captures(&no_comma);
+                
+                if let Some(number) = matches {
+                    let (_, [value]) = number.extract();
+                    no_comma = value.to_string();
+                }
+
+                if no_comma.contains("%") {
+                    let value: f64 = no_comma.replace("%", "").parse()?;
+                    let value = value / 100.0;
+
+                    let value = Number::from_f64(value).unwrap();
+                    formatted_record.insert(key.to_string(), Value::Number(value));
+                } 
+                else {
+                    let value: Option<f64> = raw_value.parse().ok();
+                    
+                    if let Some(number) = value {
+                        let value = Number::from_f64(number).unwrap();
+                        formatted_record.insert(key.to_string(), Value::Number(value));
+                    }
+                    else {
+                        formatted_record.insert(key.to_string(), Value::String(raw_value.to_string()));
+                    }
+                }
+            }
+            let as_json_value = serde_json::to_value(formatted_record)?;
+            let metric = serde_json::from_value(as_json_value)?;
+
+            metrics.push(metric)
+        }
+        Ok(metrics)
+    }
 }

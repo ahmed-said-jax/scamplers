@@ -2,11 +2,9 @@ use crate::tenx::PipelineMetrics;
 use anyhow::{Context, Error, Result};
 use camino::Utf8PathBuf;
 use chrono::NaiveDate;
-use csv::StringRecord;
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Number, Value};
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 
 // TODO: add validation to all these models
 // TODO: we can make this more flexible by accepting a file that is a list of DataSet/Lab, or a file that is just one DataSet/Lab. That will enable parallelization and easier command-line usage
@@ -60,7 +58,7 @@ pub struct Library {
     pub _id: String,
 
     #[serde(rename = "type")]
-    pub type_: String, // TODO: make this sophisticated and limited
+    pub type_: LibraryType, // TODO: make this sophisticated and limited
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>, // Create a controlled vocabulary for this
@@ -82,6 +80,45 @@ pub struct Library {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reads_mapped_confidently_to_genome: Option<f64>,
+}
+
+// TODO: this doesn't really follow the right design pattern. Instead, it would be better to define an enum that contains each `Library`, with each variant of the enum containing those fields relating to each library type. That is probably more robust than having a shit-ton of fields defined for a generic `Library`
+#[derive(Debug, Deserialize, Serialize)]
+pub enum LibraryType {
+    #[serde(rename = "Chromatin Accessibility")]
+    ChromatinAccessibility,
+
+    #[serde(rename = "Gene Expression")]
+    GeneExpression,
+
+    #[serde(rename = "Multiplexing Capture")]
+    MultiplexingCapture,
+
+    #[serde(rename = "Antibody Capture")]
+    AntibodyCapture,
+
+    #[serde(rename = "CRISPR Guide Capture")]
+    CrisprGuideCapture,
+
+    #[serde(rename = "Multipexing Capture for 3' Cell Multiplexing")]
+    MultiplexingCaptureFor3PCellMultiplexing,
+
+    #[serde(rename = "VDJ")]
+    Vdj,
+
+    #[serde(rename = "VDJ-T")]
+    VdjT,
+
+    #[serde(rename = "VDJ-T-GD")]
+    VdjTGd,
+
+    #[serde(rename = "VDJ-B")]
+    VdjB,
+
+    #[serde(rename = "Antigen Capture")]
+    AntigenCapture,
+    
+    Custom
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -135,41 +172,8 @@ impl DataSet {
         }
 
         let metrics_summary_file = &metrics_summary_files[0];
-        let mut reader = csv::Reader::from_path(metrics_summary_file)?;
-        let header: StringRecord = reader
-            .headers()?
-            .iter()
-            .map(|column| column.replace(" ", "_").replace("-", "_").to_lowercase())
-            .collect();
-        reader.set_headers(header);
-
-        let mut metrics: Vec<PipelineMetrics> = Vec::new();
-        // TODO: the below processing should be wrapped into a function
-        for result in reader.deserialize() {
-            let record: HashMap<String, String> = result?;
-            let mut formatted_record = Map::new();
-
-            // This loop is such a hack
-            for (key, raw_value) in record.iter() {
-                let raw_value = raw_value.replace(",", "");
-                let mut value: f64;
-
-                if raw_value.contains("%") {
-                    value = raw_value.replace("%", "").parse()?;
-                    value = value / 100.0;
-                } else {
-                    value = raw_value.parse()?;
-                }
-
-                let value = Number::from_f64(value).unwrap();
-                formatted_record.insert(key.to_string(), Value::Number(value));
-            }
-            let as_json_value = serde_json::to_value(formatted_record)?;
-            let metric = serde_json::from_value(as_json_value)?;
-
-            metrics.push(metric)
-        }
-        Ok(metrics)
+        let reader = csv::Reader::from_path(metrics_summary_file)?;
+        PipelineMetrics::from_csv_reader(reader)
     }
 
     pub fn with_metrics(mut self, metrics_summaries: Option<Vec<PipelineMetrics>>) -> Result<Self> {
@@ -260,13 +264,24 @@ impl DataSet {
                 self.samples[0].estimated_number_of_cells = Some(*estimated_number_of_cells);
 
                 for lib in &mut self.libraries {
-                    if lib.type_ == "Gene Expression" {
-                        lib.gex_reads_mapped_confidently_to_genome =
+                    match lib.type_ {
+                        LibraryType::GeneExpression => {
+                            lib.gex_reads_mapped_confidently_to_genome =
                             Some(*gex_reads_mapped_confidently_to_genome);
-                    } else if lib.type_ == "Chromatin Accessibility" {
-                        lib.atac_confidently_mapped_read_pairs =
+                        }
+                        LibraryType::ChromatinAccessibility => {
+                            lib.atac_confidently_mapped_read_pairs =
                             Some(*atac_confidently_mapped_read_pairs);
+                        }
+                        _ => ()
                     }
+                    // if lib.type_ == "Gene Expression" {
+                    //     lib.gex_reads_mapped_confidently_to_genome =
+                    //         Some(*gex_reads_mapped_confidently_to_genome);
+                    // } else if lib.type_ == "Chromatin Accessibility" {
+                    //     lib.atac_confidently_mapped_read_pairs =
+                    //         Some(*atac_confidently_mapped_read_pairs);
+                    // }
                 }
 
                 Ok(self)

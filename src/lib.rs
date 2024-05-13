@@ -7,7 +7,10 @@ use config::Config;
 use models::{DataSet, InsertableCollection};
 use mongo::get_delivered_data_sets;
 use mongo::{upsert_data_sets, upsert_labs};
-use mongodb::{bson::doc, sync::{Collection, Database}};
+use mongodb::{
+    bson::doc,
+    sync::{Collection, Database},
+};
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
 
@@ -38,7 +41,7 @@ impl ScamplersConfig {
 pub fn sync_files(
     db: Database,
     files: impl IntoIterator<Item = Utf8PathBuf>,
-    overwrite_data_sets: bool
+    overwrite_data_sets: bool,
 ) -> Result<()> {
     for f in files {
         let contents = fs::read_to_string(&f).with_context(|| format!("could not read {f}"))?;
@@ -52,11 +55,12 @@ pub fn sync_files(
                 let collection = db.collection("data_set");
 
                 if !overwrite_data_sets {
-                    let data_sets: Vec<DataSet> = data_sets.into_iter().filter(|ds| ds.date_delivered.is_none()).collect();
+                    let data_sets: Vec<DataSet> = data_sets
+                        .into_iter()
+                        .filter(|ds| ds.date_delivered.is_none())
+                        .collect();
                     upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
-                }
-
-                else {
+                } else {
                     upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
                 }
             }
@@ -85,7 +89,7 @@ pub fn sync_10x(db: Database) -> Result<()> {
     Ok(())
 }
 
-// TODO: is rstest worth looking into rstest for pytest-style fixtures?
+// TODO: is rstest worth looking into for pytest-style fixtures?
 // I think the way to answer the question is to rewrite these tests using rstest and see which are more ergonomic/easy to read
 #[cfg(test)]
 mod tests {
@@ -96,10 +100,7 @@ mod tests {
     };
     use anyhow::Result;
     use camino::Utf8PathBuf;
-    use mongodb::{
-        bson::doc,
-        sync::Collection,
-    };
+    use mongodb::{bson::doc, sync::Collection};
 
     fn data_files() -> [Utf8PathBuf; 2] {
         let current_file = file!();
@@ -158,7 +159,11 @@ mod tests {
     #[test]
     fn test_sync_10x_then_sync_files() -> Result<()> {
         let scamplers_config = ScamplersConfig::load().unwrap();
-        let db = get_db(&scamplers_config.db_uri, &"test_sync-10x_then_sync-files".to_string()).unwrap();
+        let db = get_db(
+            &scamplers_config.db_uri,
+            &"test_sync-10x_then_sync-files".to_string(),
+        )
+        .unwrap();
         let files = data_files();
 
         sync_files(db.clone(), files.clone(), true)?;
