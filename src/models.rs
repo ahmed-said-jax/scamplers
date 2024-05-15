@@ -84,7 +84,6 @@ pub struct Library {
     pub reads_mapped_confidently_to_genome: Option<f64>,
 }
 
-// TODO: this doesn't really follow the right design pattern. Instead, it would be better to define an enum that contains each `Library`, with each variant of the enum containing those fields relating to each library type. That is probably more robust than having a shit-ton of fields defined for a generic `Library`
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum LibraryType {
     #[serde(rename = "Chromatin Accessibility")]
@@ -235,7 +234,7 @@ impl DataSet {
             } => {
                 self.samples[0].estimated_number_of_cells = Some(estimated_number_of_cells);
                 self.libraries[0].reads_mapped_confidently_to_genome =
-                    Some(reads_mapped_confidently_to_genome); // TODO: should metrics that are actually the same be called the same thing across different types of libraries?
+                    Some(reads_mapped_confidently_to_genome);
 
                 Ok(self)
             }
