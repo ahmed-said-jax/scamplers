@@ -139,7 +139,7 @@ pub enum CellrangerMultiMetricsCategory {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum CellrangerMultiMetricValueType {
     Number(f64),
-    String(String)
+    String(String),
 }
 
 impl CellrangerMultiMetrics {
@@ -158,12 +158,12 @@ impl CellrangerMultiMetrics {
             for (key, raw_value) in record.into_iter() {
                 if key == "metric_value" {
                     let conversion_result = raw_value_to_f64(&raw_value);
-                    
+
                     if let Ok(number) = conversion_result {
-                        typecast_record.insert(key, Value::Number(Number::from_f64(number).unwrap()));
+                        typecast_record
+                            .insert(key, Value::Number(Number::from_f64(number).unwrap()));
                     }
-                }
-                else {
+                } else {
                     typecast_record.insert(key, Value::String(raw_value));
                 }
             }

@@ -88,8 +88,7 @@ pub fn sync_10x(db: Database) -> Result<()> {
         if result.is_err() {
             let ds = ds.with_cellranger_multi_metrics(None)?;
             updated_data_sets.push(ds);
-        }
-        else {
+        } else {
             updated_data_sets.push(result?);
         }
     }

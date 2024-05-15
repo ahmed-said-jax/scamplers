@@ -54,7 +54,7 @@ pub struct DataSet {
     pub date_delivered: Option<NaiveDate>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw_metrics: Option<HashMap<String, Vec<HashMap<String, String>>>>
+    pub raw_metrics: Option<HashMap<String, Vec<HashMap<String, String>>>>,
 }
 
 // TODO: should this be an enum for different types of libraries?
@@ -119,8 +119,8 @@ pub enum LibraryType {
 
     #[serde(rename = "Antigen Capture")]
     AntigenCapture,
-    
-    Custom
+
+    Custom,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -145,7 +145,7 @@ impl DataSet {
 
         let matches =
             glob(&pattern).with_context(|| format!("glob pattern {pattern} is malformed"))?;
-        
+
         let mut metrics_summary_files = Vec::new();
         for path in matches {
             let path = path?;
@@ -157,7 +157,10 @@ impl DataSet {
         }
 
         if metrics_summary_files.len() < 1 {
-            let error = Error::msg(format!("no metrics files matching {pattern} found in path {}", data_set_path));
+            let error = Error::msg(format!(
+                "no metrics files matching {pattern} found in path {}",
+                data_set_path
+            ));
 
             return Err(error);
         }
@@ -179,7 +182,10 @@ impl DataSet {
         PipelineMetrics::from_csv_reader(reader)
     }
 
-    pub fn cellranger_multi_metrics_summaries(&self, metrics_summary_files: Option<Vec<Utf8PathBuf>>) -> Result<HashMap<String, Vec<CellrangerMultiMetrics>>> {
+    pub fn cellranger_multi_metrics_summaries(
+        &self,
+        metrics_summary_files: Option<Vec<Utf8PathBuf>>,
+    ) -> Result<HashMap<String, Vec<CellrangerMultiMetrics>>> {
         let metrics_summary_files = match metrics_summary_files {
             Some(files) => files,
             None => self.metrics_summary_files()?,
@@ -202,7 +208,7 @@ impl DataSet {
     pub fn with_metrics(mut self, metrics_summary: Option<PipelineMetrics>) -> Result<Self> {
         let metrics_summary = match metrics_summary {
             Some(metrics) => metrics,
-            None => self.metrics_summary(None)?
+            None => self.metrics_summary(None)?,
         };
 
         match metrics_summary {
@@ -284,31 +290,34 @@ impl DataSet {
                     match lib.type_ {
                         LibraryType::GeneExpression => {
                             lib.reads_mapped_confidently_to_genome =
-                            Some(gex_reads_mapped_confidently_to_genome);
+                                Some(gex_reads_mapped_confidently_to_genome);
                         }
                         LibraryType::ChromatinAccessibility => {
                             lib.atac_confidently_mapped_read_pairs =
-                            Some(atac_confidently_mapped_read_pairs);
+                                Some(atac_confidently_mapped_read_pairs);
                         }
-                        _ => () // TODO: is this implicit skipping bad?
+                        _ => (), // TODO: is this implicit skipping bad?
                     }
                 }
                 Ok(self)
             }
-            _ => Ok(self)
+            _ => Ok(self),
         }
     }
 
-    pub fn with_cellranger_multi_metrics(mut self, cellranger_multi_metrics_summaries: Option<HashMap<String, Vec<CellrangerMultiMetrics>>>) -> Result<Self> {
+    pub fn with_cellranger_multi_metrics(
+        mut self,
+        cellranger_multi_metrics_summaries: Option<HashMap<String, Vec<CellrangerMultiMetrics>>>,
+    ) -> Result<Self> {
         let cellranger_multi_metrics_summaries = match cellranger_multi_metrics_summaries {
             Some(metrics) => metrics,
-            None => self.cellranger_multi_metrics_summaries(None)?
+            None => self.cellranger_multi_metrics_summaries(None)?,
         };
 
         for (sample_name, metrics_summary) in cellranger_multi_metrics_summaries.into_iter() {
             for sample in &mut self.samples {
                 if sample.sanitized_name != sample_name {
-                    continue
+                    continue;
                 }
 
                 for row in &metrics_summary {
@@ -320,7 +329,7 @@ impl DataSet {
                                 }
                             }
                         }
-                        CellrangerMultiMetricsCategory::Library => ()
+                        CellrangerMultiMetricsCategory::Library => (),
                     }
                 }
             }
@@ -328,7 +337,10 @@ impl DataSet {
         Ok(self)
     }
 
-    pub fn raw_metrics(&self, metrics_summary_files: Option<Vec<Utf8PathBuf>>) -> Result<HashMap<String, Vec<HashMap<String, String>>>> {
+    pub fn raw_metrics(
+        &self,
+        metrics_summary_files: Option<Vec<Utf8PathBuf>>,
+    ) -> Result<HashMap<String, Vec<HashMap<String, String>>>> {
         let metrics_summary_files = match metrics_summary_files {
             Some(files) => files,
             None => self.metrics_summary_files()?,
@@ -339,9 +351,12 @@ impl DataSet {
         if metrics_summary_files.len() == 1 {
             let f = &metrics_summary_files[0];
             let mut reader = csv::Reader::from_path(f)?;
-            all_raw_metrics.insert(f.canonicalize_utf8()?.to_string(), reader.deserialize().map(|val| val.unwrap()).collect());
+            all_raw_metrics.insert(
+                f.canonicalize_utf8()?.to_string(),
+                reader.deserialize().map(|val| val.unwrap()).collect(),
+            );
 
-            return Ok(all_raw_metrics)
+            return Ok(all_raw_metrics);
         }
 
         for f in &metrics_summary_files {
@@ -354,14 +369,17 @@ impl DataSet {
 
             all_raw_metrics.insert(f.canonicalize_utf8()?.to_string(), raw_metrics);
         }
-        
+
         Ok(all_raw_metrics)
     }
 
-    pub fn with_raw_metrics(mut self, raw_metrics: Option<HashMap<String, Vec<HashMap<String, String>>>>) -> Result<Self> {
+    pub fn with_raw_metrics(
+        mut self,
+        raw_metrics: Option<HashMap<String, Vec<HashMap<String, String>>>>,
+    ) -> Result<Self> {
         let raw_metrics = match raw_metrics {
             Some(metrics) => metrics,
-            None => self.raw_metrics(None)?
+            None => self.raw_metrics(None)?,
         };
 
         self.raw_metrics = Some(raw_metrics);
