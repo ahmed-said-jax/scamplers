@@ -314,26 +314,23 @@ impl DataSet {
             None => self.cellranger_multi_metrics_summaries(None)?,
         };
 
-        for (sample_name, metrics_summary) in cellranger_multi_metrics_summaries.into_iter() {
-            for sample in &mut self.samples {
-                if sample.sanitized_name != sample_name {
-                    continue;
-                }
-
-                for row in &metrics_summary {
-                    match row.category {
-                        CellrangerMultiMetricsCategory::Cells => {
-                            if row.metric_name == "Cells" {
-                                if let Some(n_cells) = row.metric_value {
-                                    sample.estimated_number_of_cells = Some(n_cells);
-                                }
+        for sample in &mut self.samples {
+            let metrics = cellranger_multi_metrics_summaries.get(&sample.sanitized_name).unwrap();
+            
+            for row in metrics {
+                match row.category {
+                    CellrangerMultiMetricsCategory::Cells => {
+                        if row.metric_name == "Cells" {
+                            if let Some(n_cells) = row.metric_value {
+                                sample.estimated_number_of_cells = Some(n_cells);
                             }
                         }
-                        CellrangerMultiMetricsCategory::Library => (),
                     }
+                    CellrangerMultiMetricsCategory::Library => (),
                 }
             }
         }
+
         Ok(self)
     }
 
