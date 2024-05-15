@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 use std::collections::HashMap;
 use std::io::Read;
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum PipelineMetrics {
