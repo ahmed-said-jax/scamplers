@@ -138,12 +138,6 @@ pub enum CellrangerMultiMetricsCategory {
     Library,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub enum CellrangerMultiMetricValueType {
-    Number(f64),
-    String(String),
-}
-
 impl CellrangerMultiMetrics {
     // TODO: this is some of the ugliest code I've ever seen
     pub fn from_csv_reader(mut reader: Reader<impl Read>) -> Result<Vec<Self>> {
