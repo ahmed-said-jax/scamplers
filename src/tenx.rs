@@ -163,7 +163,6 @@ impl CellrangerMultiMetrics {
 
             // Iterate over each column and value of the record
             for (key, raw_value) in record.into_iter() {
-
                 // Here is the super ugly part. If the key (column) is "metric_value", then try to convert it to a float
                 if key == "metric_value" {
                     let conversion_result = raw_value_to_f64(&raw_value);
@@ -178,13 +177,12 @@ impl CellrangerMultiMetrics {
                         let value = Value::Number(value);
 
                         // Finally insert it into our typecast hashmap
-                        typecast_record
-                            .insert(key, value);
+                        typecast_record.insert(key, value);
                     }
                     // If the conversion didn't work, don't do anything. We will lose this information from our eventual Vec<CellrangerMultiMetrics> (which is a list of CellrangerMultiMetrics structs),
                     // but it will be available in the raw_metrics key of our data_set
 
-                // If the key is not "metric_value", then we can just insert it into our hashmap as a string.
+                    // If the key is not "metric_value", then we can just insert it into our hashmap as a string.
                 } else {
                     // Note that we are converting a Rust built-in string to a serde_json::Value::String, a variant of the serde_json::Value enum.
                     typecast_record.insert(key, Value::String(raw_value));

@@ -315,7 +315,9 @@ impl DataSet {
         };
 
         for sample in &mut self.samples {
-            let metrics = cellranger_multi_metrics_summaries.get(&sample.sanitized_name).unwrap();
+            let metrics = cellranger_multi_metrics_summaries
+                .get(&sample.sanitized_name)
+                .unwrap();
 
             for row in metrics {
                 match row.category {
