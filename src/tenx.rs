@@ -88,7 +88,7 @@ pub enum PipelineMetrics {
 
 impl PipelineMetrics {
     // TODO: this needs better error-handling
-    // TODO: this needs to be modularized significantly so we can test each part of the code
+    // This function is a bit weird because the csv crate doesn't support reading CSVs into a serde enum of serde structs (it only supports reading into a serde struct)
     pub fn from_csv_reader(mut reader: Reader<impl Read>) -> Result<Self> {
         let header = reader.headers()?;
         let header = format_csv_header(header);
@@ -101,6 +101,7 @@ impl PipelineMetrics {
         let record: HashMap<String, String> = reader.next().ok_or(no_data_found_error)??;
         let mut typecast_record: HashMap<String, f64> = HashMap::new();
 
+        // We need to iterate over each column and cast the value to a float
         for (key, raw_value) in record.into_iter() {
             let value = raw_value_to_f64(&raw_value)?;
             typecast_record.insert(key, value);
@@ -149,28 +150,52 @@ impl CellrangerMultiMetrics {
         let header = format_csv_header(header);
         reader.set_headers(header);
 
+        // Initialize a list of hashmaps to store typecast data. Note that the HashMap's values are of the type "serde_json::Value", which is an enum of all the json types.
+        // This allows you to bypass the strong type system of Rust. To be honest, this sort of application lends itself well to Python, where types are dynamically inferred.
+        // Nonetheless, this is more robust than Python for that very reason
         let mut typecast_data: Vec<HashMap<String, Value>> = Vec::new();
 
+        // Loop over each line of a cellranger multi csv
         for result in reader.deserialize() {
+            // read the line into a HashMap (a question mark is the same as an "unwrap" call, except that it returns the error out of the function, propagating it up instead of panicking and exiting the program)
             let record: HashMap<String, String> = result?;
-            let mut typecast_record = HashMap::new();
+            let mut typecast_record = HashMap::new(); // Initialize a new HashMap for typecast values
 
+            // Iterate over each column and value of the record
             for (key, raw_value) in record.into_iter() {
+
+                // Here is the super ugly part. If the key (column) is "metric_value", then try to convert it to a float
                 if key == "metric_value" {
                     let conversion_result = raw_value_to_f64(&raw_value);
 
+                    // If the conversion worked:
                     if let Ok(number) = conversion_result {
+                        // Convert the float into a serde_json::Number, which is a variant of the serde_json::Value enum.
+                        // This is a bit of a hack for Rust's strongly typed system (I can explain more if needed)
+                        let value = Number::from_f64(number).unwrap();
+
+                        // Take the serde_json::Number we just read, and actually put it into a serde_json::Value enum
+                        let value = Value::Number(value);
+
+                        // Finally insert it into our typecast hashmap
                         typecast_record
-                            .insert(key, Value::Number(Number::from_f64(number).unwrap()));
+                            .insert(key, value);
                     }
+                    // If the conversion didn't work, don't do anything. We will lose this information from our eventual Vec<CellrangerMultiMetrics> (which is a list of CellrangerMultiMetrics structs),
+                    // but it will be available in the raw_metrics key of our data_set
+
+                // If the key is not "metric_value", then we can just insert it into our hashmap as a string.
                 } else {
+                    // Note that we are converting a Rust built-in string to a serde_json::Value::String, a variant of the serde_json::Value enum.
                     typecast_record.insert(key, Value::String(raw_value));
                 }
             }
 
+            // Finally, append this typecast HashMap to our Vec (list) of hashmaps
             typecast_data.push(typecast_record);
         }
 
+        // Convert our Vec<HashMap> to a serde_json::Value, and then convert that serde_json::Value to a Vec<CellrangerMultiMetrics
         let as_json_value = serde_json::to_value(typecast_data)?;
         Ok(serde_json::from_value(as_json_value)?)
     }

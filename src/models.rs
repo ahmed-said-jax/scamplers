@@ -139,7 +139,7 @@ pub struct Sample {
 }
 
 impl DataSet {
-    pub fn metrics_summary_files(&self) -> Result<Vec<Utf8PathBuf>> {
+    pub fn get_metrics_summary_files(&self) -> Result<Vec<Utf8PathBuf>> {
         let data_set_path = self.path.to_string();
         let pattern = format!("{data_set_path}/**/*summary.csv");
 
@@ -168,13 +168,13 @@ impl DataSet {
         Ok(metrics_summary_files)
     }
 
-    pub fn metrics_summary(
+    pub fn get_metrics_summary(
         &self,
         metrics_summary_files: Option<Vec<Utf8PathBuf>>,
     ) -> Result<PipelineMetrics> {
         let metrics_summary_files = match metrics_summary_files {
             Some(files) => files,
-            None => self.metrics_summary_files()?,
+            None => self.get_metrics_summary_files()?,
         };
 
         let metrics_summary_file = &metrics_summary_files[0];
@@ -182,13 +182,13 @@ impl DataSet {
         PipelineMetrics::from_csv_reader(reader)
     }
 
-    pub fn cellranger_multi_metrics_summaries(
+    pub fn get_cellranger_multi_metrics_summaries(
         &self,
         metrics_summary_files: Option<Vec<Utf8PathBuf>>,
     ) -> Result<HashMap<String, Vec<CellrangerMultiMetrics>>> {
         let metrics_summary_files = match metrics_summary_files {
             Some(files) => files,
-            None => self.metrics_summary_files()?,
+            None => self.get_metrics_summary_files()?,
         };
 
         let mut sample_name_to_metrics = HashMap::new();
@@ -208,7 +208,7 @@ impl DataSet {
     pub fn with_metrics(mut self, metrics_summary: Option<PipelineMetrics>) -> Result<Self> {
         let metrics_summary = match metrics_summary {
             Some(metrics) => metrics,
-            None => self.metrics_summary(None)?,
+            None => self.get_metrics_summary(None)?,
         };
 
         match metrics_summary {
@@ -311,12 +311,12 @@ impl DataSet {
     ) -> Result<Self> {
         let cellranger_multi_metrics_summaries = match cellranger_multi_metrics_summaries {
             Some(metrics) => metrics,
-            None => self.cellranger_multi_metrics_summaries(None)?,
+            None => self.get_cellranger_multi_metrics_summaries(None)?,
         };
 
         for sample in &mut self.samples {
             let metrics = cellranger_multi_metrics_summaries.get(&sample.sanitized_name).unwrap();
-            
+
             for row in metrics {
                 match row.category {
                     CellrangerMultiMetricsCategory::Cells => {
@@ -334,13 +334,13 @@ impl DataSet {
         Ok(self)
     }
 
-    pub fn raw_metrics(
+    pub fn get_raw_metrics(
         &self,
         metrics_summary_files: Option<Vec<Utf8PathBuf>>,
     ) -> Result<HashMap<String, Vec<HashMap<String, String>>>> {
         let metrics_summary_files = match metrics_summary_files {
             Some(files) => files,
-            None => self.metrics_summary_files()?,
+            None => self.get_metrics_summary_files()?,
         };
 
         let mut all_raw_metrics = HashMap::new();
@@ -350,7 +350,7 @@ impl DataSet {
             let mut reader = csv::Reader::from_path(f)?;
             all_raw_metrics.insert(
                 f.canonicalize_utf8()?.to_string(),
-                reader.deserialize().map(|val| val.unwrap()).collect(),
+                reader.deserialize().map(|val| val.unwrap()).collect(), // TODO: bad unwrap here
             );
 
             return Ok(all_raw_metrics);
@@ -376,7 +376,7 @@ impl DataSet {
     ) -> Result<Self> {
         let raw_metrics = match raw_metrics {
             Some(metrics) => metrics,
-            None => self.raw_metrics(None)?,
+            None => self.get_raw_metrics(None)?,
         };
 
         self.raw_metrics = Some(raw_metrics);
