@@ -78,10 +78,20 @@ pub fn sync_10x(db: Database) -> Result<()> {
     let collection: Collection<DataSet> = db.collection("data_set");
     let data_sets = get_delivered_data_sets(&collection)?;
 
-    let mut updated_data_sets: Vec<DataSet> = Vec::new();
+    let mut updated_data_sets = Vec::new();
 
     for ds in data_sets {
-        updated_data_sets.push(ds.with_metrics(None)?);
+        let ds = ds.with_raw_metrics(None)?;
+
+        let result = ds.clone().with_metrics(None);
+
+        if result.is_err() {
+            let ds = ds.with_cellranger_multi_metrics(None)?;
+            updated_data_sets.push(ds);
+        }
+        else {
+            updated_data_sets.push(result?);
+        }
     }
 
     upsert_data_sets(&collection, updated_data_sets)?;
@@ -126,7 +136,7 @@ mod tests {
         sync_files(db.clone(), files, true)?;
 
         let ds_collection: Collection<DataSet> = db.collection("data_set");
-        assert_eq!(ds_collection.estimated_document_count(None)?, 2);
+        assert_eq!(ds_collection.estimated_document_count(None)?, 3);
 
         let lab_collection: Collection<Lab> = db.collection("lab");
         assert_eq!(lab_collection.estimated_document_count(None)?, 1);
@@ -149,7 +159,7 @@ mod tests {
         let filter = doc! { "samples": { "$all": [ { "$elemMatch": { "estimated_number_of_cells": { "$exists": true } } } ] } };
 
         let count = collection.count_documents(filter, None)?;
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
 
         db.drop(None)?;
 
@@ -174,7 +184,7 @@ mod tests {
         let filter = doc! { "samples": { "$all": [ { "$elemMatch": { "estimated_number_of_cells": { "$exists": true } } } ] } };
 
         let count = collection.count_documents(filter, None)?;
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
 
         db.drop(None)?;
 

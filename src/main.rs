@@ -5,6 +5,7 @@ use scamplers::{mongo::get_db, sync_10x, sync_files, ScamplersConfig};
 
 // LONG-TERM TODOS:
 // review all function parameters and ensure that functions receive references when they don't need to own data (performance)
+// also ensure that all function parameters are consistent (strings and strs)
 // figure out how to parallelize things (performance)
 // add logging (some kind of structured, machine-readable output?)
 // related to above - do not fail blindly on one bad record, instead, skip it and log

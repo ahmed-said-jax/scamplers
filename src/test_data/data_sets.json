@@ -17,6 +17,7 @@
             {
                 "date_received": "1999-01-01",
                 "name": "sample",
+                "sanitized_name": "sample",
                 "targeted_cell_recovery": 1000
             }
         ],
@@ -49,6 +50,37 @@
             {
                 "date_received": "1999-01-01",
                 "name": "sample",
+                "sanitized_name": "sample",
+                "targeted_cell_recovery": 1000
+            }
+        ],
+        "date_delivered": "1999-01-01"
+    },
+    {
+        "lab_name": "Ahmed Said Lab",
+        "path": "src/test_data/SC9900003_pool",
+        "libraries": [
+            {
+                "_id": "SC9900003",
+                "type": "Gene Expression",
+                "status": "complete",
+                "date_cdna_prepared": "1999-01-01",
+                "date_prepared": "1999-01-01",
+                "date_submitted_to_gt": "1999-01-01",
+                "date_sequencing_data_returned": "1999-01-01"
+            }
+        ],
+        "samples": [
+            {
+                "date_received": "1999-01-01",
+                "name": "sample0",
+                "sanitized_name": "sample0",
+                "targeted_cell_recovery": 1000
+            },
+            {
+                "date_received": "1999-01-01",
+                "name": "sample1",
+                "sanitized_name": "sample1",
                 "targeted_cell_recovery": 1000
             }
         ],

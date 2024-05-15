@@ -1,5 +1,5 @@
 Category,Library Type,Grouped By,Group Name,Metric Name,Metric Value
-Cells,Gene Expression,,,Cells,"2,091"
+Cells,Gene Expression,,,Cells,"1000"
 Cells,Gene Expression,,,Confidently mapped reads in cells,94.57%
 Cells,Gene Expression,,,Estimated UMIs from genomic DNA,0.49%
 Cells,Gene Expression,,,Estimated UMIs from genomic DNA per unspliced probe,3

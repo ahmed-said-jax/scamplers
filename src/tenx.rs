@@ -1,14 +1,11 @@
-use anyhow::Result;
+use crate::models::LibraryType;
+use anyhow::{Context, Error, Result};
 use csv::{Reader, StringRecord};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Number, Value};
+use serde_json::{Number, Value};
 use std::collections::HashMap;
 use std::io::Read;
-use regex::Regex;
-
-use crate::models::LibraryType;
-
-// TODO: the repetition here can be improved by writing a custom deserializer
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum PipelineMetrics {
@@ -81,14 +78,6 @@ pub enum PipelineMetrics {
         total_genes_detected: f64,
         median_umi_counts_per_cell: f64,
     },
-    CellrangerMultiMetrics {
-        category: CellrangerMultiMetricsCategory,
-        library_type: LibraryType,
-        grouped_by: String,
-        group_name: String,
-        metric_name: String,
-        metric_value: f64
-    },
     CellrangerVdjMetrics {
         some_vdj_metrics: f64,
     },
@@ -97,72 +86,126 @@ pub enum PipelineMetrics {
     },
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub enum CellrangerMultiMetricsCategory {
-    Cells,
-    Library
-}
-
 impl PipelineMetrics {
     // TODO: this needs better error-handling
     // TODO: this needs to be modularized significantly so we can test each part of the code
-    pub fn from_csv_reader(mut reader: Reader<impl Read>) -> Result<Vec<Self>> {
-        let header: StringRecord = reader
-            .headers()?
-            .iter()
-            .map(|column| column.replace(" ", "_").replace("-", "_").to_lowercase())
-            .collect();
+    pub fn from_csv_reader(mut reader: Reader<impl Read>) -> Result<Self> {
+        let header = reader.headers()?;
+        let header = format_csv_header(header);
         reader.set_headers(header);
 
-        let mut metrics: Vec<PipelineMetrics> = Vec::new();
+        let mut reader = reader.deserialize();
+
+        let no_data_found_error = Error::msg("no data found");
+
+        let record: HashMap<String, String> = reader.next().ok_or(no_data_found_error)??;
+        let mut typecast_record: HashMap<String, f64> = HashMap::new();
+
+        for (key, raw_value) in record.into_iter() {
+            let value = raw_value_to_f64(&raw_value)?;
+            typecast_record.insert(key, value);
+        }
+
+        let too_many_rows_found_error =
+            Error::msg(format!("expected only one row, found multiple"));
+        let next_row = reader.next();
+        if next_row.is_some() {
+            return Err(too_many_rows_found_error);
+        }
+
+        let as_json_value = serde_json::to_value(typecast_record)?;
+        Ok(serde_json::from_value(as_json_value)?)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CellrangerMultiMetrics {
+    pub category: CellrangerMultiMetricsCategory,
+    pub library_type: LibraryType,
+    pub grouped_by: String,
+    pub group_name: String,
+    pub metric_name: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metric_value: Option<f64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum CellrangerMultiMetricsCategory {
+    Cells,
+    Library,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum CellrangerMultiMetricValueType {
+    Number(f64),
+    String(String)
+}
+
+impl CellrangerMultiMetrics {
+    // TODO: this is some of the ugliest code I've ever seen
+    pub fn from_csv_reader(mut reader: Reader<impl Read>) -> Result<Vec<Self>> {
+        let header = reader.headers()?;
+        let header = format_csv_header(header);
+        reader.set_headers(header);
+
+        let mut typecast_data: Vec<HashMap<String, Value>> = Vec::new();
+
         for result in reader.deserialize() {
             let record: HashMap<String, String> = result?;
-            let mut formatted_record = Map::new();
+            let mut typecast_record = HashMap::new();
 
-            // This loop is such a hack. Also, there are multiple things going on:
-            // 1. we match a certain format of value and accommodate for it
-            // 2. we replace dumb characters
-            // 3. we convert percentages to fractions
-            // 4. we convert strings to floats
-            // 5. we convert the float to a JSON Number
-            // 6. we put that json number into a map
-            // 7. we conver that map into one of our defined structs
-            // 8. there's even more
-            for (key, raw_value) in record.iter() {
-                let mut no_comma = raw_value.replace(",", "");
-                
-                let re = Regex::new(r"^(\d+)\s\(\d{1,2}\.\d+%\)$").unwrap();
-                let matches = re.captures(&no_comma);
-                
-                if let Some(number) = matches {
-                    let (_, [value]) = number.extract();
-                    no_comma = value.to_string();
-                }
-
-                if no_comma.contains("%") {
-                    let value: f64 = no_comma.replace("%", "").parse()?;
-                    let value = value / 100.0;
-
-                    let value = Number::from_f64(value).unwrap();
-                    formatted_record.insert(key.to_string(), Value::Number(value));
-                } 
-                else {
-                    let value: Option<f64> = raw_value.parse().ok();
+            for (key, raw_value) in record.into_iter() {
+                if key == "metric_value" {
+                    let conversion_result = raw_value_to_f64(&raw_value);
                     
-                    if let Some(number) = value {
-                        let value = Number::from_f64(number).unwrap();
-                        formatted_record.insert(key.to_string(), Value::Number(value));
+                    if let Ok(number) = conversion_result {
+                        typecast_record.insert(key, Value::Number(Number::from_f64(number).unwrap()));
                     }
-                    else {
-                        formatted_record.insert(key.to_string(), Value::String(raw_value.to_string()));
-                    }
+                }
+                else {
+                    typecast_record.insert(key, Value::String(raw_value));
                 }
             }
-            let as_json_value = serde_json::to_value(formatted_record)?;
-            let metric = serde_json::from_value(as_json_value)?;
 
-            metrics.push(metric)
+            typecast_data.push(typecast_record);
         }
-        Ok(metrics)
+
+        let as_json_value = serde_json::to_value(typecast_data)?;
+        Ok(serde_json::from_value(as_json_value)?)
     }
+}
+
+fn format_csv_header(header: &StringRecord) -> StringRecord {
+    header
+        .iter()
+        .map(|column| column.replace(" ", "_").replace("-", "_").to_lowercase())
+        .collect()
+}
+
+fn raw_value_to_f64(raw_value: &String) -> Result<f64> {
+    let parse_error_context = format!("could not coerce {raw_value} into float");
+
+    let mut no_comma = raw_value.replace(",", "");
+    let mut value: f64;
+
+    let re = Regex::new(r"^(\d+)\s\(\d{1,2}\.\d+%\)$").unwrap();
+    let matches = re.captures(&no_comma);
+
+    if let Some(number) = matches {
+        let (_, [value]) = number.extract();
+        no_comma = value.to_string();
+    }
+
+    if raw_value.contains("%") {
+        value = no_comma
+            .replace("%", "")
+            .parse()
+            .context(parse_error_context)?;
+        value = value / 100.0;
+    } else {
+        value = no_comma.parse().context(parse_error_context)?;
+    }
+
+    Ok(value)
 }
