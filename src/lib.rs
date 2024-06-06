@@ -25,6 +25,7 @@ pub struct ScamplersConfig {
 impl ScamplersConfig {
     pub fn load() -> Result<Self> {
         dotenvy::dotenv().unwrap_or_default();
+
         let config_path = env::var("SCAMPLERS_CONFIG_PATH")
             .unwrap_or("/sc/service/etc/.config/scamplers".to_string());
 
@@ -54,13 +55,13 @@ pub fn sync_files(
             InsertableCollection::DataSets(data_sets) => {
                 let collection = db.collection("data_set");
 
-                if !overwrite_data_sets {
+                if overwrite_data_sets {
+                    upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
+                } else {
                     let data_sets: Vec<DataSet> = data_sets
                         .into_iter()
                         .filter(|ds| ds.date_delivered.is_none())
                         .collect();
-                    upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
-                } else {
                     upsert_data_sets(&collection, data_sets).with_context(|| insertion_error)?;
                 }
             }
