@@ -2,5 +2,7 @@
 -- and other internal bookkeeping. This file is safe to edit, any future
 -- changes will be added to existing projects as new migrations.
 
+drop role app;
+drop function if exists create_role_if_not_exists(role_name text);
 drop function if exists diesel_manage_updated_at(_tbl regclass);
 drop function if exists diesel_set_updated_at();

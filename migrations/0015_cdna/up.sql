@@ -3,12 +3,17 @@ create table cdna (
     id uuid primary key,
     legacy_id text unique not null,
     prepared_at timestamp not null,
-    volume__µl double precision not null check (volume__µl > 0),
-    number_of_amplification_cycles integer not null check (number_of_amplification_cycles > 0),
-    concentration__pg_per_µl double precision not null check (concentration__pg_per_µl > 0),
-    total_yield__ng double precision generated always as ((volume__µl * concentration__pg_per_µl) / 1000) stored,
+    gems_id uuid references gems not null,
+    specification_id uuid references library_type_specifications not null,
     storage_location text,
     notes text []
+);
+
+create table cdna_measurements (
+    cdna_id uuid references cdna on delete restrict on update restrict not null,
+    measured_by uuid references people on delete restrict on update restrict not null,
+    measurement measurement not null,
+    primary key (cdna_id, measured_by, measurement)
 );
 
 create table cdna_preparers (

@@ -11,16 +11,20 @@ struct NewPerson {
     first_name: String,
     last_name: String,
     email: String,
-    institution_id: Uuid
+    institution_id: Uuid,
 }
 
 pub struct NewPeople(Vec<NewPerson>);
 impl NewPeople {
     pub fn create(&self, conn: &mut PgConnection) -> super::Result<Vec<Person>> {
-        use crate::schema::people::dsl::*;
         use diesel::dsl::insert_into;
 
-        Ok(insert_into(people).values(&self.0).returning(Person::as_returning()).get_results(conn)?)
+        use crate::schema::people::dsl::*;
+
+        Ok(insert_into(people)
+            .values(&self.0)
+            .returning(Person::as_returning())
+            .get_results(conn)?)
     }
 }
 
@@ -31,7 +35,7 @@ pub struct Person {
     first_name: String,
     last_name: String,
     email: String,
-    orcid: Option<String>
+    orcid: Option<String>,
 }
 
 #[cfg(test)]
@@ -40,10 +44,11 @@ mod tests {
     use rstest::rstest;
     use uuid::Uuid;
 
-    use crate::db::{test_utils::db_conn, PgPooledConnection};
-    use crate::db::institutions::NewInstitutions;
-    use crate::schema;
-    use super::{NewPerson, NewPeople};
+    use super::{NewPeople, NewPerson};
+    use crate::{
+        db::{institutions::NewInstitutions, test_utils::db_conn, PgPooledConnection},
+        schema,
+    };
 
     #[rstest]
     fn show_errors(mut db_conn: PgPooledConnection) {
@@ -59,9 +64,11 @@ mod tests {
             first_name: "ahmed".to_string(),
             last_name: "said".to_string(),
             email: String::new(),
-            institution_id: Uuid::nil()
+            institution_id: Uuid::nil(),
         };
-        let err = NewPeople(vec![new_person]).create(&mut db_conn).unwrap_err();
+        let err = NewPeople(vec![new_person])
+            .create(&mut db_conn)
+            .unwrap_err();
         println!("{}", serde_json::to_string(&err).unwrap())
     }
 }

@@ -8,7 +8,7 @@ use crate::schema::institutions;
 #[diesel(table_name = institutions, check_for_backend(Pg))]
 struct NewInstitution {
     name: String,
-    ms_tenant_id: Option<Uuid>
+    ms_tenant_id: Option<Uuid>,
 }
 
 #[derive(Deserialize)]
@@ -16,10 +16,14 @@ struct NewInstitution {
 pub struct NewInstitutions(Vec<NewInstitution>);
 impl NewInstitutions {
     pub fn create(&self, conn: &mut PgConnection) -> super::Result<Vec<Institution>> {
-        use crate::schema::institutions::dsl::*;
         use diesel::dsl::insert_into;
 
-        Ok(insert_into(institutions).values(&self.0).returning(Institution::as_returning()).get_results(conn)?)
+        use crate::schema::institutions::dsl::*;
+
+        Ok(insert_into(institutions)
+            .values(&self.0)
+            .returning(Institution::as_returning())
+            .get_results(conn)?)
     }
 }
 
@@ -29,13 +33,16 @@ impl NewInstitutions {
 pub struct InstitutionUpdate {
     id: Uuid,
     name: Option<String>,
-    ms_tenant_id: Option<Uuid>
+    ms_tenant_id: Option<Uuid>,
 }
 impl InstitutionUpdate {
     async fn update(&self, conn: &mut PgConnection) -> super::Result<Institution> {
         use diesel::dsl::update;
 
-        Ok(update(self).set(self).returning(Institution::as_returning()).get_result(conn)?)
+        Ok(update(self)
+            .set(self)
+            .returning(Institution::as_returning())
+            .get_result(conn)?)
     }
 }
 
@@ -43,15 +50,18 @@ impl InstitutionUpdate {
 #[diesel(check_for_backend(Pg))]
 pub struct Institution {
     id: Uuid,
-    name: String
+    name: String,
 }
 
 pub struct InstitutionFilter {
-    name: Option<String>
+    name: Option<String>,
 }
 
 impl Institution {
-    pub async fn find(filter: &InstitutionFilter, conn: &mut PgConnection) -> super::Result<Vec<Self>> {
+    pub async fn find(
+        filter: &InstitutionFilter,
+        conn: &mut PgConnection,
+    ) -> super::Result<Vec<Self>> {
         use crate::schema::institutions::dsl::*;
 
         let mut query = institutions.into_boxed().select(Self::as_select());
@@ -69,8 +79,8 @@ mod tests {
     use diesel::{Connection, PgConnection};
     use rstest::rstest;
 
+    use super::{NewInstitution, NewInstitutions};
     use crate::db::{test_utils::db_conn, PgPooledConnection};
-    use super::{NewInstitutions, NewInstitution};
 
     #[rstest]
     fn show_errors(mut db_conn: PgPooledConnection) {
@@ -78,7 +88,7 @@ mod tests {
 
         let new_institution = NewInstitution {
             name: "Hogwarts School of Witchcraft and Wizardry".to_string(),
-            ms_tenant_id: None
+            ms_tenant_id: None,
         };
         let duplicate_institution = new_institution.clone();
 

@@ -1,8 +1,10 @@
 -- Your SQL goes here
--- units are not constrained because we will rely on Rust to ensure correctness
+-- This type appears in the primary key of many tables as (item_id, measured_by, measurement) so that the same person doesn't insert the same measurement for the same item twice
 create type measurement as (
     quantity text,
-    value double precision,
-    unit text,
+    value real,
+    unit text, -- constrained by Rust enum
+    measured_at timestamp,
+    instrument_name text, -- constrained by Rust enum
     notes text []
 );

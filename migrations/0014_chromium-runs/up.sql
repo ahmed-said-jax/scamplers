@@ -1,19 +1,8 @@
 -- Your SQL goes here
-create type tenx_chip as enum (
-    'GEM-X 3p',
-    'GEM-X 5p',
-    'GEM-X FX',
-    'GEM-X OCM 3p',
-    'GEM-X OCM 5p',
-    'H',
-    'J',
-    'Q'
-);
-
 create table chromium_runs (
     id uuid primary key,
     legacy_id text unique not null,
-    chip tenx_chip not null,
+    chip text not null, -- constrained by Rust enum
     run_at timestamp not null,
     succeeded boolean not null,
     notes text []
@@ -35,10 +24,10 @@ create table chip_loading (
     gem_id uuid references gems on delete restrict on update restrict not null,
     suspension_id uuid references suspensions on delete restrict on update restrict,
     multiplexed_suspension_id uuid references multiplexed_suspensions on delete restrict on update restrict,
-    suspension_volume_loaded__µl double precision not null check (suspension_volume_loaded__µl > 0),
-    buffer_volume_loaded__µl double precision not null check (buffer_volume_loaded__µl > 0),
+    suspension_volume_loaded measurement not null, -- validated on Rust side
+    buffer_volume_loaded measurement not null, -- validated on Rust side
     notes text [],
     primary key (gem_id, suspension_id, multiplexed_suspension_id),
 
-    constraint suspension_or_multiplexed_suspension check ((suspension_id is null) != (multiplexed_suspension_id is null))
+    constraint has_suspension check ((suspension_id is null) != (multiplexed_suspension_id is null))
 );

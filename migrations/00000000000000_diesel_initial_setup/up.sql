@@ -34,3 +34,17 @@ BEGIN
     RETURN NEW;
 END;
 $$ language plpgsql;
+
+create function create_role_if_not_exists(
+    role_name text
+) returns void language plpgsql volatile strict as $$
+    declare role_exists boolean;
+    begin
+        select exists (select 1 from pg_roles where rolname = role_name) into role_exists;
+        if not role_exists then 
+            execute format('create role %I', role_name);
+        end if;
+    end;
+$$;
+
+select create_role_if_not_exists('app');
