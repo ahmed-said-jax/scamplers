@@ -18,32 +18,50 @@ mod v0 {
         Router::new()
             .route(
                 "/institutions/{institution_id}",
-                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
             )
-            .route("/people/{person_id}", get::<(), _, _>(todo!()).patch::<(), _>(todo!()))
+            .route(
+                "/people/{person_id}",
+                get::<(), _, _>(todo!()).patch::<(), _>(todo!()),
+            )
             .route("/people/{person_id}/labs", get::<(), _, _>(todo!()))
             .route("/people/{person_id}/samples", get::<(), _, _>(todo!()))
-            .route("/labs/{lab_id}", get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()))
+            .route(
+                "/labs/{lab_id}",
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
+            )
             .route("/labs/{lab_id}/pi", get::<(), _, _>(todo!()))
             .route("/labs/{lab_id}/members", get::<(), _, _>(todo!()))
             .route("/labs/{lab_id}/samples", get::<(), _, _>(todo!()))
             .route("/labs/{lab_id}/datasets", get::<(), _, _>(todo!()))
             .route(
                 "/samples/{sample_id}",
-                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
             )
             .route("/samples/{sample_id}/datasets", get::<(), _, _>(todo!()))
             .route(
                 "/datasets/{dataset_id}",
-                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
             )
             .route(
                 "/libraries/{library_id}",
-                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
             )
             .route(
                 "/sequencing_runs/{sequencing_run_id}",
-                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
             )
             .route(
                 "/sequencing_runs/{sequencing_run_id}/libraries",
@@ -51,8 +69,13 @@ mod v0 {
             )
             .route(
                 "/chromium_runs/{chromium_run_id}",
-                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
+                get::<(), _, _>(todo!())
+                    .post::<(), _>(todo!())
+                    .patch::<(), _>(todo!()),
             ) // not public
-            .route("/chromium_runs/{chromium_run_id}/libraries", get::<(), _, _>(todo!())) // not public
+            .route(
+                "/chromium_runs/{chromium_run_id}/libraries",
+                get::<(), _, _>(todo!()),
+            ) // not public
     }
 }

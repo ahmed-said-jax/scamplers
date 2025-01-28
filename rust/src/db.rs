@@ -74,26 +74,36 @@ pub enum PublicEntity {
     SequencingRun,
     Dataset,
     #[default]
-    Unknown
+    Unknown,
 }
 
 #[derive(thiserror::Error, Debug, Valuable, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
     #[error("duplicate record")]
-    DuplicateRecord{entity: PublicEntity, field: Option<String>, value: Option<String>},
+    DuplicateRecord {
+        entity: PublicEntity,
+        field: Option<String>,
+        value: Option<String>,
+    },
     #[error("referenced record not found")]
-    ReferenceNotFound{entity: PublicEntity, referenced_entity: PublicEntity, value: Option<String>},
+    ReferenceNotFound {
+        entity: PublicEntity,
+        referenced_entity: PublicEntity,
+        value: Option<String>,
+    },
     #[error("record not found")]
     RecordNotFound,
     #[error("other error")]
-    Other{message: String}
+    Other { message: String },
 }
 type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
     fn from_other_error(err: impl std::error::Error) -> Self {
-        Self::Other{message: format!("{err:?}")}
+        Self::Other {
+            message: format!("{err:?}"),
+        }
     }
 }
 
@@ -103,36 +113,61 @@ impl From<diesel::result::Error> for Error {
         match err {
             DatabaseError(kind, info) => Self::from((kind, info)),
             NotFound => Self::RecordNotFound,
-            _ => Self::from_other_error(err)
+            _ => Self::from_other_error(err),
         }
     }
 }
 
-impl From<(diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation + Send + Sync>)> for Error {
-    fn from((kind, info): (diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation + Send + Sync>)) -> Self {
+impl
+    From<(
+        diesel::result::DatabaseErrorKind,
+        Box<dyn DatabaseErrorInformation + Send + Sync>,
+    )> for Error
+{
+    fn from(
+        (kind, info): (
+            diesel::result::DatabaseErrorKind,
+            Box<dyn DatabaseErrorInformation + Send + Sync>,
+        ),
+    ) -> Self {
         use diesel::result::DatabaseErrorKind::{ForeignKeyViolation, UniqueViolation};
 
-        let entity = PublicEntity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
+        let entity =
+            PublicEntity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
 
         let field = info.column_name().map(str::to_string);
 
         let detail_regex = Regex::new(r"Key \(.*\)=(\(.*\)).*").unwrap();
         let details = info.details().unwrap_or_default();
-        let value = detail_regex.captures(details).and_then(|cap| cap.get(1).map(|m| m.as_str().to_string()));
+        let value = detail_regex
+            .captures(details)
+            .and_then(|cap| cap.get(1).map(|m| m.as_str().to_string()));
 
         match kind {
-            UniqueViolation => Self::DuplicateRecord {entity, field, value},
-            ForeignKeyViolation => {
-                let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace('"', "");
-                let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
-                let referenced_entity = PublicEntity::from_str(referenced_entity).unwrap_or_default();
-
-                Self::ReferenceNotFound { entity, referenced_entity, value }
+            UniqueViolation => Self::DuplicateRecord {
+                entity,
+                field,
+                value,
             },
-            _ => Self::from_other_error(diesel::result::Error::DatabaseError(kind, info))
+            ForeignKeyViolation => {
+                let referenced_entity = details
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .replace('"', "");
+                let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
+                let referenced_entity =
+                    PublicEntity::from_str(referenced_entity).unwrap_or_default();
+
+                Self::ReferenceNotFound {
+                    entity,
+                    referenced_entity,
+                    value,
+                }
+            }
+            _ => Self::from_other_error(diesel::result::Error::DatabaseError(kind, info)),
         }
     }
-
 }
 // pub mod labs;
 // pub mod measurements;
@@ -237,7 +272,7 @@ impl From<(diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation +
 //             .unwrap();
 
 //         let manager: PgConnectionManager =
-//             
+//
 // ConnectionManager::new(format!("postgres://{username}@{host}:{port}/{dbname}"
 // ));
 

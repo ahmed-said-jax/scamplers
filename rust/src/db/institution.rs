@@ -20,7 +20,14 @@ impl Upsert for NewInstitution {
     async fn upsert(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::{institution, name};
 
-        Ok(diesel::insert_into(institution).values(self).on_conflict(name).do_update().set(self).returning(Institution::as_returning()).get_result(conn).await?)
+        Ok(diesel::insert_into(institution)
+            .values(self)
+            .on_conflict(name)
+            .do_update()
+            .set(self)
+            .returning(Institution::as_returning())
+            .get_result(conn)
+            .await?)
     }
 }
 

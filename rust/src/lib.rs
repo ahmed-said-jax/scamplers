@@ -86,7 +86,7 @@ async fn run_migrations(app_config: &AppConfig) -> anyhow::Result<()> {
 }
 
 #[derive(Clone)]
-struct AppState {
+pub struct AppState {
     db_pool: Pool<AsyncPgConnection>,
     http_client: reqwest::Client,
     production: bool,
