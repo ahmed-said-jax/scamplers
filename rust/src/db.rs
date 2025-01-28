@@ -65,7 +65,7 @@ impl<T: Upsert> Upsert for Vec<T> {
 #[derive(Debug, Serialize, Valuable, strum::EnumString, Default, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
-enum PublicEntity {
+pub enum PublicEntity {
     Institution,
     Person,
     Lab,
@@ -99,7 +99,7 @@ impl Error {
 
 impl From<diesel::result::Error> for Error {
     fn from(err: diesel::result::Error) -> Self {
-        use diesel::result::Error::*;
+        use diesel::result::Error::{DatabaseError, NotFound};
         match err {
             DatabaseError(kind, info) => Self::from((kind, info)),
             NotFound => Self::RecordNotFound,
@@ -110,20 +110,20 @@ impl From<diesel::result::Error> for Error {
 
 impl From<(diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation + Send + Sync>)> for Error {
     fn from((kind, info): (diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation + Send + Sync>)) -> Self {
-        use diesel::result::DatabaseErrorKind::*;
+        use diesel::result::DatabaseErrorKind::{ForeignKeyViolation, UniqueViolation};
 
         let entity = PublicEntity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
 
         let field = info.column_name().map(str::to_string);
 
-        let detail_regex = Regex::new(r#"Key \(.*\)=(\(.*\)).*"#).unwrap();
+        let detail_regex = Regex::new(r"Key \(.*\)=(\(.*\)).*").unwrap();
         let details = info.details().unwrap_or_default();
         let value = detail_regex.captures(details).and_then(|cap| cap.get(1).map(|m| m.as_str().to_string()));
 
         match kind {
             UniqueViolation => Self::DuplicateRecord {entity, field, value},
             ForeignKeyViolation => {
-                let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace("\"", "");
+                let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace('"', "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
                 let referenced_entity = PublicEntity::from_str(referenced_entity).unwrap_or_default();
 

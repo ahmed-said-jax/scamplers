@@ -1,3 +1,4 @@
+#![allow(async_fn_in_trait)]
 use anyhow::Context;
 use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};

@@ -9,7 +9,7 @@ use crate::db::{
 };
 
 pub async fn synchronize(files: &[Utf8PathBuf], db_conn: &mut AsyncPgConnection) {
-    for file in files.iter() {
+    for file in files {
         if let Err(err) = sync_db_with_file(file, db_conn).await {
             tracing::error!(error = err.as_value(), "failed to synchronize static data file {file}");
         }
@@ -44,7 +44,7 @@ enum StaticData {
 }
 
 async fn sync_db_with_file(path: &Utf8Path, db_conn: &mut AsyncPgConnection) -> Result<()> {
-    use StaticData::*;
+    use StaticData::Institutions;
 
     let contents = std::fs::read_to_string(path)?;
     let data: StaticData = serde_json::from_str(&contents)?;

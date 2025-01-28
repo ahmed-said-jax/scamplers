@@ -18,7 +18,7 @@ impl Upsert for NewInstitution {
     type Returns = Institution;
 
     async fn upsert(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        use schema::institution::dsl::*;
+        use schema::institution::dsl::{institution, name};
 
         Ok(diesel::insert_into(institution).values(self).on_conflict(name).do_update().set(self).returning(Institution::as_returning()).get_result(conn).await?)
     }
@@ -28,7 +28,7 @@ impl Create for Vec<NewInstitution> {
     type Returns = Vec<Institution>;
 
     async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        use schema::institution::dsl::*;
+        use schema::institution::dsl::institution;
 
         Ok(diesel::insert_into(institution)
             .values(self)

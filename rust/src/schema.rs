@@ -27,7 +27,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::Uuid;
     use super::sql_types::Measurement;
 
     cdna_measurement (cdna_id, measured_by, measurement) {
@@ -53,7 +53,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::{Array, Nullable, Text, Uuid};
     use super::sql_types::Measurement;
 
     chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
@@ -67,7 +67,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::{Array, Nullable, Uuid};
     use super::sql_types::ParsedMetricsFile;
 
     chromium_dataset (id) {
@@ -92,7 +92,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::Uuid;
     use super::sql_types::Measurement;
 
     chromium_library_measurement (library_id, measured_by, measurement) {
@@ -205,7 +205,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::{Text, Uuid};
     use super::sql_types::Measurement;
 
     library_type_specification (id) {
@@ -229,7 +229,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::Uuid;
     use super::sql_types::Measurement;
 
     multiplexed_suspension_measurement (suspension_id, measured_by, measurement) {
@@ -262,7 +262,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::{Array, Nullable, Text, Uuid};
     use super::sql_types::UserRole;
 
     person (id) {
@@ -327,7 +327,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::Uuid;
     use super::sql_types::Measurement;
 
     specimen_measurement (specimen_id, measured_by, measurement) {
@@ -357,7 +357,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::{Bool, Uuid};
     use super::sql_types::Measurement;
 
     suspension_measurement (suspension_id, measured_by, measurement) {
