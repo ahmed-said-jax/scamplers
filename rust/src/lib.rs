@@ -8,7 +8,6 @@ use diesel_async::{
     AsyncConnection, AsyncPgConnection,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use itertools::Itertools;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 
