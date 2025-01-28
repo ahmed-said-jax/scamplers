@@ -1,13 +1,11 @@
-use std::{collections::HashMap, fs};
 
-use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
-use diesel_async::{AsyncConnection, AsyncPgConnection};
+use diesel_async::AsyncPgConnection;
 use serde::Deserialize;
 use valuable::Valuable;
 
 use crate::db::{
-    institution::NewInstitution, Create, Upsert
+    institution::NewInstitution, Create
 };
 
 pub async fn synchronize(files: &[Utf8PathBuf], db_conn: &mut AsyncPgConnection) {

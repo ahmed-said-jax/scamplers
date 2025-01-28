@@ -49,3 +49,6 @@ strum = {version = "0.26.3", default-features = false, features = ["derive"]}
 pretty_assertions = "1.4.1"
 rstest = "0.24.0"
 testcontainers-modules = { version = "0.11.5", features = ["postgres", "blocking"] }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }

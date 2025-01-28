@@ -9,7 +9,6 @@ use diesel_async::{
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use itertools::Itertools;
 use serde::Deserialize;
-use static_files::synchronize;
 use tokio::net::TcpListener;
 
 pub mod api;

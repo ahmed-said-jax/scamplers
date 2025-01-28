@@ -1,4 +1,4 @@
-use axum::{http::HeaderMap, Router};
+use axum::Router;
 
 use crate::AppState;
 
@@ -18,41 +18,41 @@ mod v0 {
         Router::new()
             .route(
                 "/institutions/{institution_id}",
-                get(todo!()).post(todo!()).patch(todo!()),
+                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
             )
-            .route("/people/{person_id}", get(todo!()).patch(todo!()))
-            .route("/people/{person_id}/labs", get(todo!()))
-            .route("/people/{person_id}/samples", get(todo!()))
-            .route("/labs/{lab_id}", get(todo!()).post(todo!()).patch(todo!()))
-            .route("/labs/{lab_id}/pi", get(todo!()))
-            .route("/labs/{lab_id}/members", get(todo!()))
-            .route("/labs/{lab_id}/samples", get(todo!()))
-            .route("/labs/{lab_id}/datasets", get(todo!()))
+            .route("/people/{person_id}", get::<(), _, _>(todo!()).patch::<(), _>(todo!()))
+            .route("/people/{person_id}/labs", get::<(), _, _>(todo!()))
+            .route("/people/{person_id}/samples", get::<(), _, _>(todo!()))
+            .route("/labs/{lab_id}", get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()))
+            .route("/labs/{lab_id}/pi", get::<(), _, _>(todo!()))
+            .route("/labs/{lab_id}/members", get::<(), _, _>(todo!()))
+            .route("/labs/{lab_id}/samples", get::<(), _, _>(todo!()))
+            .route("/labs/{lab_id}/datasets", get::<(), _, _>(todo!()))
             .route(
                 "/samples/{sample_id}",
-                get(todo!()).post(todo!()).patch(todo!()),
+                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
             )
-            .route("/samples/{sample_id}/datasets", get(todo!()))
+            .route("/samples/{sample_id}/datasets", get::<(), _, _>(todo!()))
             .route(
                 "/datasets/{dataset_id}",
-                get(todo!()).post(todo!()).patch(todo!()),
+                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
             )
             .route(
                 "/libraries/{library_id}",
-                get(todo!()).post(todo!()).patch(todo!()),
+                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
             )
             .route(
                 "/sequencing_runs/{sequencing_run_id}",
-                get(todo!()).post(todo!()).patch(todo!()),
+                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
             )
             .route(
                 "/sequencing_runs/{sequencing_run_id}/libraries",
-                get(todo!()),
+                get::<(), _, _>(todo!()),
             )
             .route(
                 "/chromium_runs/{chromium_run_id}",
-                get(todo!()).post(todo!()).patch(todo!()),
+                get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()),
             ) // not public
-            .route("/chromium_runs/{chromium_run_id}/libraries", get(todo!())) // not public
+            .route("/chromium_runs/{chromium_run_id}/libraries", get::<(), _, _>(todo!())) // not public
     }
 }

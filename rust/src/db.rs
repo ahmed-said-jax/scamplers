@@ -6,16 +6,14 @@
 // AsyncPgConnection}; use diesel_migrations::{embed_migrations,
 // EmbeddedMigrations}; use serde::Serialize;
 
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
-use diesel::{result::DatabaseErrorInformation, upsert, Table};
-use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl, SimpleAsyncConnection};
-use futures::{future::BoxFuture, FutureExt, TryFutureExt};
-use institution::{Institution, NewInstitution};
+use diesel::result::DatabaseErrorInformation;
+use diesel_async::AsyncPgConnection;
+use futures::FutureExt;
 use itertools::Itertools;
 use regex::Regex;
 use serde::Serialize;
-use tokio::sync::Mutex;
 use valuable::Valuable;
 
 // pub mod cdna;
@@ -114,16 +112,16 @@ impl From<(diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation +
     fn from((kind, info): (diesel::result::DatabaseErrorKind, Box<dyn DatabaseErrorInformation + Send + Sync>)) -> Self {
         use diesel::result::DatabaseErrorKind::*;
 
-        let entity = PublicEntity::from_str(&info.table_name().unwrap_or_default()).unwrap_or_default();
+        let entity = PublicEntity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
 
         let field = info.column_name().map(str::to_string);
 
         let detail_regex = Regex::new(r#"Key \(.*\)=(\(.*\)).*"#).unwrap();
         let details = info.details().unwrap_or_default();
-        let value = detail_regex.captures(details).map(|cap| cap.get(1).map(|m| m.as_str().to_string())).flatten();
+        let value = detail_regex.captures(details).and_then(|cap| cap.get(1).map(|m| m.as_str().to_string()));
 
         match kind {
-            UniqueViolation => (Self::DuplicateRecord {entity, field, value}),
+            UniqueViolation => Self::DuplicateRecord {entity, field, value},
             ForeignKeyViolation => {
                 let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace("\"", "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();

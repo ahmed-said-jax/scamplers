@@ -1,6 +1,6 @@
 use diesel::{pg::Pg, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use futures::{future::BoxFuture, FutureExt, TryFutureExt};
+use futures::FutureExt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
