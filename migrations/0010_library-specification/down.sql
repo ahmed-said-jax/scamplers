@@ -1,0 +1,1 @@
+drop table library_type_specification;

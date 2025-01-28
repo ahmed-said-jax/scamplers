@@ -1,0 +1,24 @@
+[sqruff]
+dialect = postgres
+max_line_length = 120
+
+[sqruff:rules:aliasing.length]
+min_alias_length = 3
+
+[sqruff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqruff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqruff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqruff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqruff:rules:capitalisation.types]
+extended_capitalisation_policy = lower
+
+[sqruff:rules:convention.not_equal]
+preferred_not_equal_style = c_style

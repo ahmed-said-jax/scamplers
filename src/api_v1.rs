@@ -21,4 +21,5 @@ pub fn router() -> Router<AppState> {
         .route("sequencing_runs/{sequencing_run_id}", get(todo!()).post(todo!()).patch(todo!()))
         .route("sequencing_runs/{sequencing_run_id}/libraries", get(todo!()))
         .route("chromium_runs/{chromium_run_id}", get(todo!()).post(todo!()).patch(todo!())) // not public
+        .route("chromium_runs/{chromium_run_id}/libraries", get(todo!())) // not public
 }

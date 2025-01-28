@@ -8,6 +8,10 @@ pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "parsed_metrics_file"))]
     pub struct ParsedMetricsFile;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "user_role"))]
+    pub struct UserRole;
 }
 
 diesel::table! {
@@ -258,15 +262,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::UserRole;
+
     person (id) {
         id -> Uuid,
         first_name -> Text,
         last_name -> Text,
         email -> Text,
+        institution_id -> Uuid,
+        roles -> Array<Nullable<UserRole>>,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         api_key -> Nullable<Uuid>,
-        institution_id -> Uuid,
     }
 }
 
