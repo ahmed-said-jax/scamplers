@@ -47,4 +47,5 @@ create function create_role_if_not_exists(
     end;
 $$;
 
-select create_role_if_not_exists('app');
+select create_role_if_not_exists('scamplers');
+select create_role_if_not_exists('scamplers_plot');
