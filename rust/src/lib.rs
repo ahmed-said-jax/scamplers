@@ -1,11 +1,11 @@
-use core::sync;
-use std::{collections::HashMap, hash::Hash};
-
 use anyhow::Context;
 use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};
-use db::{institution::NewInstitutions, Create, Upsert};
-use diesel_async::{async_connection_wrapper::AsyncConnectionWrapper, pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager}, AsyncConnection, AsyncPgConnection};
+use diesel_async::{
+    async_connection_wrapper::AsyncConnectionWrapper,
+    pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager},
+    AsyncConnection, AsyncPgConnection,
+};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use itertools::Itertools;
 use serde::Deserialize;
@@ -21,15 +21,20 @@ const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
 
 pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
-    let mut app_config = AppConfig::from_path(config_path).context("failed to parse configuration file")?;
+    let mut app_config =
+        AppConfig::from_path(config_path).context("failed to parse configuration file")?;
 
-    run_migrations(&app_config).await.context("failed to run database migrations")?;
+    run_migrations(&app_config)
+        .await
+        .context("failed to run database migrations")?;
     tracing::info!("ran database migrations");
 
     let app_state = AppState::from_config(&mut app_config).context("failed to create app state")?;
 
-    tokio::spawn(sync_with_static_files(app_config.static_files.clone(), app_state.db_pool.clone()));
-
+    tokio::spawn(sync_with_static_files(
+        app_config.static_files.clone(),
+        app_state.db_pool.clone(),
+    ));
 
     let app = create_app(app_state);
 
@@ -37,7 +42,9 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         .await
         .context(format!("failed to listen on {}", app_config.server_addr))?;
 
-    axum::serve(listener, app).await.context("failed to serve app")?;
+    axum::serve(listener, app)
+        .await
+        .context("failed to serve app")?;
     tracing::info!("scamplers server listening on {}", app_config.server_addr);
 
     Ok(())
@@ -49,7 +56,7 @@ struct AppConfig {
     static_files: Vec<Utf8PathBuf>,
     server_addr: String,
     #[serde(default)]
-    production: bool
+    production: bool,
 }
 
 impl AppConfig {
@@ -64,15 +71,19 @@ impl AppConfig {
 
 async fn run_migrations(app_config: &AppConfig) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-    
-    let conn = AsyncPgConnection::establish(&app_config.db_url).await.context("failed to connect to database")?;
+
+    let conn = AsyncPgConnection::establish(&app_config.db_url)
+        .await
+        .context("failed to connect to database")?;
     let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = AsyncConnectionWrapper::from(conn);
 
-    tokio::task::spawn_blocking(move || {wrapper.run_pending_migrations(MIGRATIONS).unwrap();}).await?;
+    tokio::task::spawn_blocking(move || {
+        wrapper.run_pending_migrations(MIGRATIONS).unwrap();
+    })
+    .await?;
 
     Ok(())
 }
-
 
 #[derive(Clone)]
 struct AppState {
@@ -96,7 +107,10 @@ impl AppState {
     }
 }
 
-async fn sync_with_static_files(files: Vec<Utf8PathBuf>, db_pool: Pool<AsyncPgConnection>) -> anyhow::Result<()> {
+async fn sync_with_static_files(
+    files: Vec<Utf8PathBuf>,
+    db_pool: Pool<AsyncPgConnection>,
+) -> anyhow::Result<()> {
     const THIRTY_MINUTES: u64 = 30 * 60;
 
     let mut db_conn = db_pool.get().await?;
@@ -113,5 +127,7 @@ async fn sync_with_static_files(files: Vec<Utf8PathBuf>, db_pool: Pool<AsyncPgCo
 }
 
 fn create_app(app_state: AppState) -> Router {
-    Router::new().nest("/api", api::router()).with_state(app_state)
+    Router::new()
+        .nest("/api", api::router())
+        .with_state(app_state)
 }

@@ -43,6 +43,7 @@ tracing-appender = "0.2.3"
 tracing = { version = "0.1.41", features = ["valuable"] }
 valuable = { version = "0.1.1", features = ["derive"] }
 tower = { version = "0.5.2", default-features = false }
+strum = {version = "0.26.3", default-features = false, features = ["derive"]}
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
