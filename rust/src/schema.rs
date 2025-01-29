@@ -271,7 +271,7 @@ diesel::table! {
         last_name -> Text,
         email -> Text,
         institution_id -> Uuid,
-        roles -> Array<Nullable<UserRole>>,
+        roles -> Array<UserRole>,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         api_key -> Nullable<Uuid>,

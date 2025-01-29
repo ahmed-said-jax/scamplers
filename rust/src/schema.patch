@@ -1,0 +1,19 @@
+diff --git a/rust/src/schema.rs b/rust/src/schema.rs
+index 9bfcb56..098d3f9 100644
+--- a/rust/src/schema.rs
++++ b/rust/src/schema.rs
+@@ -268,13 +268,13 @@ diesel::table! {
+     person (id) {
+         id -> Uuid,
+         first_name -> Text,
+         last_name -> Text,
+         email -> Text,
+         institution_id -> Uuid,
+-        roles -> Array<Nullable<UserRole>>,
++        roles -> Array<UserRole>,
+         orcid -> Nullable<Text>,
+         ms_user_id -> Nullable<Uuid>,
+         api_key -> Nullable<Uuid>,
+     }
+ }
+ 

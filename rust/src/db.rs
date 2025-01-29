@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use diesel::result::DatabaseErrorInformation;
-use diesel_async::AsyncPgConnection;
+use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
 use regex::Regex;
 use serde::Serialize;
 use valuable::Valuable;
@@ -98,6 +98,12 @@ impl From<diesel::result::Error> for Error {
             NotFound => Self::RecordNotFound,
             _ => Self::from_other_error(err),
         }
+    }
+}
+
+impl From<deadpool::PoolError> for Error {
+    fn from(err: deadpool::PoolError) -> Self {
+        Self::from_other_error(err)
     }
 }
 

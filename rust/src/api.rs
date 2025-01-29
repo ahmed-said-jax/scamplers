@@ -1,27 +1,49 @@
+use std::str::FromStr;
+
 use axum::{extract::FromRequestParts, response::IntoResponse, Router};
-use diesel::{deserialize::FromSqlRow, sql_types::SqlType, Identifiable, Queryable, Selectable};
+use diesel::expression::AsExpression;
+use diesel::prelude::*;
+use diesel::deserialize::{FromSql, FromSqlRow};
+use diesel::serialize::ToSql;
+use diesel_async::RunQueryDsl;
 use serde::Serialize;
 use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::{db, AppState};
+use crate::{db, schema::sql_types as custom_types, AppState};
+use diesel::sql_types::{self, SqlType};
 mod v0;
 
 // This could easily go in `db::person`, but it's used for API permissions so it makes sense here too
-#[derive(Clone, strum::Display, SqlType, FromSqlRow, strum::VariantArray)]
+#[derive(Clone, SqlType, FromSqlRow, strum::VariantArray, AsExpression, Debug, strum::IntoStaticStr, strum::EnumString)]
 #[strum(serialize_all = "snake_case")]
-#[diesel(sql_type = crate::schema::sql_types::UserRole)]
-enum Role {
+#[diesel(sql_type = custom_types::UserRole)]
+enum UserRole {
     Admin,
     ComputationalStaff,
-    LabStaff
+    LabStaff,
+}
+
+impl FromSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
+    fn from_sql(bytes: <diesel::pg::Pg as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
+        // this shouldn't ever fail
+        Ok(Self::from_str(&raw).unwrap())
+    }
+}
+
+impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
+    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
+        let as_str: &'static str = self.into();
+        ToSql::<sql_types::Text, diesel::pg::Pg>::to_sql(as_str, out)
+    }
 }
 
 #[derive(Selectable, Queryable, Identifiable)]
 #[diesel(table_name = crate::schema::person, check_for_backend(diesel::pg::Pg))]
 struct ApiUser{
     id: Uuid,
-    roles: Vec<Role>
+    roles: Vec<UserRole>
 }
 
 impl FromRequestParts<AppState> for ApiUser {
@@ -32,15 +54,17 @@ impl FromRequestParts<AppState> for ApiUser {
         use crate::schema::person::dsl::*;
 
         if !state.production {
-            return Ok(Self {id: Uuid::nil(), roles: Role::VARIANTS.to_vec()})
+            return Ok(Self {id: Uuid::nil(), roles: UserRole::VARIANTS.to_vec()})
         }
 
         // I hate this chain of `ok_or` and `map_err`s
         let maybe_api_key: Uuid = parts.headers.get("x-api-key").ok_or(ApiKeyNotFound)?.to_str().map_err(|_| InvalidApiKey)?.parse().map_err(|_| InvalidApiKey)?;
 
-        let query = diesel::select(person).filter(api_key.eq(maybe_api_key));
+        let mut conn = state.db_pool.get().await.map_err(|e| db::Error::from(e))?;
 
+        let result = person.filter(api_key.eq(maybe_api_key)).select((id, roles)).get_result(&mut conn).await.map_err(|e| db::Error::from(e))?;
 
+        Ok(result)
     }
 
 }

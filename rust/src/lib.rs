@@ -4,7 +4,7 @@ use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::{
     async_connection_wrapper::AsyncConnectionWrapper,
-    pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager},
+    pooled_connection::{self, deadpool::{self, Pool, PoolError}, AsyncDieselConnectionManager},
     AsyncConnection, AsyncPgConnection,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
