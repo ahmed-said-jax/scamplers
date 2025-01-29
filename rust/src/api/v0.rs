@@ -1,17 +1,16 @@
 use axum::{routing::get, Router};
 
+use super::route;
 use crate::AppState;
 
-use super::route;
-
 pub fn router() -> Router<AppState> {
-    use crate::db::Entity::{Institution as I, Person as P, Lab, Sample as S, Dataset as D, SequencingRun as SR, Library as Lib};
+    use crate::db::Entity::{
+        Dataset as D, Institution as I, Lab, Library as Lib, Person as P, Sample as S,
+        SequencingRun as SR,
+    };
     Router::new()
         .route(route(I), get(todo!()).post(todo!()).patch(todo!()))
-        .route(
-            route(P),
-            get::<(), _, _>(todo!()),
-        )
+        .route(route(P), get::<(), _, _>(todo!()))
         .route("/people/{person_id}/labs", get::<(), _, _>(todo!()))
         .route("/people/{person_id}/samples", get::<(), _, _>(todo!()))
         .route(
@@ -66,18 +65,19 @@ pub fn router() -> Router<AppState> {
 }
 
 mod institution {
-    use axum::{extract::{Path, State}, routing::get, Router};
+    use axum::{
+        extract::{Path, State},
+        routing::get,
+        Router,
+    };
     use uuid::Uuid;
 
-    use crate::AppState;
     use super::super::route;
-    use crate::db::Entity::Institution;
+    use crate::{db::Entity::Institution, AppState};
 
     pub fn router() -> Router<AppState> {
         Router::new().route(route(Institution), get(todo!()))
     }
 
-    fn get_institutions(State(app_state): State<AppState>, institution_id: Option<Path<Uuid>>) {
-
-    }
+    fn get_institutions(State(app_state): State<AppState>, institution_id: Option<Path<Uuid>>) {}
 }

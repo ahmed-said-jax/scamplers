@@ -121,8 +121,7 @@ impl
     ) -> Self {
         use diesel::result::DatabaseErrorKind::{ForeignKeyViolation, UniqueViolation};
 
-        let entity =
-            Entity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
+        let entity = Entity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
 
         let field = info.column_name().map(str::to_string);
 
@@ -145,8 +144,7 @@ impl
                     .unwrap_or_default()
                     .replace('"', "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
-                let referenced_entity =
-                    Entity::from_str(referenced_entity).unwrap_or_default();
+                let referenced_entity = Entity::from_str(referenced_entity).unwrap_or_default();
 
                 Self::ReferenceNotFound {
                     entity,

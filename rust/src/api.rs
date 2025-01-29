@@ -1,21 +1,33 @@
 use std::str::FromStr;
 
 use axum::{extract::FromRequestParts, response::IntoResponse, Router};
-use diesel::expression::AsExpression;
-use diesel::prelude::*;
-use diesel::deserialize::{FromSql, FromSqlRow};
-use diesel::serialize::ToSql;
+use diesel::{
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    prelude::*,
+    serialize::ToSql,
+    sql_types::{self, SqlType},
+};
 use diesel_async::RunQueryDsl;
 use serde::Serialize;
 use strum::VariantArray;
 use uuid::Uuid;
 
 use crate::{db, schema::sql_types as custom_types, AppState};
-use diesel::sql_types::{self, SqlType};
 mod v0;
 
-// This could easily go in `db::person`, but it's used for API permissions so it makes sense here too
-#[derive(Clone, SqlType, FromSqlRow, strum::VariantArray, AsExpression, Debug, strum::IntoStaticStr, strum::EnumString)]
+// This could easily go in `db::person`, but it's used for API permissions so it
+// makes sense here too
+#[derive(
+    Clone,
+    SqlType,
+    FromSqlRow,
+    strum::VariantArray,
+    AsExpression,
+    Debug,
+    strum::IntoStaticStr,
+    strum::EnumString,
+)]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = custom_types::UserRole)]
 enum UserRole {
@@ -25,7 +37,9 @@ enum UserRole {
 }
 
 impl FromSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
-    fn from_sql(bytes: <diesel::pg::Pg as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+    fn from_sql(
+        bytes: <diesel::pg::Pg as diesel::backend::Backend>::RawValue<'_>,
+    ) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
         // this shouldn't ever fail
         Ok(Self::from_str(&raw).unwrap())
@@ -33,7 +47,10 @@ impl FromSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
 }
 
 impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
-    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
+    fn to_sql<'b>(
+        &'b self,
+        out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>,
+    ) -> diesel::serialize::Result {
         let as_str: &'static str = self.into();
         ToSql::<sql_types::Text, diesel::pg::Pg>::to_sql(as_str, out)
     }
@@ -41,32 +58,50 @@ impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
 
 #[derive(Selectable, Queryable, Identifiable)]
 #[diesel(table_name = crate::schema::person, check_for_backend(diesel::pg::Pg))]
-struct ApiUser{
+struct ApiUser {
     id: Uuid,
-    roles: Vec<UserRole>
+    roles: Vec<UserRole>,
 }
 
 impl FromRequestParts<AppState> for ApiUser {
     type Rejection = Error;
 
-    async  fn from_request_parts(parts: &mut axum::http::request::Parts,state: &AppState,) -> Result<Self,Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         use Error::*;
+
         use crate::schema::person::dsl::*;
 
         if !state.production {
-            return Ok(Self {id: Uuid::nil(), roles: UserRole::VARIANTS.to_vec()})
+            return Ok(Self {
+                id: Uuid::nil(),
+                roles: UserRole::VARIANTS.to_vec(),
+            });
         }
 
         // I hate this chain of `ok_or` and `map_err`s
-        let maybe_api_key: Uuid = parts.headers.get("x-api-key").ok_or(ApiKeyNotFound)?.to_str().map_err(|_| InvalidApiKey)?.parse().map_err(|_| InvalidApiKey)?;
+        let maybe_api_key: Uuid = parts
+            .headers
+            .get("x-api-key")
+            .ok_or(ApiKeyNotFound)?
+            .to_str()
+            .map_err(|_| InvalidApiKey)?
+            .parse()
+            .map_err(|_| InvalidApiKey)?;
 
         let mut conn = state.db_pool.get().await.map_err(|e| db::Error::from(e))?;
 
-        let result = person.filter(api_key.eq(maybe_api_key)).select((id, roles)).get_result(&mut conn).await.map_err(|e| db::Error::from(e))?;
+        let result = person
+            .filter(api_key.eq(maybe_api_key))
+            .select((id, roles))
+            .get_result(&mut conn)
+            .await
+            .map_err(|e| db::Error::from(e))?;
 
         Ok(result)
     }
-
 }
 
 pub fn router() -> Router<AppState> {
@@ -99,15 +134,15 @@ enum Error {
     #[error("invalid API key")]
     InvalidApiKey,
     #[error("operation not permitted")]
-    Permission{message: String},
+    Permission { message: String },
     #[error(transparent)]
-    Database(#[from] db::Error)
+    Database(#[from] db::Error),
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use axum::http::StatusCode;
-        use Error::*;
         use db::Error::*;
+        use Error::*;
 
         match self {
             ApiKeyNotFound | InvalidApiKey => StatusCode::UNAUTHORIZED,
@@ -116,8 +151,8 @@ impl Error {
                 Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,
                 DuplicateRecord { .. } => StatusCode::CONFLICT,
                 RecordNotFound => StatusCode::NOT_FOUND,
-                ReferenceNotFound { ..} => StatusCode::UNPROCESSABLE_ENTITY,
-            }
+                ReferenceNotFound { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+            },
         }
     }
 }
@@ -129,16 +164,29 @@ impl IntoResponse for Error {
         #[derive(Serialize)]
         struct ErrorResponse {
             status: u16,
-            error: Option<Error>
+            error: Option<Error>,
         }
 
         let status = self.staus_code();
 
         if status == StatusCode::INTERNAL_SERVER_ERROR {
-            (status, axum::Json(ErrorResponse {status: status.as_u16(), error: None})).into_response()
-        }
-        else {
-            (status, axum::Json(ErrorResponse {status: status.as_u16(), error: Some(self)})).into_response()
+            (
+                status,
+                axum::Json(ErrorResponse {
+                    status: status.as_u16(),
+                    error: None,
+                }),
+            )
+                .into_response()
+        } else {
+            (
+                status,
+                axum::Json(ErrorResponse {
+                    status: status.as_u16(),
+                    error: Some(self),
+                }),
+            )
+                .into_response()
         }
     }
 }
