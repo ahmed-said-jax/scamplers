@@ -17,12 +17,8 @@ create table suspension (
     legacy_id text unique not null,
     metadata_id uuid references sample_metadata on delete restrict on update restrict,
     parent_specimen_id uuid references specimen on delete restrict on update restrict,
-    parent_suspension_id uuid references suspension on delete restrict on update restrict,
-    is_derived boolean generated always as (
-        (parent_specimen_id is not null) or (parent_suspension_id is not null)
-    ) stored,
+    is_derived boolean generated always as (parent_specimen_id is not null) stored,
     biological_material text not null, -- constrained by Rust-side enum
-    buffer text not null, -- constrained by Rust-side enum
     created_at timestamp,
     pooled_into_id uuid references multiplexed_suspension on delete restrict on update restrict,
     multiplexing_tag_id uuid references multiplexing_tag on delete restrict on update restrict,
@@ -43,6 +39,7 @@ create table suspension_measurement (
     measured_by uuid references person on delete restrict on update restrict not null,
     measurement measurement not null,
     post_hybridization boolean not null,
+    buffer text not null, -- constrained by Rust-side enum
     primary key (suspension_id, measured_by, measurement)
 );
 
