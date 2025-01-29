@@ -5,8 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::{
     async_connection_wrapper::AsyncConnectionWrapper,
     pooled_connection::{
-        self,
-        deadpool::{self, Pool, PoolError},
+        deadpool::{Pool},
         AsyncDieselConnectionManager,
     },
     AsyncConnection, AsyncPgConnection,

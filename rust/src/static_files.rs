@@ -1,7 +1,6 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::AsyncPgConnection;
 use serde::Deserialize;
-use valuable::Valuable;
 
 use crate::db::{institution::NewInstitution, Create};
 

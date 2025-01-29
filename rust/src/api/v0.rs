@@ -5,11 +5,10 @@ use crate::AppState;
 
 pub fn router() -> Router<AppState> {
     use crate::db::Entity::{
-        Dataset as D, Institution as I, Lab, Library as Lib, Person as P, Sample as S,
-        SequencingRun as SR,
+        Institution as I, Person as P,
     };
     Router::new()
-        .route(route(I), get(todo!()).post(todo!()).patch(todo!()))
+        .route(route(I), get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()))
         .route(route(P), get::<(), _, _>(todo!()))
         .route("/people/{person_id}/labs", get::<(), _, _>(todo!()))
         .route("/people/{person_id}/samples", get::<(), _, _>(todo!()))
@@ -76,7 +75,7 @@ mod institution {
     use crate::{db::Entity::Institution, AppState};
 
     pub fn router() -> Router<AppState> {
-        Router::new().route(route(Institution), get(todo!()))
+        Router::new().route(route(Institution), get::<(), _, _>(todo!()))
     }
 
     fn get_institutions(State(app_state): State<AppState>, institution_id: Option<Path<Uuid>>) {}

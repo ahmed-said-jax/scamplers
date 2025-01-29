@@ -70,9 +70,9 @@ impl FromRequestParts<AppState> for ApiUser {
         parts: &mut axum::http::request::Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        use Error::*;
+        use Error::{ApiKeyNotFound, InvalidApiKey};
 
-        use crate::schema::person::dsl::*;
+        use crate::schema::person::dsl::{api_key, id, person, roles};
 
         if !state.production {
             return Ok(Self {
@@ -91,14 +91,14 @@ impl FromRequestParts<AppState> for ApiUser {
             .parse()
             .map_err(|_| InvalidApiKey)?;
 
-        let mut conn = state.db_pool.get().await.map_err(|e| db::Error::from(e))?;
+        let mut conn = state.db_pool.get().await.map_err(db::Error::from)?;
 
         let result = person
             .filter(api_key.eq(maybe_api_key))
             .select((id, roles))
             .get_result(&mut conn)
             .await
-            .map_err(|e| db::Error::from(e))?;
+            .map_err(db::Error::from)?;
 
         Ok(result)
     }
@@ -111,8 +111,8 @@ pub fn router() -> Router<AppState> {
     v0::router()
 }
 
-pub fn route(entity: db::Entity) -> &'static str {
-    use db::Entity::*;
+#[must_use] pub fn route(entity: db::Entity) -> &'static str {
+    use db::Entity::{Dataset, Institution, Lab, Library, Person, Sample, SequencingRun, Unknown};
 
     match entity {
         Institution => "/institutions/{institution_id}",
@@ -141,8 +141,8 @@ enum Error {
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use axum::http::StatusCode;
-        use db::Error::*;
-        use Error::*;
+        use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
+        use Error::{ApiKeyNotFound, Database, InvalidApiKey, Permission};
 
         match self {
             ApiKeyNotFound | InvalidApiKey => StatusCode::UNAUTHORIZED,
