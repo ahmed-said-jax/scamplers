@@ -2,7 +2,7 @@ use axum::{routing::get, Router, extract::State};
 
 use crate::AppState;
 
-pub fn router(state: State<AppState>) -> Router<AppState> {
+pub fn router(state: AppState) -> Router<AppState> {
     Router::new().nest("/", institution::router(state))
         .route("/people/{person_id}/labs", get::<(), _, _>(todo!()))
         .route("/people/{person_id}/samples", get::<(), _, _>(todo!()))
@@ -67,17 +67,11 @@ mod institution {
 
     use crate::{api::ApiResponse, AppState};
 
-    pub fn router(State(state): State<AppState>) -> Router<AppState> {
+    pub fn router(state: AppState) -> Router<AppState> {
         use axum::middleware;
         use crate::db::Entity::Institution;
 
-        let mut router = Router::new().route(Institution.route(), get(get_institutions));
-        
-        if state.production {
-            router = router.layer(middleware::from_fn_with_state(state.clone(), permissions))
-        }
-
-        router
+        Router::new().route(Institution.route(), get(get_institutions)).layer(middleware::from_fn_with_state(state, permissions))
     }
 
     async fn permissions(ApiUser { roles, .. }: ApiUser, request: Request, next: Next) -> Response {

@@ -38,7 +38,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         app_state.db_pool.clone(),
     ));
 
-    let app = create_app(app_state);
+    let app = Router::new().nest("/api", api::router(app_state.clone())).with_state(app_state);
 
     let listener = TcpListener::bind(&app_config.server_addr)
         .await
@@ -128,7 +128,3 @@ async fn sync_with_static_files(
     }
 }
 
-fn create_app(app_state: AppState) -> Router<AppState> {
-    Router::new()
-        .nest("/api", api::router(State(app_state)))
-}

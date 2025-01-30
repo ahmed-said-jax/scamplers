@@ -16,11 +16,11 @@ use uuid::Uuid;
 use crate::{db, schema::sql_types as custom_types, AppState};
 mod v0;
 
-pub fn router(state: State<AppState>) -> Router<AppState> {
+pub fn router(state: AppState) -> Router<AppState> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
-    v0::router(state)//)
+    v0::router(state)
 }
 
 #[derive(Serialize)]
