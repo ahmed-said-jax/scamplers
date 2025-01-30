@@ -1,6 +1,6 @@
 #![allow(async_fn_in_trait)]
 use anyhow::Context;
-use axum::Router;
+use axum::{extract::State, Router};
 use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::{
     async_connection_wrapper::AsyncConnectionWrapper,
@@ -128,8 +128,7 @@ async fn sync_with_static_files(
     }
 }
 
-fn create_app(app_state: AppState) -> Router {
+fn create_app(app_state: AppState) -> Router<AppState> {
     Router::new()
-        .nest("/api", api::router())
-        .with_state(app_state)
+        .nest("/api", api::router(State(app_state)))
 }

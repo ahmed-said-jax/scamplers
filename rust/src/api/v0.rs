@@ -1,15 +1,9 @@
-use axum::{routing::get, Router};
+use axum::{routing::get, Router, extract::State};
 
-use super::route;
 use crate::AppState;
 
-pub fn router() -> Router<AppState> {
-    use crate::db::Entity::{
-        Institution as I, Person as P,
-    };
-    Router::new()
-        .route(route(I), get::<(), _, _>(todo!()).post::<(), _>(todo!()).patch::<(), _>(todo!()))
-        .route(route(P), get::<(), _, _>(todo!()))
+pub fn router(state: State<AppState>) -> Router<AppState> {
+    Router::new().nest("/", institution::router(state))
         .route("/people/{person_id}/labs", get::<(), _, _>(todo!()))
         .route("/people/{person_id}/samples", get::<(), _, _>(todo!()))
         .route(
@@ -65,18 +59,51 @@ pub fn router() -> Router<AppState> {
 
 mod institution {
     use axum::{
-        extract::{Path, State},
-        routing::get,
-        Router,
+        extract::{Path, Request, State, FromRequestParts}, http::Method, middleware::Next, response::{IntoResponse, Response}, routing::get, Router
     };
     use uuid::Uuid;
+    use super::super::ApiUser;
+    use super::super::Error as ApiError;
 
-    use super::super::route;
-    use crate::{db::Entity::Institution, AppState};
+    use crate::{api::ApiResponse, AppState};
 
-    pub fn router() -> Router<AppState> {
-        Router::new().route(route(Institution), get::<(), _, _>(todo!()))
+    pub fn router(State(state): State<AppState>) -> Router<AppState> {
+        use axum::middleware;
+        use crate::db::Entity::Institution;
+
+        let mut router = Router::new().route(Institution.route(), get(get_institutions));
+        
+        if state.production {
+            router = router.layer(middleware::from_fn_with_state(state.clone(), permissions))
+        }
+
+        router
     }
 
-    fn get_institutions(State(app_state): State<AppState>, institution_id: Option<Path<Uuid>>) {}
+    async fn permissions(ApiUser { roles, .. }: ApiUser, request: Request, next: Next) -> Response {
+        use super::super::UserRole::Admin;
+
+        let is_admin = roles.contains(&Admin);
+        let response= match (request.method(), is_admin) {
+            (&Method::GET, _) => next.run(request).await, // GET is always allowed
+            (&Method::POST | &Method::PATCH, true) => next.run(request).await, // POST and PATCH require admin
+            _ => ApiError::permission().into_response() // everything else is forbidden
+        };
+
+        response
+    }
+
+    async fn get_institutions(State(app_state): State<AppState>, institution_id: Option<Path<Uuid>>) -> super::super::Result<ApiResponse> {
+        use crate::db::institution::Institution;
+
+        let mut conn = app_state.db_pool.get().await?;
+
+        let Some(Path(institution_id)) = institution_id else {
+            let institutions = Institution::fetch_all(&mut conn, Default::default()).await?;
+            return Ok(ApiResponse::from(institutions))
+        };
+
+        let institution = Institution::fetch_by_id(&mut conn, institution_id).await?;
+        Ok(ApiResponse::from(institution))
+    }
 }

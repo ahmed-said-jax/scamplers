@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use axum::{extract::FromRequestParts, response::IntoResponse, Router};
+use axum::{extract::{FromRequestParts, State}, response::IntoResponse, Router};
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
@@ -8,13 +8,43 @@ use diesel::{
     serialize::ToSql,
     sql_types::{self, SqlType},
 };
-use diesel_async::RunQueryDsl;
+use diesel_async::{pooled_connection::deadpool, RunQueryDsl};
 use serde::Serialize;
 use strum::VariantArray;
 use uuid::Uuid;
 
 use crate::{db, schema::sql_types as custom_types, AppState};
 mod v0;
+
+pub fn router(state: State<AppState>) -> Router<AppState> {
+    // In theory, we should be able to inspect the header and route the request
+    // based on the API version set in the header, but I don't know how to do that
+    // yet
+    v0::router(state)//)
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum ApiResponse {
+    Institution(db::institution::Institution),
+    Institutions(Vec<db::institution::Institution>),
+}
+impl From<db::institution::Institution> for ApiResponse {
+    fn from(inst: db::institution::Institution) -> Self {
+        Self::Institution(inst)
+    }
+}
+impl From<Vec<db::institution::Institution>> for ApiResponse {
+    fn from(insts: Vec<db::institution::Institution>) -> Self {
+        Self::Institutions(insts)
+    }
+}
+
+impl IntoResponse for ApiResponse {
+    fn into_response(self) -> axum::response::Response {
+        axum::Json(self).into_response()
+    }
+}
 
 // This could easily go in `db::person`, but it's used for API permissions so it
 // makes sense here too
@@ -27,6 +57,7 @@ mod v0;
     Debug,
     strum::IntoStaticStr,
     strum::EnumString,
+    PartialEq
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = custom_types::UserRole)]
@@ -56,7 +87,7 @@ impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
     }
 }
 
-#[derive(Selectable, Queryable, Identifiable)]
+#[derive(Selectable, Queryable)]
 #[diesel(table_name = crate::schema::person, check_for_backend(diesel::pg::Pg))]
 struct ApiUser {
     id: Uuid,
@@ -69,7 +100,7 @@ impl FromRequestParts<AppState> for ApiUser {
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
         state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    ) -> std::result::Result<Self, Self::Rejection> {
         use Error::{ApiKeyNotFound, InvalidApiKey};
 
         use crate::schema::person::dsl::{api_key, id, person, roles};
@@ -82,47 +113,23 @@ impl FromRequestParts<AppState> for ApiUser {
         }
 
         // I hate this chain of `ok_or` and `map_err`s
-        let maybe_api_key: Uuid = parts
+        let raw_api_key = parts
             .headers
             .get("x-api-key")
             .ok_or(ApiKeyNotFound)?
-            .to_str()
-            .map_err(|_| InvalidApiKey)?
-            .parse()
-            .map_err(|_| InvalidApiKey)?;
+            .as_bytes();
+        let extracted_api_key = Uuid::from_slice(raw_api_key).map_err(|_| InvalidApiKey)?;
 
-        let mut conn = state.db_pool.get().await.map_err(db::Error::from)?;
+        let mut conn = state.db_pool.get().await?;
 
         let result = person
-            .filter(api_key.eq(maybe_api_key))
+            .filter(api_key.eq(extracted_api_key))
             .select((id, roles))
             .get_result(&mut conn)
             .await
             .map_err(db::Error::from)?;
 
         Ok(result)
-    }
-}
-
-pub fn router() -> Router<AppState> {
-    // In theory, we should be able to inspect the header and route the request
-    // based on the API version set in the header, but I don't know how to do that
-    // yet
-    v0::router()
-}
-
-#[must_use] pub fn route(entity: db::Entity) -> &'static str {
-    use db::Entity::{Dataset, Institution, Lab, Library, Person, Sample, SequencingRun, Unknown};
-
-    match entity {
-        Institution => "/institutions/{institution_id}",
-        Person => "/people/{person_id}",
-        Lab => "/labs/{lab_id}",
-        Sample => "/samples/{sample_id}",
-        Library => "/libraries/{library_id}",
-        SequencingRun => "/sequencing_runs/{sequencing_run_id}",
-        Dataset => "/datasets/{dataset_id}",
-        Unknown => "/",
     }
 }
 
@@ -154,6 +161,28 @@ impl Error {
                 ReferenceNotFound { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             },
         }
+    }
+
+    fn permission() -> Self {
+        // initialize with empty message
+        let mut err = Self::Permission { message: String::new() };
+
+        // the `Display` implementation of this error is what we want the serialized error to show in most cases, so just use that
+        let intended_message = err.to_string();
+
+        // set the error
+        match err {
+            Self::Permission { ref mut message } => {message.push_str(&intended_message);},
+            _ => {}
+        }
+
+        err
+    }
+}
+
+impl From<deadpool::PoolError> for Error {
+    fn from(err: deadpool::PoolError) -> Self {
+        Self::Database(db::Error::from(err))
     }
 }
 
@@ -190,3 +219,5 @@ impl IntoResponse for Error {
         }
     }
 }
+
+type Result<T> = std::result::Result<T, Error>;

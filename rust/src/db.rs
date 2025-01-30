@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use diesel::result::DatabaseErrorInformation;
+use diesel::{pg::Pg, result::DatabaseErrorInformation, BoxableExpression, Table};
 use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use valuable::Valuable;
 
 pub mod institution;
@@ -45,6 +45,20 @@ impl<T: Upsert> Upsert for Vec<T> {
     }
 }
 
+#[derive(Deserialize)]
+pub struct Pagination {
+    limit: i64,
+    offset: i64
+}
+impl Default for Pagination {
+    fn default() -> Self {
+        Self {
+            limit: 100,
+            offset: 0
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Valuable, strum::EnumString, Default, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -58,6 +72,23 @@ pub enum Entity {
     Dataset,
     #[default]
     Unknown,
+}
+
+impl Entity {
+    pub fn route(&self) -> &'static str {
+        use Entity::*;
+
+        match self {
+            Institution => "/institutions/{institution_id}",
+            Person => "/people/{person_id}",
+            Lab => "/labs/{lab_id}",
+            Sample => "/samples/{sample_id}",
+            Library => "/libraries/{library_id}",
+            SequencingRun => "/sequencing_runs/{sequencing_run_id}",
+            Dataset => "/datasets/{dataset_id}",
+            Unknown => "/",
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug, Valuable, Serialize)]
