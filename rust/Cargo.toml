@@ -40,8 +40,7 @@ futures = {version = "0.3.31" }
 diesel_migrations ={ version = "2.2.0", features = ["postgres"]}
 diesel-async = { version = "0.5.2", features = ["postgres", "deadpool", "async-connection-wrapper"] }
 tracing-appender = "0.2.3"
-tracing = { version = "0.1.41", features = ["valuable"] }
-valuable = { version = "0.1.1", features = ["derive"] }
+tracing = { version = "0.1.41" }
 tower = { version = "0.5.2", default-features = false }
 strum = {version = "0.26.3", default-features = false, features = ["derive"]}
 

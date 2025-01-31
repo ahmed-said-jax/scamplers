@@ -4,9 +4,11 @@ use diesel::{pg::Pg, result::DatabaseErrorInformation, BoxableExpression, Table}
 use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use valuable::Valuable;
 
 pub mod institution;
+pub mod person;
 
 // the following traits are not used to enforce anything, they just help to
 // provide a uniform interface for database CRUD operations
@@ -17,24 +19,38 @@ pub mod institution;
 pub trait Create {
     type Returns;
 
-    async fn create(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    // Mutability here so that the method can change what it needs
+    async fn create(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+}
+
+pub trait Read: Sized {
+    type Id = Uuid;
+    type Filter = ();
+
+    async fn fetch_all(conn: &mut AsyncPgConnection, pagination: Pagination) -> Result<Vec<Self>>;
+
+    async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> Result<Self>;
+
+    async fn fetch_by_filter(conn: &mut AsyncPgConnection, filter: Self::Filter, pagination: Pagination) -> Result<Vec<Self>> {
+        Self::fetch_all(conn, pagination).await
+    }
 }
 
 pub trait Update {
     type Returns;
 
-    async fn update(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    async fn update(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
 pub trait Upsert {
     type Returns;
-    async fn upsert(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    async fn upsert(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
 impl<T: Upsert> Upsert for Vec<T> {
     type Returns = Vec<T::Returns>;
 
-    async fn upsert(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
+    async fn upsert(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
         let mut updated = Vec::with_capacity(self.len());
 
         for record in self {
@@ -59,7 +75,7 @@ impl Default for Pagination {
     }
 }
 
-#[derive(Debug, Serialize, Valuable, strum::EnumString, Default, strum::Display)]
+#[derive(Debug, Serialize, Valuable, strum::EnumString, Default, strum::Display, strum::VariantNames, strum::VariantArray)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum Entity {
@@ -72,23 +88,6 @@ pub enum Entity {
     Dataset,
     #[default]
     Unknown,
-}
-
-impl Entity {
-    pub fn route(&self) -> &'static str {
-        use Entity::*;
-
-        match self {
-            Institution => "/institutions/{institution_id}",
-            Person => "/people/{person_id}",
-            Lab => "/labs/{lab_id}",
-            Sample => "/samples/{sample_id}",
-            Library => "/libraries/{library_id}",
-            SequencingRun => "/sequencing_runs/{sequencing_run_id}",
-            Dataset => "/datasets/{dataset_id}",
-            Unknown => "/",
-        }
-    }
 }
 
 #[derive(thiserror::Error, Debug, Valuable, Serialize)]

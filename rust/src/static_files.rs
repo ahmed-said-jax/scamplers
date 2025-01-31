@@ -2,7 +2,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::AsyncPgConnection;
 use serde::Deserialize;
 
-use crate::db::{institution::NewInstitution, Create};
+use crate::db::{institution::Institution, Upsert};
 
 pub async fn synchronize(files: &[Utf8PathBuf], db_conn: &mut AsyncPgConnection) {
     for file in files {
@@ -18,7 +18,7 @@ pub async fn synchronize(files: &[Utf8PathBuf], db_conn: &mut AsyncPgConnection)
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum StaticData {
-    Institutions(Vec<NewInstitution>),
+    Institutions(Vec<Institution>),
 }
 
 async fn sync_db_with_file(path: &Utf8Path, db_conn: &mut AsyncPgConnection) -> anyhow::Result<()> {
@@ -29,7 +29,7 @@ async fn sync_db_with_file(path: &Utf8Path, db_conn: &mut AsyncPgConnection) -> 
 
     match data {
         Institutions(new_institutions) => {
-            new_institutions.create(db_conn).await?;
+            new_institutions.upsert(db_conn).await?;
         }
     }
 

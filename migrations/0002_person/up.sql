@@ -14,5 +14,5 @@ create table person (
     roles user_role[] not null default '{}',
     orcid text unique,
     ms_user_id uuid unique,
-    api_key uuid unique,
+    api_key uuid unique
 );

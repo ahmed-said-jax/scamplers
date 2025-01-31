@@ -1,26 +1,23 @@
 use std::str::FromStr;
 
-use axum::{extract::{FromRequestParts, State}, response::IntoResponse, Router};
+use axum::{extract::{FromRequestParts}, response::IntoResponse, Router};
 use diesel::{
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{self, SqlType},
+    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types::{self, SqlType}
 };
 use diesel_async::{pooled_connection::deadpool, RunQueryDsl};
-use serde::Serialize;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::{db, schema::sql_types as custom_types, AppState};
+use crate::{db::{self, person::UserRole, Entity}, schema::sql_types as custom_types, AppState};
 mod v0;
 
-pub fn router(state: AppState) -> Router<AppState> {
+pub fn router() -> Router<AppState> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
-    v0::router(state)
+    v0::router()
 }
 
 #[derive(Serialize)]
@@ -46,53 +43,7 @@ impl IntoResponse for ApiResponse {
     }
 }
 
-// This could easily go in `db::person`, but it's used for API permissions so it
-// makes sense here too
-#[derive(
-    Clone,
-    SqlType,
-    FromSqlRow,
-    strum::VariantArray,
-    AsExpression,
-    Debug,
-    strum::IntoStaticStr,
-    strum::EnumString,
-    PartialEq
-)]
-#[strum(serialize_all = "snake_case")]
-#[diesel(sql_type = custom_types::UserRole)]
-enum UserRole {
-    Admin,
-    ComputationalStaff,
-    LabStaff,
-}
-
-impl FromSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
-    fn from_sql(
-        bytes: <diesel::pg::Pg as diesel::backend::Backend>::RawValue<'_>,
-    ) -> diesel::deserialize::Result<Self> {
-        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
-        // this shouldn't ever fail
-        Ok(Self::from_str(&raw).unwrap())
-    }
-}
-
-impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, diesel::pg::Pg>,
-    ) -> diesel::serialize::Result {
-        let as_str: &'static str = self.into();
-        ToSql::<sql_types::Text, diesel::pg::Pg>::to_sql(as_str, out)
-    }
-}
-
-#[derive(Selectable, Queryable)]
-#[diesel(table_name = crate::schema::person, check_for_backend(diesel::pg::Pg))]
-struct ApiUser {
-    id: Uuid,
-    roles: Vec<UserRole>,
-}
+struct ApiUser(db::person::User);
 
 impl FromRequestParts<AppState> for ApiUser {
     type Rejection = Error;
@@ -106,13 +57,9 @@ impl FromRequestParts<AppState> for ApiUser {
         use crate::schema::person::dsl::{api_key, id, person, roles};
 
         if !state.production {
-            return Ok(Self {
-                id: Uuid::nil(),
-                roles: UserRole::VARIANTS.to_vec(),
-            });
+            return Ok(Self(db::person::User::test_user()));
         }
 
-        // I hate this chain of `ok_or` and `map_err`s
         let raw_api_key = parts
             .headers
             .get("x-api-key")
@@ -122,14 +69,64 @@ impl FromRequestParts<AppState> for ApiUser {
 
         let mut conn = state.db_pool.get().await?;
 
-        let result = person
+        let user = person
             .filter(api_key.eq(extracted_api_key))
             .select((id, roles))
             .get_result(&mut conn)
             .await
             .map_err(db::Error::from)?;
 
-        Ok(result)
+        Ok(Self(user))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum Version {
+    V0
+}
+
+#[derive(Serialize, Deserialize, Debug, FromSqlRow, AsExpression, Clone)]
+#[diesel(sql_type = sql_types::Jsonb)]
+pub struct EntityLink {
+    version: Version,
+    link: String
+}
+
+impl EntityLink {
+    pub fn new(api_version: Version, entity: db::Entity, id: Uuid) -> Self {
+        let pattern = Regex::new(r#"\{.*\}"#).unwrap();
+        
+        let link_template = match api_version {
+            Version::V0 => entity.v0_endpoint()
+        };
+
+        let link = pattern.replace(link_template, id.to_string()).to_string();
+
+        Self {
+            version: api_version,
+            link
+        }
+    }
+}
+
+
+impl FromSql<sql_types::Jsonb, Pg> for EntityLink {
+    fn from_sql(
+        bytes: <Pg as Backend>::RawValue<'_>,
+    ) -> diesel::deserialize::Result<Self> {
+        let raw = <serde_json::Value as FromSql<sql_types::Jsonb, Pg>>::from_sql(bytes)?;
+        Ok(serde_json::from_value(raw)?)
+    }
+}
+
+impl ToSql<sql_types::Jsonb, Pg> for EntityLink {
+    fn to_sql<'b>(
+        &'b self,
+        out: &mut diesel::serialize::Output<'b, '_, Pg>,
+    ) -> diesel::serialize::Result {
+        let value = serde_json::to_value(self)?;
+        ToSql::<sql_types::Jsonb, Pg>::to_sql(&value, &mut out.reborrow())
     }
 }
 

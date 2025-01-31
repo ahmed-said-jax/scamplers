@@ -1,4 +1,6 @@
 #![allow(async_fn_in_trait)]
+#![feature(associated_type_defaults)]
+
 use anyhow::Context;
 use axum::{extract::State, Router};
 use camino::{Utf8Path, Utf8PathBuf};
@@ -14,7 +16,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use serde::Deserialize;
 use tokio::net::TcpListener;
 
-pub mod api;
+mod api;
 pub mod db;
 pub mod schema;
 mod static_files;
@@ -38,7 +40,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         app_state.db_pool.clone(),
     ));
 
-    let app = Router::new().nest("/api", api::router(app_state.clone())).with_state(app_state);
+    let app = Router::new().nest("/api", api::router()).with_state(app_state);
 
     let listener = TcpListener::bind(&app_config.server_addr)
         .await
@@ -127,4 +129,3 @@ async fn sync_with_static_files(
         tracing::info!("completed synchronization with static files");
     }
 }
-
