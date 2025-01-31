@@ -16,7 +16,7 @@ pub struct Institution {
     id: Uuid,
     name: String,
     #[serde(skip_deserializing)]
-    links: Option<Vec<EntityLink>>, // We will generate this, we don't want the user to set it
+    links: Vec<EntityLink>, // We will generate this, we don't want the user to set it
     #[serde(skip_serializing_if = "Option::is_none")]
     ms_tenant_id: Option<Uuid>,
 }
