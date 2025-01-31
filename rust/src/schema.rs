@@ -22,7 +22,7 @@ diesel::table! {
         gems_id -> Uuid,
         specification_id -> Uuid,
         storage_location -> Nullable<Text>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Nullable<Text>>,
     }
 }
 
@@ -62,7 +62,7 @@ diesel::table! {
         multiplexed_suspension_id -> Uuid,
         suspension_volume_loaded -> Measurement,
         buffer_volume_loaded -> Measurement,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -74,7 +74,7 @@ diesel::table! {
         id -> Uuid,
         metadata_id -> Uuid,
         gems_id -> Uuid,
-        metrics_files -> Nullable<Array<Nullable<ParsedMetricsFile>>>,
+        metrics_files -> Nullable<Array<ParsedMetricsFile>>,
         cellranger_web_summary -> Nullable<Text>,
     }
 }
@@ -88,7 +88,7 @@ diesel::table! {
         dual_index_set_name -> Nullable<Text>,
         number_of_sample_index_pcr_cycles -> Int4,
         prepared_at -> Timestamp,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -117,7 +117,7 @@ diesel::table! {
         chip -> Text,
         run_at -> Timestamp,
         succeeded -> Bool,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -225,7 +225,7 @@ diesel::table! {
         legacy_id -> Text,
         date_pooled -> Date,
         tag_type -> Text,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -272,7 +272,7 @@ diesel::table! {
         last_name -> Text,
         email -> Text,
         institution_id -> Uuid,
-        roles -> Array<Nullable<UserRole>>,
+        roles -> Array<UserRole>,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         api_key -> Nullable<Uuid>,
@@ -286,9 +286,9 @@ diesel::table! {
         submitted_by -> Nullable<Uuid>,
         lab_id -> Uuid,
         received_at -> Timestamp,
-        species -> Array<Nullable<Text>>,
+        species -> Array<Text>,
         tissue -> Text,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
         returned_at -> Nullable<Timestamp>,
         returned_by -> Nullable<Uuid>,
     }
@@ -300,7 +300,7 @@ diesel::table! {
         legacy_id -> Text,
         begun_at -> Timestamp,
         finished_at -> Nullable<Timestamp>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -309,7 +309,7 @@ diesel::table! {
         name -> Text,
         kit -> Text,
         well -> Text,
-        sequences -> Array<Nullable<Text>>,
+        sequences -> Array<Text>,
     }
 }
 
@@ -324,7 +324,7 @@ diesel::table! {
         derived_at -> Nullable<Timestamp>,
         embedded_in -> Text,
         preservation_method -> Text,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -352,7 +352,7 @@ diesel::table! {
         multiplexing_tag_id -> Nullable<Uuid>,
         targeted_cell_recovery -> Float4,
         target_reads_per_cell -> Int4,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 

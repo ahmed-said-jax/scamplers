@@ -1,0 +1,178 @@
+diff --git a/rust/src/schema.rs b/rust/src/schema.rs
+index 817234f..8ee50f8 100644
+--- a/rust/src/schema.rs
++++ b/rust/src/schema.rs
+@@ -19,13 +19,13 @@ diesel::table! {
+         id -> Uuid,
+         legacy_id -> Text,
+         prepared_at -> Timestamp,
+         gems_id -> Uuid,
+         specification_id -> Uuid,
+         storage_location -> Nullable<Text>,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Nullable<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     use diesel::sql_types::*;
+     use super::sql_types::Measurement;
+@@ -59,25 +59,25 @@ diesel::table! {
+     chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
+         gem_id -> Uuid,
+         suspension_id -> Uuid,
+         multiplexed_suspension_id -> Uuid,
+         suspension_volume_loaded -> Measurement,
+         buffer_volume_loaded -> Measurement,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     use diesel::sql_types::*;
+     use super::sql_types::ParsedMetricsFile;
+ 
+     chromium_dataset (id) {
+         id -> Uuid,
+         metadata_id -> Uuid,
+         gems_id -> Uuid,
+-        metrics_files -> Nullable<Array<Nullable<ParsedMetricsFile>>>,
++        metrics_files -> Nullable<Array<ParsedMetricsFile>>,
+         cellranger_web_summary -> Nullable<Text>,
+     }
+ }
+ 
+ diesel::table! {
+     chromium_library (id) {
+@@ -85,13 +85,13 @@ diesel::table! {
+         legacy_id -> Text,
+         cdna_id -> Uuid,
+         single_index_set_name -> Nullable<Text>,
+         dual_index_set_name -> Nullable<Text>,
+         number_of_sample_index_pcr_cycles -> Int4,
+         prepared_at -> Timestamp,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     use diesel::sql_types::*;
+     use super::sql_types::Measurement;
+@@ -114,13 +114,13 @@ diesel::table! {
+     chromium_run (id) {
+         id -> Uuid,
+         legacy_id -> Text,
+         chip -> Text,
+         run_at -> Timestamp,
+         succeeded -> Bool,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     chromium_runners (run_id, run_by) {
+         run_id -> Uuid,
+@@ -222,13 +222,13 @@ diesel::table! {
+ diesel::table! {
+     multiplexed_suspension (id) {
+         id -> Uuid,
+         legacy_id -> Text,
+         date_pooled -> Date,
+         tag_type -> Text,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     use diesel::sql_types::*;
+     use super::sql_types::Measurement;
+@@ -269,13 +269,13 @@ diesel::table! {
+     person (id) {
+         id -> Uuid,
+         first_name -> Text,
+         last_name -> Text,
+         email -> Text,
+         institution_id -> Uuid,
+-        roles -> Array<Nullable<UserRole>>,
++        roles -> Array<UserRole>,
+         orcid -> Nullable<Text>,
+         ms_user_id -> Nullable<Uuid>,
+         api_key -> Nullable<Uuid>,
+     }
+ }
+ 
+@@ -283,36 +283,36 @@ diesel::table! {
+     sample_metadata (id) {
+         id -> Uuid,
+         name -> Text,
+         submitted_by -> Nullable<Uuid>,
+         lab_id -> Uuid,
+         received_at -> Timestamp,
+-        species -> Array<Nullable<Text>>,
++        species -> Array<Text>,
+         tissue -> Text,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+         returned_at -> Nullable<Timestamp>,
+         returned_by -> Nullable<Uuid>,
+     }
+ }
+ 
+ diesel::table! {
+     sequencing_run (id) {
+         id -> Uuid,
+         legacy_id -> Text,
+         begun_at -> Timestamp,
+         finished_at -> Nullable<Timestamp>,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     single_index_set (name) {
+         name -> Text,
+         kit -> Text,
+         well -> Text,
+-        sequences -> Array<Nullable<Text>>,
++        sequences -> Array<Text>,
+     }
+ }
+ 
+ diesel::table! {
+     specimen (id) {
+         id -> Uuid,
+@@ -321,13 +321,13 @@ diesel::table! {
+         #[sql_name = "type"]
+         type_ -> Text,
+         derived_from -> Nullable<Uuid>,
+         derived_at -> Nullable<Timestamp>,
+         embedded_in -> Text,
+         preservation_method -> Text,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     use diesel::sql_types::*;
+     use super::sql_types::Measurement;
+@@ -349,13 +349,13 @@ diesel::table! {
+         biological_material -> Text,
+         created_at -> Nullable<Timestamp>,
+         pooled_into_id -> Nullable<Uuid>,
+         multiplexing_tag_id -> Nullable<Uuid>,
+         targeted_cell_recovery -> Float4,
+         target_reads_per_cell -> Int4,
+-        notes -> Nullable<Array<Nullable<Text>>>,
++        notes -> Nullable<Array<Text>>,
+     }
+ }
+ 
+ diesel::table! {
+     use diesel::sql_types::*;
+     use super::sql_types::Measurement;
