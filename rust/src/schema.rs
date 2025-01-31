@@ -183,7 +183,7 @@ diesel::table! {
 diesel::table! {
     institution (id) {
         id -> Uuid,
-        links -> Array<Nullable<Jsonb>>,
+        links -> Array<Jsonb>,
         name -> Text,
         ms_tenant_id -> Nullable<Uuid>,
     }
@@ -272,7 +272,7 @@ diesel::table! {
         last_name -> Text,
         email -> Text,
         institution_id -> Uuid,
-        roles -> Array<Nullable<UserRole>>,
+        roles -> Array<UserRole>,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         api_key -> Nullable<Uuid>,
