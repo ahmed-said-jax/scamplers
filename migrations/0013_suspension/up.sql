@@ -14,6 +14,7 @@ create table multiplexing_tag (
 
 create table suspension (
     id uuid primary key,
+    link text generated always as ('/api/samples/' || id) stored not null,
     legacy_id text unique not null,
     metadata_id uuid references sample_metadata on delete restrict on update restrict,
     parent_specimen_id uuid references specimen on delete restrict on update restrict,

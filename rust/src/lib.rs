@@ -1,8 +1,7 @@
 #![allow(async_fn_in_trait)]
-#![feature(associated_type_defaults)]
 
 use anyhow::Context;
-use axum::{extract::State, Router};
+use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::{
     async_connection_wrapper::AsyncConnectionWrapper,
@@ -16,7 +15,7 @@ use tokio::net::TcpListener;
 mod api;
 pub mod db;
 pub mod schema;
-mod static_files;
+mod seed_data;
 
 const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
@@ -32,10 +31,8 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 
     let app_state = AppState::from_config(&mut app_config).context("failed to create app state")?;
 
-    tokio::spawn(sync_with_static_files(
-        app_config.static_files.clone(),
-        app_state.db_pool.clone(),
-    ));
+    insert_seed_data(&app_config.seed_data_paths, app_state.db_pool.clone()).await.context("failed to insert seed data")?;
+    tracing::info!("inserted seed data");
 
     let app = Router::new()
         .nest("/api", api::router())
@@ -56,7 +53,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 #[derive(Deserialize)]
 struct AppConfig {
     db_url: String, // this url should allow the `scamplers` db user to connect, not root
-    static_files: Vec<Utf8PathBuf>,
+    seed_data_paths: Vec<Utf8PathBuf>,
     server_address: String,
     #[serde(default)]
     production: bool,
@@ -110,21 +107,15 @@ impl AppState {
     }
 }
 
-async fn sync_with_static_files(
-    files: Vec<Utf8PathBuf>,
+async fn insert_seed_data(
+    files: &[Utf8PathBuf],
     db_pool: Pool<AsyncPgConnection>,
 ) -> anyhow::Result<()> {
-    // const THIRTY_MINUTES: u64 = 30 * 60;
+    let mut conn = db_pool.get().await?;
 
-    let mut db_conn = db_pool.get().await?;
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
-
-    loop {
-        interval.tick().await;
-        tracing::info!("synchronizing database with static files");
-
-        static_files::synchronize(&files, &mut db_conn).await;
-
-        tracing::info!("completed synchronization with static files");
+    for file in files {
+        seed_data::insert(file, &mut conn).await?;
     }
+
+    Ok(())
 }

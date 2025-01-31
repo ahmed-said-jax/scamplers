@@ -1,23 +1,21 @@
-diff --git a/rust/src/schema.rs b/rust/src/schema.rs
-index 817234f..8ee50f8 100644
---- a/rust/src/schema.rs
-+++ b/rust/src/schema.rs
-@@ -19,13 +19,13 @@ diesel::table! {
-         id -> Uuid,
+--- src/schema.rs	2025-01-31 16:35:35
++++ src/schema_patch.rs	2025-01-31 16:35:40
+@@ -20,13 +20,13 @@
+         link -> Text,
          legacy_id -> Text,
          prepared_at -> Timestamp,
          gems_id -> Uuid,
          specification_id -> Uuid,
          storage_location -> Nullable<Text>,
 -        notes -> Nullable<Array<Nullable<Text>>>,
-+        notes -> Nullable<Nullable<Text>>,
++        notes -> Nullable<Array<Text>>,
      }
  }
  
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -59,25 +59,25 @@ diesel::table! {
+@@ -60,24 +60,24 @@
      chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
          gem_id -> Uuid,
          suspension_id -> Uuid,
@@ -35,7 +33,6 @@ index 817234f..8ee50f8 100644
  
      chromium_dataset (id) {
          id -> Uuid,
-         metadata_id -> Uuid,
          gems_id -> Uuid,
 -        metrics_files -> Nullable<Array<Nullable<ParsedMetricsFile>>>,
 +        metrics_files -> Nullable<Array<ParsedMetricsFile>>,
@@ -45,7 +42,7 @@ index 817234f..8ee50f8 100644
  
  diesel::table! {
      chromium_library (id) {
-@@ -85,13 +85,13 @@ diesel::table! {
+@@ -86,13 +86,13 @@
          legacy_id -> Text,
          cdna_id -> Uuid,
          single_index_set_name -> Nullable<Text>,
@@ -60,9 +57,9 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -114,13 +114,13 @@ diesel::table! {
-     chromium_run (id) {
+@@ -116,13 +116,13 @@
          id -> Uuid,
+         link -> Text,
          legacy_id -> Text,
          chip -> Text,
          run_at -> Timestamp,
@@ -75,10 +72,10 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      chromium_runners (run_id, run_by) {
          run_id -> Uuid,
-@@ -222,13 +222,13 @@ diesel::table! {
- diesel::table! {
+@@ -229,13 +229,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
+         link -> Text,
          legacy_id -> Text,
          date_pooled -> Date,
          tag_type -> Text,
@@ -90,9 +87,9 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -269,13 +269,13 @@ diesel::table! {
-     person (id) {
+@@ -277,13 +277,13 @@
          id -> Uuid,
+         link -> Text,
          first_name -> Text,
          last_name -> Text,
          email -> Text,
@@ -101,11 +98,11 @@ index 817234f..8ee50f8 100644
 +        roles -> Array<UserRole>,
          orcid -> Nullable<Text>,
          ms_user_id -> Nullable<Uuid>,
-         api_key -> Nullable<Uuid>,
+         api_key_hash -> Nullable<Jsonb>,
      }
  }
  
-@@ -283,36 +283,36 @@ diesel::table! {
+@@ -291,37 +291,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -125,6 +122,7 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      sequencing_run (id) {
          id -> Uuid,
+         link -> Text,
          legacy_id -> Text,
          begun_at -> Timestamp,
          finished_at -> Nullable<Timestamp>,
@@ -146,7 +144,7 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -321,13 +321,13 @@ diesel::table! {
+@@ -331,13 +331,13 @@
          #[sql_name = "type"]
          type_ -> Text,
          derived_from -> Nullable<Uuid>,
@@ -161,7 +159,7 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -349,13 +349,13 @@ diesel::table! {
+@@ -360,13 +360,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,
@@ -176,3 +174,11 @@ index 817234f..8ee50f8 100644
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
+@@ -473,6 +473,7 @@
+     specimen,
+     specimen_measurement,
+     suspension,
+     suspension_measurement,
+     suspension_preparers,
+ );
++

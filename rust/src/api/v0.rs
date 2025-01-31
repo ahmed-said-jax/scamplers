@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use super::{ApiResponse, ApiUser};
 use crate::{
-    db::{self, institution::Institution, Read},
+    db::{self, institution::Institution, person::{Person, User, UserRole}, Read},
     AppState,
 };
 
@@ -26,8 +26,23 @@ pub(super) fn router() -> Router<AppState> {
     router = router
         .route("/", get(|| async { axum::Json(endpoints) }))
         .route(db::Entity::Institution.v0_endpoint(), get(get_institution));
+        // .route(db::Entity::Person.v0_endpoint(), get(generic_get_handler::<Person>));
 
     router
+}
+
+async fn generic_get_handler<T: db::Read + Into<ApiResponse>>(State(state): State<AppState>, id: Option<Path<T::Id>>) -> super::Result<ApiResponse> where Vec<T>: Into<ApiResponse> {
+    let mut conn = state.db_pool.get().await?;
+
+    let Some(Path(id)) = id else {
+        let items = T::fetch_all(&mut conn, Default::default()).await?;
+
+        return Ok(items.into())
+    };
+
+    let item = T::fetch_by_id(&mut conn, id).await?;
+
+    Ok(item.into())
 }
 
 #[debug_handler]
@@ -37,25 +52,18 @@ async fn get_institution(
 ) -> super::Result<ApiResponse> {
     let mut conn = state.db_pool.get().await?;
 
-    if institution_id.is_none() {}
-
     let Some(Path(institution_id)) = institution_id else {
-        let mut institutions = Institution::fetch_all(&mut conn, Default::default()).await?;
+        let institutions = Institution::fetch_all(&mut conn, Default::default()).await?;
 
-        // No need to expose MS tenant IDs
-        for inst in &mut institutions {
-            inst.ms_tenant_id = None;
-        }
-
-        return Ok(ApiResponse::from(institutions));
+        return Ok(ApiResponse::Institutions(institutions));
     };
 
-    let mut institution = Institution::fetch_by_id(&mut conn, institution_id).await?;
+    let institution = Institution::fetch_by_id(&mut conn, institution_id).await?;
 
-    institution.ms_tenant_id = None;
-
-    Ok(ApiResponse::from(institution))
+    Ok(ApiResponse::Institution(institution))
 }
+
+
 
 impl db::Entity {
     pub fn v0_endpoint(&self) -> &'static str {

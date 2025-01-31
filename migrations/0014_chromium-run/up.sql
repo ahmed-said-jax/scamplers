@@ -1,6 +1,7 @@
 -- Your SQL goes here
 create table chromium_run (
     id uuid primary key,
+    link text generated always as ('/api/chromium_runs/' || id) stored not null,
     legacy_id text unique not null,
     chip text not null, -- constrained by Rust enum
     run_at timestamp not null,
@@ -16,6 +17,7 @@ create table chromium_runners (
 
 create table gems (
     id uuid primary key,
+    link text generated always as ('/gems/' || id) stored not null,
     legacy_id text unique not null,
     chromium_run_id uuid references chromium_run on delete restrict on update restrict
 );

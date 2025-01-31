@@ -1,6 +1,7 @@
 -- Your SQL goes here
 create table lab (
     id uuid primary key default gen_random_uuid(),
+    link text generated always as ('/api/labs/' || id) stored not null,
     name text unique not null,
     pi_id uuid references person on delete restrict on update restrict not null,
     delivery_dir text unique not null

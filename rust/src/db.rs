@@ -1,11 +1,12 @@
 use std::str::FromStr;
 
-use diesel::{pg::Pg, result::DatabaseErrorInformation, BoxableExpression, Table};
+use diesel::{backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::{ToSql, WriteTuple}, sql_types::{self, Record, Text}, BoxableExpression, Table};
 use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
+use futures::FutureExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use valuable::Valuable;
+use crate::{api, schema::sql_types as custom_types};
 
 pub mod institution;
 pub mod person;
@@ -24,8 +25,8 @@ pub trait Create {
 }
 
 pub trait Read: Sized {
-    type Id = Uuid;
-    type Filter = ();
+    type Id;
+    type Filter;
 
     async fn fetch_all(conn: &mut AsyncPgConnection, pagination: Pagination) -> Result<Vec<Self>>;
 
@@ -33,7 +34,7 @@ pub trait Read: Sized {
 
     async fn fetch_by_filter(
         conn: &mut AsyncPgConnection,
-        filter: Self::Filter,
+        _filter: Self::Filter,
         pagination: Pagination,
     ) -> Result<Vec<Self>> {
         Self::fetch_all(conn, pagination).await
@@ -46,22 +47,17 @@ pub trait Update {
     async fn update(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
-pub trait Upsert {
-    type Returns;
-    async fn upsert(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
-}
-
-impl<T: Upsert> Upsert for Vec<T> {
+impl<T: Update> Update for Vec<T> {
     type Returns = Vec<T::Returns>;
 
-    async fn upsert(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
-        let mut updated = Vec::with_capacity(self.len());
+    async fn update(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
+        let mut results = Vec::with_capacity(self.len());
 
-        for record in self {
-            updated.push(record.upsert(conn).await?);
+        for item in self {
+            results.push(item.update(conn).await?)
         }
 
-        Ok(updated)
+        Ok(results)
     }
 }
 
