@@ -6,10 +6,7 @@ use axum::{extract::State, Router};
 use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::{
     async_connection_wrapper::AsyncConnectionWrapper,
-    pooled_connection::{
-        deadpool::{Pool},
-        AsyncDieselConnectionManager,
-    },
+    pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager},
     AsyncConnection, AsyncPgConnection,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
@@ -40,7 +37,9 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         app_state.db_pool.clone(),
     ));
 
-    let app = Router::new().nest("/api", api::router()).with_state(app_state);
+    let app = Router::new()
+        .nest("/api", api::router())
+        .with_state(app_state);
 
     let listener = TcpListener::bind(&app_config.server_addr)
         .await

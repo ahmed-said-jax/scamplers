@@ -30,7 +30,11 @@ pub trait Read: Sized {
 
     async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> Result<Self>;
 
-    async fn fetch_by_filter(conn: &mut AsyncPgConnection, filter: Self::Filter, pagination: Pagination) -> Result<Vec<Self>> {
+    async fn fetch_by_filter(
+        conn: &mut AsyncPgConnection,
+        filter: Self::Filter,
+        pagination: Pagination,
+    ) -> Result<Vec<Self>> {
         Self::fetch_all(conn, pagination).await
     }
 }
@@ -63,18 +67,26 @@ impl<T: Upsert> Upsert for Vec<T> {
 #[derive(Deserialize)]
 pub struct Pagination {
     limit: i64,
-    offset: i64
+    offset: i64,
 }
 impl Default for Pagination {
     fn default() -> Self {
         Self {
             limit: 100,
-            offset: 0
+            offset: 0,
         }
     }
 }
 
-#[derive(Debug, Serialize, strum::EnumString, Default, strum::Display, strum::VariantNames, strum::VariantArray)]
+#[derive(
+    Debug,
+    Serialize,
+    strum::EnumString,
+    Default,
+    strum::Display,
+    strum::VariantNames,
+    strum::VariantArray,
+)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum Entity {

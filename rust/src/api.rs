@@ -1,8 +1,14 @@
 use std::str::FromStr;
 
-use axum::{extract::{FromRequestParts}, response::IntoResponse, Router};
+use axum::{extract::FromRequestParts, response::IntoResponse, Router};
 use diesel::{
-    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types::{self, SqlType}
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    prelude::*,
+    serialize::ToSql,
+    sql_types::{self, SqlType},
 };
 use diesel_async::{pooled_connection::deadpool, RunQueryDsl};
 use regex::Regex;
@@ -11,7 +17,11 @@ use serde_json::json;
 use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::{db::{self, person::UserRole, Entity}, schema::sql_types as custom_types, AppState};
+use crate::{
+    db::{self, person::UserRole, Entity},
+    schema::sql_types as custom_types,
+    AppState,
+};
 mod v0;
 
 pub fn router() -> Router<AppState> {
@@ -84,7 +94,7 @@ impl FromRequestParts<AppState> for ApiUser {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum Version {
-    V0
+    V0,
 }
 
 // The following code is commented-out because it needs a bit more thought
@@ -99,12 +109,13 @@ enum Version {
 // impl EntityLink {
 //     pub fn new(api_version: Version, entity: db::Entity, id: Uuid) -> Self {
 //         let pattern = Regex::new(r#"\{.*\}"#).unwrap();
-        
+
 //         let link_template = match api_version {
 //             Version::V0 => entity.v0_endpoint()
 //         };
 
-//         let link = pattern.replace(link_template, id.to_string()).to_string();
+//         let link = pattern.replace(link_template,
+// id.to_string()).to_string();
 
 //         Self {
 //             version: api_version,
@@ -117,8 +128,8 @@ enum Version {
 //     fn from_sql(
 //         bytes: <Pg as Backend>::RawValue<'_>,
 //     ) -> diesel::deserialize::Result<Self> {
-//         let raw = <serde_json::Value as FromSql<sql_types::Jsonb, Pg>>::from_sql(bytes)?;
-//         Ok(serde_json::from_value(raw)?)
+//         let raw = <serde_json::Value as FromSql<sql_types::Jsonb,
+// Pg>>::from_sql(bytes)?;         Ok(serde_json::from_value(raw)?)
 //     }
 // }
 
@@ -164,14 +175,19 @@ impl Error {
 
     fn permission() -> Self {
         // initialize with empty message
-        let mut err = Self::Permission { message: String::new() };
+        let mut err = Self::Permission {
+            message: String::new(),
+        };
 
-        // the `Display` implementation of this error is what we want the serialized error to show in most cases, so just use that
+        // the `Display` implementation of this error is what we want the serialized
+        // error to show in most cases, so just use that
         let intended_message = err.to_string();
 
         // set the error
         match err {
-            Self::Permission { ref mut message } => {message.push_str(&intended_message);},
+            Self::Permission { ref mut message } => {
+                message.push_str(&intended_message);
+            }
             _ => {}
         }
 

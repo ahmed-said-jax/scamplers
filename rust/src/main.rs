@@ -8,7 +8,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let Cli { config_path, log_dir } = Cli::parse();
+    let Cli {
+        config_path,
+        log_dir,
+    } = Cli::parse();
 
     let log_writer = tracing_appender::rolling::daily(log_dir, "scamplers.log");
 

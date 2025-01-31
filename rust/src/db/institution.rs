@@ -3,15 +3,21 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{Create, Read, Pagination, Upsert};
-use crate::{schema};
+use super::{Create, Pagination, Read, Upsert};
+use crate::schema;
 
-
-// We can just use one struct for inserting, upserting, updating, and fetching institutions because they're simple. We also don't need to implement `Update` because `Upsert` works for this case
-#[derive(Insertable, Deserialize, AsChangeset, Clone, Identifiable, Serialize, Queryable, Selectable,)]
+// We can just use one struct for inserting, upserting, updating, and fetching
+// institutions because they're simple. We also don't need to implement `Update`
+// because `Upsert` works for this case
+#[derive(
+    Insertable, Deserialize, AsChangeset, Clone, Identifiable, Serialize, Queryable, Selectable,
+)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 pub struct Institution {
-    #[diesel(skip_insertion)] // The db will generate an ID, we don't want the user to be able to set it. It's just handy to have this in the struct because it allows us to update the institution using its ID if the user does set it
+    #[diesel(skip_insertion)]
+    // The db will generate an ID, we don't want the user to be able to set it. It's just handy to
+    // have this in the struct because it allows us to update the institution using its ID if the
+    // user does set it
     #[serde(default)]
     id: Uuid,
     name: String,
@@ -19,7 +25,8 @@ pub struct Institution {
     ms_tenant_id: Option<Uuid>,
 }
 
-// We don't need to `impl Create` for an individual `Institution` because it's more efficient to just do batches
+// We don't need to `impl Create` for an individual `Institution` because it's
+// more efficient to just do batches
 impl Create for Vec<Institution> {
     type Returns = Vec<Institution>;
 
@@ -56,12 +63,20 @@ impl Upsert for Institution {
     }
 }
 
-// For simplicity, we are using the same 
+// For simplicity, we are using the same
 impl Read for Institution {
-    async fn fetch_all(conn: &mut AsyncPgConnection, Pagination{limit, offset}: Pagination) -> super::Result<Vec<Self>> {
+    async fn fetch_all(
+        conn: &mut AsyncPgConnection,
+        Pagination { limit, offset }: Pagination,
+    ) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
-        let mut institutions = institution.limit(limit).offset(offset).select(Self::as_select()).load(conn).await?;
+        let mut institutions = institution
+            .limit(limit)
+            .offset(offset)
+            .select(Self::as_select())
+            .load(conn)
+            .await?;
 
         // we don't need to expose the `ms_tenant_id`
         for inst in &mut institutions {
@@ -74,7 +89,11 @@ impl Read for Institution {
     async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> super::Result<Self> {
         use schema::institution::dsl::institution;
 
-        let mut found = institution.find(id).select(Self::as_select()).first(conn).await?;
+        let mut found = institution
+            .find(id)
+            .select(Self::as_select())
+            .first(conn)
+            .await?;
         found.ms_tenant_id = None;
 
         Ok(found)
