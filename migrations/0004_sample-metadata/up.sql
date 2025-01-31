@@ -7,7 +7,7 @@ create table sample_metadata (
     received_at timestamp not null,
     species text [] not null, -- constrained by Rust enum
     tissue text not null,
-    experimental_notes text,
+    notes text [],
     returned_at timestamp,
     returned_by uuid references person on delete restrict on update restrict
 );

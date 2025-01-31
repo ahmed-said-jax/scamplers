@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{Create, Read, Pagination, Upsert};
-use crate::{api::EntityLink, schema};
+use crate::{schema};
 
 
 // We can just use one struct for inserting, upserting, updating, and fetching institutions because they're simple. We also don't need to implement `Update` because `Upsert` works for this case
@@ -15,8 +15,6 @@ pub struct Institution {
     #[serde(default)]
     id: Uuid,
     name: String,
-    #[serde(skip_deserializing)]
-    links: Vec<EntityLink>, // We will generate this, we don't want the user to set it
     #[serde(skip_serializing_if = "Option::is_none")]
     ms_tenant_id: Option<Uuid>,
 }
@@ -28,8 +26,10 @@ impl Create for Vec<Institution> {
     async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::institution;
 
+        let as_immut = &*self;
+
         Ok(diesel::insert_into(institution)
-            .values(self)
+            .values(as_immut)
             .returning(Institution::as_returning())
             .get_results(conn)
             .await?)
@@ -39,15 +39,17 @@ impl Create for Vec<Institution> {
 impl Upsert for Institution {
     type Returns = Institution;
 
-    async fn upsert(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn upsert(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::*;
+
+        let as_immut = &*self;
 
         // if an institution with this ID or name exists, update it
         Ok(diesel::insert_into(institution)
-            .values(self)
+            .values(as_immut)
             .on_conflict((id, name))
             .do_update()
-            .set(self)
+            .set(as_immut)
             .returning(Institution::as_returning())
             .get_result(conn)
             .await?)

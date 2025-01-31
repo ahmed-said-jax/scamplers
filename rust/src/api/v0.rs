@@ -1,26 +1,24 @@
-use axum::{extract::{Path, State}, routing::get, Router};
-use itertools::Itertools;
+use axum::{debug_handler, extract::{Path, State}, routing::get, Router};
 use serde_json::json;
 use strum::{VariantArray};
 use uuid::Uuid;
 
 use crate::{db::{self, institution::Institution, Read}, AppState};
 
-use super::{ApiResponse, ApiUser, EntityLink};
+use super::{ApiResponse, ApiUser};
 
-
-pub fn router() -> Router {
+pub (super) fn router() -> Router<AppState> {
     let mut router = Router::new();
 
-    let endpoints = db::Entity::VARIANTS.iter().map(|entity| entity.v0_endpoint()).collect_vec();
+    let endpoints: Vec<&str> = db::Entity::VARIANTS.iter().map(|entity| entity.v0_endpoint()).collect();
     let endpoints = json!({"available_endpoints": endpoints});
 
-
-    router = router.route("/", get(|| async {axum::Json(endpoints)})).route(db::Entity::Institution.v0_endpoint(), get_institution);
+    router = router.route("/", get(|| async {axum::Json(endpoints)})).route(db::Entity::Institution.v0_endpoint(), get(get_institution));
 
     router
 }
 
+#[debug_handler]
 async fn get_institution(State(state): State<AppState>, institution_id: Option<Path<Uuid>>) -> super::Result<ApiResponse> {
     let mut conn = state.db_pool.get().await?;
 

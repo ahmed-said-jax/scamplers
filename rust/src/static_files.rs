@@ -28,7 +28,7 @@ async fn sync_db_with_file(path: &Utf8Path, db_conn: &mut AsyncPgConnection) -> 
     let data: StaticData = serde_json::from_str(&contents)?;
 
     match data {
-        Institutions(new_institutions) => {
+        Institutions(mut new_institutions) => {
             new_institutions.upsert(db_conn).await?;
         }
     }

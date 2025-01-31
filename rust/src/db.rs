@@ -5,7 +5,6 @@ use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use valuable::Valuable;
 
 pub mod institution;
 pub mod person;
@@ -75,7 +74,7 @@ impl Default for Pagination {
     }
 }
 
-#[derive(Debug, Serialize, Valuable, strum::EnumString, Default, strum::Display, strum::VariantNames, strum::VariantArray)]
+#[derive(Debug, Serialize, strum::EnumString, Default, strum::Display, strum::VariantNames, strum::VariantArray)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum Entity {
@@ -90,7 +89,7 @@ pub enum Entity {
     Unknown,
 }
 
-#[derive(thiserror::Error, Debug, Valuable, Serialize)]
+#[derive(thiserror::Error, Debug, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
     #[error("duplicate record")]

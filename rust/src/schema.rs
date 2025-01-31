@@ -75,6 +75,7 @@ diesel::table! {
         metadata_id -> Uuid,
         gems_id -> Uuid,
         metrics_files -> Nullable<Array<Nullable<ParsedMetricsFile>>>,
+        cellranger_web_summary -> Nullable<Text>,
     }
 }
 
@@ -183,7 +184,6 @@ diesel::table! {
 diesel::table! {
     institution (id) {
         id -> Uuid,
-        links -> Array<Jsonb>,
         name -> Text,
         ms_tenant_id -> Nullable<Uuid>,
     }
@@ -272,7 +272,7 @@ diesel::table! {
         last_name -> Text,
         email -> Text,
         institution_id -> Uuid,
-        roles -> Array<UserRole>,
+        roles -> Array<Nullable<UserRole>>,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         api_key -> Nullable<Uuid>,
@@ -288,7 +288,7 @@ diesel::table! {
         received_at -> Timestamp,
         species -> Array<Nullable<Text>>,
         tissue -> Text,
-        experimental_notes -> Nullable<Text>,
+        notes -> Nullable<Array<Nullable<Text>>>,
         returned_at -> Nullable<Timestamp>,
         returned_by -> Nullable<Uuid>,
     }
@@ -300,6 +300,7 @@ diesel::table! {
         legacy_id -> Text,
         begun_at -> Timestamp,
         finished_at -> Nullable<Timestamp>,
+        notes -> Nullable<Array<Nullable<Text>>>,
     }
 }
 

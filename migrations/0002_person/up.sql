@@ -11,7 +11,7 @@ create table person (
     last_name text not null,
     email text unique not null,
     institution_id uuid references institution on delete restrict on update restrict not null,
-    roles user_role[] not null default '{}',
+    roles user_role [] not null default '{}',
     orcid text unique,
     ms_user_id uuid unique,
     api_key uuid unique

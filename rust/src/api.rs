@@ -7,6 +7,7 @@ use diesel::{
 use diesel_async::{pooled_connection::deadpool, RunQueryDsl};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use strum::VariantArray;
 use uuid::Uuid;
 
@@ -86,49 +87,50 @@ enum Version {
     V0
 }
 
-#[derive(Serialize, Deserialize, Debug, FromSqlRow, AsExpression, Clone)]
-#[diesel(sql_type = sql_types::Jsonb)]
-pub struct EntityLink {
-    version: Version,
-    link: String
-}
+// The following code is commented-out because it needs a bit more thought
 
-impl EntityLink {
-    pub fn new(api_version: Version, entity: db::Entity, id: Uuid) -> Self {
-        let pattern = Regex::new(r#"\{.*\}"#).unwrap();
+// #[derive(Serialize, Deserialize, Debug, FromSqlRow, AsExpression, Clone)]
+// #[diesel(sql_type = sql_types::Jsonb)]
+// pub struct EntityLink {
+//     version: Version,
+//     link: String
+// }
+
+// impl EntityLink {
+//     pub fn new(api_version: Version, entity: db::Entity, id: Uuid) -> Self {
+//         let pattern = Regex::new(r#"\{.*\}"#).unwrap();
         
-        let link_template = match api_version {
-            Version::V0 => entity.v0_endpoint()
-        };
+//         let link_template = match api_version {
+//             Version::V0 => entity.v0_endpoint()
+//         };
 
-        let link = pattern.replace(link_template, id.to_string()).to_string();
+//         let link = pattern.replace(link_template, id.to_string()).to_string();
 
-        Self {
-            version: api_version,
-            link
-        }
-    }
-}
+//         Self {
+//             version: api_version,
+//             link
+//         }
+//     }
+// }
 
+// impl FromSql<sql_types::Jsonb, Pg> for EntityLink {
+//     fn from_sql(
+//         bytes: <Pg as Backend>::RawValue<'_>,
+//     ) -> diesel::deserialize::Result<Self> {
+//         let raw = <serde_json::Value as FromSql<sql_types::Jsonb, Pg>>::from_sql(bytes)?;
+//         Ok(serde_json::from_value(raw)?)
+//     }
+// }
 
-impl FromSql<sql_types::Jsonb, Pg> for EntityLink {
-    fn from_sql(
-        bytes: <Pg as Backend>::RawValue<'_>,
-    ) -> diesel::deserialize::Result<Self> {
-        let raw = <serde_json::Value as FromSql<sql_types::Jsonb, Pg>>::from_sql(bytes)?;
-        Ok(serde_json::from_value(raw)?)
-    }
-}
-
-impl ToSql<sql_types::Jsonb, Pg> for EntityLink {
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, Pg>,
-    ) -> diesel::serialize::Result {
-        let value = serde_json::to_value(self)?;
-        ToSql::<sql_types::Jsonb, Pg>::to_sql(&value, &mut out.reborrow())
-    }
-}
+// impl ToSql<sql_types::Jsonb, Pg> for EntityLink {
+//     fn to_sql<'b>(
+//         &'b self,
+//         out: &mut diesel::serialize::Output<'b, '_, Pg>,
+//     ) -> diesel::serialize::Result {
+//         let value = serde_json::to_value(self)?;
+//         ToSql::<sql_types::Jsonb, Pg>::to_sql(&value, &mut out.reborrow())
+//     }
+// }
 
 #[derive(thiserror::Error, Serialize, Debug)]
 #[serde(rename_all = "snake_case", tag = "type")]
