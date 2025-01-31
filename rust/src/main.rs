@@ -18,6 +18,7 @@ async fn main() -> anyhow::Result<()> {
     let filter = tracing_subscriber::filter::Targets::new().with_target("scamplers", Level::INFO);
 
     let layer = tracing_subscriber::fmt::layer()
+        .json()
         .with_writer(log_writer)
         .with_filter(filter);
 

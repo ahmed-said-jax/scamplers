@@ -5,6 +5,7 @@ use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use valuable::Valuable;
 
 pub mod institution;
 pub mod person;
@@ -86,6 +87,7 @@ impl Default for Pagination {
     strum::Display,
     strum::VariantNames,
     strum::VariantArray,
+    Valuable
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -101,7 +103,7 @@ pub enum Entity {
     Unknown,
 }
 
-#[derive(thiserror::Error, Debug, Serialize)]
+#[derive(thiserror::Error, Debug, Serialize, Valuable)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
     #[error("duplicate record")]
@@ -121,7 +123,7 @@ pub enum Error {
     #[error("other error")]
     Other { message: String },
 }
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
     fn from_other_error(err: impl std::error::Error) -> Self {

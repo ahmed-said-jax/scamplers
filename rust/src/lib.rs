@@ -41,14 +41,14 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         .nest("/api", api::router())
         .with_state(app_state);
 
-    let listener = TcpListener::bind(&app_config.server_addr)
+    let listener = TcpListener::bind(&app_config.server_address)
         .await
-        .context(format!("failed to listen on {}", app_config.server_addr))?;
+        .context(format!("failed to listen on {}", app_config.server_address))?;
 
     axum::serve(listener, app)
         .await
         .context("failed to serve app")?;
-    tracing::info!("scamplers server listening on {}", app_config.server_addr);
+    tracing::info!("scamplers server listening on {}", app_config.server_address);
 
     Ok(())
 }
@@ -57,7 +57,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 struct AppConfig {
     db_url: String, // this url should allow the `scamplers` db user to connect, not root
     static_files: Vec<Utf8PathBuf>,
-    server_addr: String,
+    server_address: String,
     #[serde(default)]
     production: bool,
 }
@@ -114,10 +114,10 @@ async fn sync_with_static_files(
     files: Vec<Utf8PathBuf>,
     db_pool: Pool<AsyncPgConnection>,
 ) -> anyhow::Result<()> {
-    const THIRTY_MINUTES: u64 = 30 * 60;
+    // const THIRTY_MINUTES: u64 = 30 * 60;
 
     let mut db_conn = db_pool.get().await?;
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(THIRTY_MINUTES));
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
     loop {
         interval.tick().await;

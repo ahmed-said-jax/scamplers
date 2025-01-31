@@ -82,3 +82,6 @@ docs/_build/
 
 # Environment file
 .env
+
+# Logs written by test run
+*log*

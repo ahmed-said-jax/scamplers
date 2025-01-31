@@ -37,13 +37,22 @@ async fn get_institution(
 ) -> super::Result<ApiResponse> {
     let mut conn = state.db_pool.get().await?;
 
+    if institution_id.is_none() {}
+
     let Some(Path(institution_id)) = institution_id else {
-        let institutions = Institution::fetch_all(&mut conn, Default::default()).await?;
+        let mut institutions = Institution::fetch_all(&mut conn, Default::default()).await?;
+
+        // No need to expose MS tenant IDs
+        for inst in &mut institutions {
+            inst.ms_tenant_id = None;
+        }
 
         return Ok(ApiResponse::from(institutions));
     };
 
-    let institution = Institution::fetch_by_id(&mut conn, institution_id).await?;
+    let mut institution = Institution::fetch_by_id(&mut conn, institution_id).await?;
+
+    institution.ms_tenant_id = None;
 
     Ok(ApiResponse::from(institution))
 }

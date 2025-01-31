@@ -22,7 +22,7 @@ pub struct Institution {
     id: Uuid,
     name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    ms_tenant_id: Option<Uuid>,
+    pub ms_tenant_id: Option<Uuid>,
 }
 
 // We don't need to `impl Create` for an individual `Institution` because it's
@@ -51,15 +51,13 @@ impl Upsert for Institution {
 
         let as_immut = &*self;
 
-        // if an institution with this ID or name exists, update it
-        Ok(diesel::insert_into(institution)
-            .values(as_immut)
-            .on_conflict((id, name))
-            .do_update()
-            .set(as_immut)
-            .returning(Institution::as_returning())
-            .get_result(conn)
-            .await?)
+        let base_stmt = diesel::insert_into(institution).values(as_immut);
+
+        if as_immut.id.is_nil() {
+            Ok(base_stmt.on_conflict(name).do_update().set(as_immut).returning(Self::as_returning()).get_result(conn).await?)
+        } else {
+            Ok(base_stmt.on_conflict(id).do_update().set(as_immut).returning(Self::as_returning()).get_result(conn).await?)
+        }
     }
 }
 
@@ -78,11 +76,6 @@ impl Read for Institution {
             .load(conn)
             .await?;
 
-        // we don't need to expose the `ms_tenant_id`
-        for inst in &mut institutions {
-            inst.ms_tenant_id = None;
-        }
-
         Ok(institutions)
     }
 
@@ -94,7 +87,6 @@ impl Read for Institution {
             .select(Self::as_select())
             .first(conn)
             .await?;
-        found.ms_tenant_id = None;
 
         Ok(found)
     }
