@@ -67,15 +67,16 @@ impl Read for Institution {
     type Id = Uuid;
     type Filter = ();
 
-    async fn fetch_all(
+    async fn fetch_many(
         conn: &mut AsyncPgConnection,
-        Pagination { limit, offset }: Pagination,
+        _filter: Option<&Self::Filter>,
+        Pagination { limit, offset }: &Pagination,
     ) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
         let institutions = institution
-            .limit(limit)
-            .offset(offset)
+            .limit(*limit)
+            .offset(*offset)
             .select(Self::as_select())
             .load(conn)
             .await?;

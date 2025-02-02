@@ -1,5 +1,5 @@
---- src/schema.rs	2025-01-31 16:35:35
-+++ src/schema_patch.rs	2025-01-31 16:35:40
+--- src/schema.rs	2025-02-02 11:19:05
++++ src/schema_patch.rs	2025-02-02 11:19:17
 @@ -20,13 +20,13 @@
          link -> Text,
          legacy_id -> Text,
@@ -87,11 +87,11 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -277,13 +277,13 @@
-         id -> Uuid,
+@@ -278,13 +278,13 @@
          link -> Text,
          first_name -> Text,
          last_name -> Text,
+         full_name -> Text,
          email -> Text,
          institution_id -> Uuid,
 -        roles -> Array<Nullable<UserRole>>,
@@ -102,7 +102,7 @@
      }
  }
  
-@@ -291,37 +291,37 @@
+@@ -292,37 +292,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -144,7 +144,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -331,13 +331,13 @@
+@@ -332,13 +332,13 @@
          #[sql_name = "type"]
          type_ -> Text,
          derived_from -> Nullable<Uuid>,
@@ -159,7 +159,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -360,13 +360,13 @@
+@@ -361,13 +361,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,
@@ -174,7 +174,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -473,6 +473,7 @@
+@@ -474,6 +474,7 @@
      specimen,
      specimen_measurement,
      suspension,

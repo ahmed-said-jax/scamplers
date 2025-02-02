@@ -34,20 +34,6 @@ pub fn router() -> Router<AppState> {
     v0::router()
 }
 
-#[derive(Serialize)]
-#[serde(untagged)]
-enum ApiResponse {
-    Institution(db::institution::Institution),
-    Institutions(Vec<db::institution::Institution>),
-    Person(db::person::Person),
-    People(Vec<db::person::Person>)
-}
-
-impl IntoResponse for ApiResponse {
-    fn into_response(self) -> axum::response::Response {
-        axum::Json(self).into_response()
-    }
-}
 
 struct ApiUser(db::person::User);
 
@@ -84,27 +70,6 @@ impl FromRequestParts<AppState> for ApiUser {
         let mut conn = state.db_pool.get().await?;
 
         ApiUser::fetch_by_api_key(&mut conn, api_key).await
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, FromSqlRow, AsExpression, strum::EnumString, strum::IntoStaticStr)]
-#[diesel(sql_type = sql_types::Text)]
-#[serde(rename_all = "snake_case")]
-pub enum Version {
-    V0,
-}
-
-impl FromSql<sql_types::Text, Pg> for Version {
-    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
-        Ok(Self::from_str(&raw).unwrap())
-    }
-}
-
-impl ToSql<sql_types::Text, Pg> for Version {
-    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let as_str: &str = self.into();
-        ToSql::<sql_types::Text, Pg>::to_sql(as_str, out)
     }
 }
 

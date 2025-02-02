@@ -278,6 +278,7 @@ diesel::table! {
         link -> Text,
         first_name -> Text,
         last_name -> Text,
+        full_name -> Text,
         email -> Text,
         institution_id -> Uuid,
         roles -> Array<UserRole>,

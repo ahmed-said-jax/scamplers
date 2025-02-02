@@ -28,17 +28,9 @@ pub trait Read: Sized {
     type Id;
     type Filter;
 
-    async fn fetch_all(conn: &mut AsyncPgConnection, pagination: Pagination) -> Result<Vec<Self>>;
+    async fn fetch_many(conn: &mut AsyncPgConnection, filter: Option<&Self::Filter>, pagination: &Pagination) -> Result<Vec<Self>>;
 
     async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> Result<Self>;
-
-    async fn fetch_by_filter(
-        conn: &mut AsyncPgConnection,
-        _filter: Self::Filter,
-        pagination: Pagination,
-    ) -> Result<Vec<Self>> {
-        Self::fetch_all(conn, pagination).await
-    }
 }
 
 pub trait Update {

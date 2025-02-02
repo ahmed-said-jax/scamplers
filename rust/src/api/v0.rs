@@ -1,16 +1,15 @@
 use axum::{
-    debug_handler,
-    extract::{Path, State},
-    routing::get,
-    Router,
+    debug_handler, extract::{Path, State}, response::IntoResponse, routing::get, Router
 };
+use axum_extra::extract::Query;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
 use strum::VariantArray;
 use uuid::Uuid;
 
 use super::{ApiResponse, ApiUser};
 use crate::{
-    db::{self, institution::Institution, person::{Person, User, UserRole}, Read},
+    db::{self, institution::Institution, person::{Person, User, UserRole}, Pagination, Read},
     AppState,
 };
 
@@ -25,42 +24,41 @@ pub(super) fn router() -> Router<AppState> {
 
     router = router
         .route("/", get(|| async { axum::Json(endpoints) }))
-        .route(db::Entity::Institution.v0_endpoint(), get(get_institution));
+        .route("/institutions", get(handle_get_many::<Institution>));
         // .route(db::Entity::Person.v0_endpoint(), get(generic_get_handler::<Person>));
 
     router
 }
 
-async fn generic_get_handler<T: db::Read + Into<ApiResponse>>(State(state): State<AppState>, id: Option<Path<T::Id>>) -> super::Result<ApiResponse> where Vec<T>: Into<ApiResponse> {
+#[derive(Deserialize)]
+struct FilterWithPagination<F> {
+    #[serde(flatten)]
+    filter: F,
+    #[serde(flatten)]
+    pagination: Pagination
+}
+
+async fn handle_get_by_id<T: db::Read + Serialize>(State(state): State<AppState>, Path(id): Path<T::Id>) -> super::Result<axum::Json<T>> {
     let mut conn = state.db_pool.get().await?;
-
-    let Some(Path(id)) = id else {
-        let items = T::fetch_all(&mut conn, Default::default()).await?;
-
-        return Ok(items.into())
-    };
 
     let item = T::fetch_by_id(&mut conn, id).await?;
 
-    Ok(item.into())
+    Ok(axum::Json(item))
 }
 
-#[debug_handler]
-async fn get_institution(
-    State(state): State<AppState>,
-    institution_id: Option<Path<Uuid>>,
-) -> super::Result<ApiResponse> {
+
+async fn handle_get_many<T: db::Read + Serialize>(State(state): State<AppState>, query: Option<Query<FilterWithPagination<T::Filter>>>) -> super::Result<axum::Json<Vec<T>>> {
     let mut conn = state.db_pool.get().await?;
 
-    let Some(Path(institution_id)) = institution_id else {
-        let institutions = Institution::fetch_all(&mut conn, Default::default()).await?;
+    if let Some(query) = query {
+        let items = T::fetch_many(&mut conn, Some(&query.filter), &query.pagination).await?;
 
-        return Ok(ApiResponse::Institutions(institutions));
-    };
+        Ok(axum::Json(items))
+    } else {
+        let items = T::fetch_many(&mut conn, None, &Default::default()).await?;
 
-    let institution = Institution::fetch_by_id(&mut conn, institution_id).await?;
-
-    Ok(ApiResponse::Institution(institution))
+        Ok(axum::Json(items))
+    }
 }
 
 

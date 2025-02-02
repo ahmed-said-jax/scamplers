@@ -1,13 +1,7 @@
-use std::str::FromStr;
+use std::{borrow::Borrow, str::FromStr};
 
 use diesel::{
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{self, SqlType},
+    backend::Backend, deserialize::{FromSql, FromSqlRow}, dsl::InnerJoinQuerySource, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types::{self, SqlType}
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
@@ -16,9 +10,9 @@ use strum::VariantArray;
 use uuid::Uuid;
 
 use super::{institution::Institution, Create, Pagination, Read};
-use crate::schema::{self, cdna::BoxedQuery, sql_types as custom_types};
+use crate::{api::api_key, schema::{institution, person, sql_types as custom_types}};
 use crate::api::api_key::{AsApiKey, ApiKeyHash2};
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use argon2::{password_hash::rand_core::le, Argon2, PasswordHash, PasswordVerifier};
 
 #[derive(
     Clone,
@@ -77,22 +71,15 @@ impl User {
     }
 }
 
+
 impl Read for User {
     type Id = Uuid;
     type Filter = ();
 
-    async fn fetch_all(
-        conn: &mut AsyncPgConnection,
-        pagination: Pagination,
-    ) -> super::Result<Vec<Self>> {
-        use crate::schema::person::dsl::person;
+    async fn fetch_many(conn: &mut AsyncPgConnection, _filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination) -> super::Result<Vec<Self>> {
+        use crate::schema::person::dsl::*;
 
-        Ok(person
-            .limit(pagination.limit)
-            .offset(pagination.offset)
-            .select(Self::as_select())
-            .load(conn)
-            .await?)
+        Ok(person.limit(*limit).offset(*offset).select(Self::as_select()).load(conn).await?)
     }
 
     async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> super::Result<Self> {
@@ -145,18 +132,16 @@ impl Create for Vec<NewPerson> {
 
     async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use crate::schema::person::dsl::*;
-        use crate::schema::institution;
         
         let as_immut = &*self;
 
-        let inserted_ids: Vec<Uuid> = diesel::insert_into(person).values(as_immut).returning(id).get_results(conn).await?;
+        let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person).values(as_immut).returning(id).get_results(conn).await?;
+        let n = inserted_people_ids.len() as i64;
 
-        let people: Vec<(PersonRow, Institution)> = person.inner_join(institution::table).select((PersonRow::as_select(), Institution::as_select())).filter(id.eq_any(inserted_ids)).load(conn).await?;
+        let filter = PersonFilter {ids: inserted_people_ids, ..Default::default()};
+        let inserted_people = Person::fetch_many(conn, Some(&filter), &Pagination {limit: n, ..Default::default()}).await?;
 
-        // Does this incur copying?
-        let people = people.into_iter().map(|(inner, institution)| Person {inner, institution}).collect();
-
-        Ok(people)
+        Ok(inserted_people)
     }
 }
 
@@ -170,25 +155,70 @@ struct PersonRow {
     orcid: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Queryable, Selectable)]
+#[diesel(table_name = schema::person, check_for_backend(Pg))]
 pub struct Person {
     #[serde(flatten)]
-    inner: PersonRow,
+    #[diesel(embed)]
+    person: PersonRow,
+    #[diesel(embed)]
     institution: Institution
+}
+
+#[derive(Deserialize, Default)]
+pub struct PersonFilter {
+    ids: Vec<Uuid>,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    email: Option<String>,
+    lab_id: Option<Uuid>
+}
+
+impl Person {
+    #[diesel::dsl::auto_type(no_type_alias)]
+    fn base_query() -> _ {
+        person::table.inner_join(institution::table)
+    }
 }
 
 impl Read for Person {
     type Id = Uuid;
-    type Filter = ();
+    type Filter = PersonFilter;
 
-    // how do we reus this
-    async fn fetch_all(conn: &mut AsyncPgConnection, pagination: Pagination) -> super::Result<Vec<Self>> {
-        use crate::schema::{person::dsl::*, institution};
+    async fn fetch_by_id(conn: &mut AsyncPgConnection, person_id: Self::Id) -> super::Result<Self> {
+        let base_query = Self::base_query().select(Self::as_select()); // I want to factor out this whole expression into `Self::base_query`, but it doesn't work
 
-        let people = person.inner_join(institution::table).select((PersonRow::as_select(), Institution::as_select())).load(conn).await?;
-
-        Ok(people.into_iter().map(|(inner, institution)| Person {inner, institution}).collect())
+        Ok(base_query.filter(person::id.eq(person_id)).first(conn).await?)
     }
 
+    async fn fetch_many(conn: &mut AsyncPgConnection, filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination) -> super::Result<Vec<Self>> {
+        use person::dsl::{id, first_name as fname_col, last_name as lname_col, email as email_col};
 
+        let mut base_query = Self::base_query().into_boxed().select(Self::as_select()).limit(*limit).offset(*offset);
+
+        let Some(PersonFilter {ids, first_name, last_name, email, lab_id}) = filter else {
+            return Ok(base_query.load(conn).await?);
+        };
+
+        if !ids.is_empty() {
+            base_query = base_query.filter(id.eq_any(ids));
+        }
+
+        // These next three conditions are the same - how do we make it less repetetive
+        if let Some(first_name) = first_name {
+            base_query = base_query.filter(fname_col.ilike(format!("{first_name}%")));
+        }
+
+        if let Some(last_name) = last_name {
+            base_query = base_query.filter(lname_col.ilike(format!("{last_name}%")));
+        }
+
+        if let Some(email) = email {
+            base_query = base_query.filter(email_col.ilike(format!("{email}%")));
+        }
+
+        // ignore lab_id for now
+        Ok(base_query.load(conn).await?)
+
+    }
 }

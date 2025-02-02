@@ -10,6 +10,7 @@ create table person (
     link text generated always as ('/api/people/' || id) stored not null,
     first_name text not null,
     last_name text not null,
+    full_name text generated always as (first_name || ' ' || last_name) stored not null,
     email text unique not null,
     institution_id uuid references institution on delete restrict on update restrict not null,
     roles user_role [] not null default '{}',

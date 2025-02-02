@@ -29,10 +29,9 @@ whoami = "1.5.2"
 anyhow = "1.0.95"
 axum = { version = "0.8.1", default-features = false, features = ["http2", "json", "macros", "query", "tokio"] }
 axum-extra = { version = "0.10.0", features = ["query"] }
-serde_with = "3.12.0"
 config = { version = "0.15.6", default-features = false, features = ["toml"] }
 serde_json = { version = "1.0.137", features = ["arbitrary_precision"] }
-diesel = {version = "2.2.6", default-features = false, features = ["without-deprecated", "chrono", "uuid", "serde_json"]}
+diesel = {version = "2.2.7", default-features = false, features = ["without-deprecated", "chrono", "uuid", "serde_json"]}
 chrono = { version = "0.4.39", features = ["serde"]}
 futures = {version = "0.3.31" }
 diesel_migrations ={ version = "2.2.0", features = ["postgres"]}
