@@ -1,7 +1,7 @@
 use diesel::{pg::Pg, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use futures::FutureExt;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, Update};
@@ -10,8 +10,9 @@ use crate::schema;
 // We can just use one struct for inserting, upserting, updating, and fetching
 // institutions because they're simple. We also don't need to implement `Update`
 // because `Upsert` works for this case
-#[derive(Insertable, Deserialize, Clone)]
+#[derive(Insertable, Deserialize, Clone, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
+#[ts(export)]
 pub struct NewInstitution {
     name: String,
     ms_tenant_id: Option<Uuid>,
@@ -37,8 +38,10 @@ impl Create for Vec<NewInstitution> {
     }
 }
 
-#[derive(Identifiable, AsChangeset, Deserialize)]
+// It's unlikely we'll need this, but it serves as a simple example for the patterns I want to establish in this package
+#[derive(Identifiable, AsChangeset, Deserialize, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
+#[ts(export)]
 struct UpdatedInstitution {
     id: Uuid,
     name: Option<String>,
@@ -59,8 +62,9 @@ impl Update for UpdatedInstitution {
     }
 }
 
-#[derive(Queryable, Selectable, Serialize)]
+#[derive(Queryable, Selectable, Serialize, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
+#[ts(export)]
 pub struct Institution {
     id: Uuid,
     name: String,

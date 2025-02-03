@@ -14,6 +14,7 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use strum::VariantArray;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
@@ -34,9 +35,12 @@ use crate::{
     PartialEq,
     Deserialize,
     Serialize,
+    TS
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = custom_types::UserRole)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum UserRole {
     Admin,
     ComputationalStaff,
@@ -112,7 +116,8 @@ impl User {
     }
 }
 
-#[derive(Insertable, Validate)]
+// We don't export this to TypeScript because people will be created using Microsoft authentication rather than in the frontend
+#[derive(Insertable, Validate, Deserialize)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 struct NewPerson {
@@ -158,7 +163,7 @@ impl Create for Vec<NewPerson> {
 }
 
 // Do we like this struct name? Or is something like `PersonData` better
-#[derive(Queryable, Selectable, Serialize)]
+#[derive(Queryable, Selectable, Serialize, TS)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct PersonRow {
     id: Uuid,
@@ -168,8 +173,9 @@ pub struct PersonRow {
     orcid: Option<String>,
 }
 
-#[derive(Serialize, Queryable, Selectable)]
+#[derive(Serialize, Queryable, Selectable, TS)]
 #[diesel(table_name = schema::person, check_for_backend(Pg))]
+#[ts(export)]
 pub struct Person {
     #[serde(flatten)]
     #[diesel(embed)]
@@ -178,12 +184,12 @@ pub struct Person {
     institution: Institution,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, TS)]
+#[ts(export)]
 pub struct PersonFilter {
     ids: Vec<Uuid>,
     name: Option<String>,
-    email: Option<String>,
-    lab_id: Option<Uuid>,
+    email: Option<String>
 }
 
 impl Person {
@@ -223,7 +229,6 @@ impl Read for Person {
             ids,
             name,
             email,
-            lab_id,
         }) = filter
         else {
             return Ok(base_query.load(conn).await?);
@@ -247,3 +252,4 @@ impl Read for Person {
         Ok(base_query.load(conn).await?)
     }
 }
+
