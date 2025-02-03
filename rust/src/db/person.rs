@@ -54,7 +54,7 @@ impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
 
 // This represents a person as a user of the application. It should be a read-only view
 #[derive(Selectable, Queryable, Clone)]
-#[diesel(table_name = crate::schema::person, check_for_backend(Pg))]
+#[diesel(table_name = person, check_for_backend(Pg))]
 pub struct User {
     pub id: Uuid,
     pub roles: Vec<UserRole>,
@@ -71,21 +71,17 @@ impl User {
     }
 }
 
-
+// We actually don't need this impl block
 impl Read for User {
     type Id = Uuid;
     type Filter = ();
 
     async fn fetch_many(conn: &mut AsyncPgConnection, _filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination) -> super::Result<Vec<Self>> {
-        use crate::schema::person::dsl::*;
-
-        Ok(person.limit(*limit).offset(*offset).select(Self::as_select()).load(conn).await?)
+        Ok(person::table.limit(*limit).offset(*offset).select(Self::as_select()).load(conn).await?)
     }
 
     async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> super::Result<Self> {
-        use crate::schema::person::dsl::person;
-
-        Ok(person
+        Ok(person::table
             .find(id)
             .select(Self::as_select())
             .first(conn)
@@ -95,11 +91,11 @@ impl Read for User {
 
 impl User {
     pub async fn fetch_by_api_key(conn: &mut AsyncPgConnection, api_key: Uuid, ) -> super::Result<Self> {
-        use crate::schema::person::dsl::*;
+        use person::dsl::api_key_hash;
 
         let prefix = api_key.prefix();
 
-        let found = person.filter(api_key_hash.retrieve_as_text("prefix").eq(prefix)).select(Self::as_select()).first(conn).await?;
+        let found = person::table.filter(api_key_hash.retrieve_as_text("prefix").eq(prefix)).select(Self::as_select()).first(conn).await?;
 
         let Some(ref found_api_key_hash) = found.api_key_hash else {
             return Err(super::Error::RecordNotFound);
@@ -116,7 +112,7 @@ impl User {
 }
 
 #[derive(Insertable, Validate)]
-#[diesel(table_name = crate::schema::person, check_for_backend(Pg))]
+#[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 struct NewPerson {
     first_name: String,
@@ -131,11 +127,11 @@ impl Create for Vec<NewPerson> {
     type Returns = Vec<Person>;
 
     async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        use crate::schema::person::dsl::*;
+        use person::dsl::id;
         
         let as_immut = &*self;
 
-        let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person).values(as_immut).returning(id).get_results(conn).await?;
+        let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table).values(as_immut).returning(id).get_results(conn).await?;
         let n = inserted_people_ids.len() as i64;
 
         let filter = PersonFilter {ids: inserted_people_ids, ..Default::default()};
@@ -145,12 +141,13 @@ impl Create for Vec<NewPerson> {
     }
 }
 
+// Do we like this struct name? Or is something like `PersonData` better
 #[derive(Queryable, Selectable, Serialize)]
-#[diesel(table_name = crate::schema::person, check_for_backend(Pg))]
+#[diesel(table_name = person, check_for_backend(Pg))]
 struct PersonRow {
     id: Uuid,
-    first_name: String,
-    last_name: String,
+    #[diesel(column_name = full_name)]
+    name: String,
     email: String,
     orcid: Option<String>,
 }
@@ -168,8 +165,7 @@ pub struct Person {
 #[derive(Deserialize, Default)]
 pub struct PersonFilter {
     ids: Vec<Uuid>,
-    first_name: Option<String>,
-    last_name: Option<String>,
+    name: Option<String>,
     email: Option<String>,
     lab_id: Option<Uuid>
 }
@@ -192,11 +188,11 @@ impl Read for Person {
     }
 
     async fn fetch_many(conn: &mut AsyncPgConnection, filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination) -> super::Result<Vec<Self>> {
-        use person::dsl::{id, first_name as fname_col, last_name as lname_col, email as email_col};
+        use person::dsl::{id, full_name as name_col, email as email_col};
 
         let mut base_query = Self::base_query().into_boxed().select(Self::as_select()).limit(*limit).offset(*offset);
 
-        let Some(PersonFilter {ids, first_name, last_name, email, lab_id}) = filter else {
+        let Some(PersonFilter {ids, name, email, lab_id}) = filter else {
             return Ok(base_query.load(conn).await?);
         };
 
@@ -204,13 +200,9 @@ impl Read for Person {
             base_query = base_query.filter(id.eq_any(ids));
         }
 
-        // These next three conditions are the same - how do we make it less repetetive
-        if let Some(first_name) = first_name {
-            base_query = base_query.filter(fname_col.ilike(format!("{first_name}%")));
-        }
-
-        if let Some(last_name) = last_name {
-            base_query = base_query.filter(lname_col.ilike(format!("{last_name}%")));
+        // The next two conditions are pretty much the same thing, there's probably some way to improve this
+        if let Some(name) = name {
+            base_query = base_query.filter(name_col.ilike(format!("%{name}%"))); // Notice we allow for any characters on either side of the string, so that a person can search by last name if that's all they remember
         }
 
         if let Some(email) = email {
