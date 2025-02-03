@@ -4,7 +4,7 @@ use diesel::{backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::A
 use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
 use futures::FutureExt;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use valuable::Valuable;
 use crate::{api, schema::sql_types as custom_types};
 
@@ -24,13 +24,13 @@ pub trait Create {
     async fn create(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
-pub trait Read: Sized {
+pub trait Read: Serialize + Sized {
     type Id;
     type Filter;
 
-    async fn fetch_many(conn: &mut AsyncPgConnection, filter: Option<&Self::Filter>, pagination: &Pagination) -> Result<Vec<Self>>;
+    async fn fetch_many(filter: Option<&Self::Filter>, pagination: &Pagination, conn: &mut AsyncPgConnection, ) -> Result<Vec<Self>>;
 
-    async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> Result<Self>;
+    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> Result<Self>;
 }
 
 pub trait Update {
@@ -51,6 +51,10 @@ impl<T: Update> Update for Vec<T> {
 
         Ok(results)
     }
+}
+
+pub trait ReadRelatives<T: Read>: DeserializeOwned {
+    async fn fetch_relatives(&self, filter: Option<&T::Filter>, pagination: &Pagination, conn: &mut AsyncPgConnection) -> Result<Vec<T>>;
 }
 
 #[derive(Deserialize)]

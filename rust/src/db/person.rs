@@ -71,24 +71,6 @@ impl User {
     }
 }
 
-// We actually don't need this impl block
-impl Read for User {
-    type Id = Uuid;
-    type Filter = ();
-
-    async fn fetch_many(conn: &mut AsyncPgConnection, _filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination) -> super::Result<Vec<Self>> {
-        Ok(person::table.limit(*limit).offset(*offset).select(Self::as_select()).load(conn).await?)
-    }
-
-    async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> super::Result<Self> {
-        Ok(person::table
-            .find(id)
-            .select(Self::as_select())
-            .first(conn)
-            .await?)
-    }
-}
-
 impl User {
     pub async fn fetch_by_api_key(conn: &mut AsyncPgConnection, api_key: Uuid, ) -> super::Result<Self> {
         use person::dsl::api_key_hash;
@@ -135,7 +117,7 @@ impl Create for Vec<NewPerson> {
         let n = inserted_people_ids.len() as i64;
 
         let filter = PersonFilter {ids: inserted_people_ids, ..Default::default()};
-        let inserted_people = Person::fetch_many(conn, Some(&filter), &Pagination {limit: n, ..Default::default()}).await?;
+        let inserted_people = Person::fetch_many(Some(&filter), &Pagination {limit: n, ..Default::default()}, conn).await?;
 
         Ok(inserted_people)
     }
@@ -144,7 +126,7 @@ impl Create for Vec<NewPerson> {
 // Do we like this struct name? Or is something like `PersonData` better
 #[derive(Queryable, Selectable, Serialize)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-struct PersonRow {
+pub struct PersonRow {
     id: Uuid,
     #[diesel(column_name = full_name)]
     name: String,
@@ -181,13 +163,13 @@ impl Read for Person {
     type Id = Uuid;
     type Filter = PersonFilter;
 
-    async fn fetch_by_id(conn: &mut AsyncPgConnection, person_id: Self::Id) -> super::Result<Self> {
+    async fn fetch_by_id(person_id: Self::Id, conn: &mut AsyncPgConnection, ) -> super::Result<Self> {
         let base_query = Self::base_query().select(Self::as_select()); // I want to factor out this whole expression into `Self::base_query`, but it doesn't work
 
         Ok(base_query.filter(person::id.eq(person_id)).first(conn).await?)
     }
 
-    async fn fetch_many(conn: &mut AsyncPgConnection, filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination) -> super::Result<Vec<Self>> {
+    async fn fetch_many(filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination, conn: &mut AsyncPgConnection, ) -> super::Result<Vec<Self>> {
         use person::dsl::{id, full_name as name_col, email as email_col};
 
         let mut base_query = Self::base_query().into_boxed().select(Self::as_select()).limit(*limit).offset(*offset);

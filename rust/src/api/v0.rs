@@ -7,13 +7,15 @@ use serde_json::json;
 use strum::VariantArray;
 use uuid::Uuid;
 
-use super::{ApiResponse, ApiUser};
+use super::ApiUser;
 use crate::{
     db::{self, institution::Institution, person::{Person, User, UserRole}, Pagination, Read},
     AppState,
 };
 
 pub(super) fn router() -> Router<AppState> {
+    use handlers::*;
+
     let mut router = Router::new();
 
     let endpoints: Vec<&str> = db::Entity::VARIANTS
@@ -24,8 +26,10 @@ pub(super) fn router() -> Router<AppState> {
 
     router = router
         .route("/", get(|| async { axum::Json(endpoints) }))
-        .route("/institutions", get(handle_get_many::<Institution>));
-        // .route(db::Entity::Person.v0_endpoint(), get(generic_get_handler::<Person>));
+        .route("/institutions", get(by_filter::<Institution>))
+        .route("/institutions/{institution_id}", get(by_id::<Institution>))
+        .route("/people", get(by_filter::<Person>))
+        .route("/people/{person_id}", get(by_id::<Person>));
 
     router
 }
@@ -33,31 +37,41 @@ pub(super) fn router() -> Router<AppState> {
 #[derive(Deserialize)]
 struct FilterWithPagination<F> {
     #[serde(flatten)]
-    filter: F,
+    #[serde(default)]
+    filter: Option<F>,
     #[serde(flatten)]
+    #[serde(default)]
     pagination: Pagination
 }
 
-async fn handle_get_by_id<T: db::Read + Serialize>(State(state): State<AppState>, Path(id): Path<T::Id>) -> super::Result<axum::Json<T>> {
-    let mut conn = state.db_pool.get().await?;
+mod handlers {
+    use crate::{db, AppState, api};
+    use axum::extract::{State, Path};
+    use axum_extra::extract::Query;
+    use super::FilterWithPagination;
 
-    let item = T::fetch_by_id(&mut conn, id).await?;
+    pub async fn by_id<T: db::Read>(State(state): State<AppState>, Path(id): Path<T::Id>) -> api::Result<axum::Json<T>> {
+        let mut conn = state.db_pool.get().await?;
+    
+        let item = T::fetch_by_id(id, &mut conn).await?;
+    
+        Ok(axum::Json(item))
+    }
 
-    Ok(axum::Json(item))
-}
+    pub async fn by_filter<T: db::Read>(State(state): State<AppState>, Query(query): Query<FilterWithPagination<T::Filter>>) -> api::Result<axum::Json<Vec<T>>> {
+        let mut conn = state.db_pool.get().await?;
 
-
-async fn handle_get_many<T: db::Read + Serialize>(State(state): State<AppState>, query: Option<Query<FilterWithPagination<T::Filter>>>) -> super::Result<axum::Json<Vec<T>>> {
-    let mut conn = state.db_pool.get().await?;
-
-    if let Some(query) = query {
-        let items = T::fetch_many(&mut conn, Some(&query.filter), &query.pagination).await?;
+        let items = T::fetch_many(query.filter.as_ref(), &query.pagination, &mut conn).await?;
 
         Ok(axum::Json(items))
-    } else {
-        let items = T::fetch_many(&mut conn, None, &Default::default()).await?;
+    }
 
-        Ok(axum::Json(items))
+    pub async fn by_relationship<T, U>(State(state): State<AppState>, Path(id): Path<T>, Query(query): Query<FilterWithPagination<U::Filter>>) -> api::Result<axum::Json<Vec<U>>> where T: db::ReadRelatives<U>, U: db::Read {
+        let mut conn = state.db_pool.get().await?;
+
+        let relatives = id.fetch_relatives(query.filter.as_ref(), &query.pagination, &mut conn).await?;
+
+        Ok(axum::Json(relatives))
     }
 }
 

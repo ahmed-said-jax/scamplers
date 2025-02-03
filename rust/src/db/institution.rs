@@ -68,9 +68,9 @@ impl Read for Institution {
     type Filter = ();
 
     async fn fetch_many(
-        conn: &mut AsyncPgConnection,
         _filter: Option<&Self::Filter>,
         Pagination { limit, offset }: &Pagination,
+        conn: &mut AsyncPgConnection
     ) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
@@ -84,7 +84,7 @@ impl Read for Institution {
         Ok(institutions)
     }
 
-    async fn fetch_by_id(conn: &mut AsyncPgConnection, id: Self::Id) -> super::Result<Self> {
+    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection, ) -> super::Result<Self> {
         use schema::institution::dsl::institution;
 
         let found = institution
