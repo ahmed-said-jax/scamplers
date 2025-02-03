@@ -1,7 +1,14 @@
-use std::{borrow::Borrow, str::FromStr};
+use std::str::FromStr;
 
+use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use diesel::{
-    backend::Backend, deserialize::{FromSql, FromSqlRow}, dsl::InnerJoinQuerySource, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types::{self, SqlType}
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    prelude::*,
+    serialize::ToSql,
+    sql_types::{self, SqlType},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
@@ -9,10 +16,11 @@ use serde::{Deserialize, Serialize};
 use strum::VariantArray;
 use uuid::Uuid;
 
-use super::{institution::Institution, Create, Pagination, Read};
-use crate::{api::api_key, schema::{institution, person, sql_types as custom_types}};
-use crate::api::api_key::{AsApiKey, ApiKeyHash2};
-use argon2::{password_hash::rand_core::le, Argon2, PasswordHash, PasswordVerifier};
+use super::{Create, Pagination, Read, institution::Institution};
+use crate::{
+    api::api_key::{ApiKeyHash2, AsApiKey},
+    schema::{institution, person, sql_types as custom_types},
+};
 
 #[derive(
     Clone,
@@ -52,13 +60,14 @@ impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
     }
 }
 
-// This represents a person as a user of the application. It should be a read-only view
+// This represents a person as a user of the application. It should be a
+// read-only view
 #[derive(Selectable, Queryable, Clone)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct User {
     pub id: Uuid,
     pub roles: Vec<UserRole>,
-    pub api_key_hash: Option<serde_json::Value> // change this to our custom ApiKey struct
+    pub api_key_hash: Option<serde_json::Value>, // change this to our custom ApiKey struct
 }
 
 impl User {
@@ -66,28 +75,38 @@ impl User {
         Self {
             id: Uuid::nil(),
             roles: UserRole::VARIANTS.to_vec(),
-            api_key_hash: None
+            api_key_hash: None,
         }
     }
 }
 
 impl User {
-    pub async fn fetch_by_api_key(conn: &mut AsyncPgConnection, api_key: Uuid, ) -> super::Result<Self> {
+    pub async fn fetch_by_api_key(
+        conn: &mut AsyncPgConnection,
+        api_key: Uuid,
+    ) -> super::Result<Self> {
         use person::dsl::api_key_hash;
 
         let prefix = api_key.prefix();
 
-        let found = person::table.filter(api_key_hash.retrieve_as_text("prefix").eq(prefix)).select(Self::as_select()).first(conn).await?;
+        let found = person::table
+            .filter(api_key_hash.retrieve_as_text("prefix").eq(prefix))
+            .select(Self::as_select())
+            .first(conn)
+            .await?;
 
         let Some(ref found_api_key_hash) = found.api_key_hash else {
             return Err(super::Error::RecordNotFound);
         };
 
         // These steps shouldn't fail, and the clone is cheap
-        let found_api_key_hash: ApiKeyHash2 = serde_json::from_value(found_api_key_hash.clone()).unwrap();
+        let found_api_key_hash: ApiKeyHash2 =
+            serde_json::from_value(found_api_key_hash.clone()).unwrap();
         let found_api_key_hash = PasswordHash::new(&found_api_key_hash.hash).unwrap();
 
-        Argon2::default().verify_password(api_key.as_bytes(), &found_api_key_hash).map_err(|_| super::Error::RecordNotFound)?;
+        Argon2::default()
+            .verify_password(api_key.as_bytes(), &found_api_key_hash)
+            .map_err(|_| super::Error::RecordNotFound)?;
 
         Ok(found)
     }
@@ -102,7 +121,7 @@ struct NewPerson {
     #[garde(email)]
     email: String,
     orcid: Option<String>,
-    institution_id: Uuid
+    institution_id: Uuid,
 }
 
 impl Create for Vec<NewPerson> {
@@ -110,14 +129,29 @@ impl Create for Vec<NewPerson> {
 
     async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use person::dsl::id;
-        
+
         let as_immut = &*self;
 
-        let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table).values(as_immut).returning(id).get_results(conn).await?;
+        let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table)
+            .values(as_immut)
+            .returning(id)
+            .get_results(conn)
+            .await?;
         let n = inserted_people_ids.len() as i64;
 
-        let filter = PersonFilter {ids: inserted_people_ids, ..Default::default()};
-        let inserted_people = Person::fetch_many(Some(&filter), &Pagination {limit: n, ..Default::default()}, conn).await?;
+        let filter = PersonFilter {
+            ids: inserted_people_ids,
+            ..Default::default()
+        };
+        let inserted_people = Person::fetch_many(
+            Some(&filter),
+            &Pagination {
+                limit: n,
+                ..Default::default()
+            },
+            conn,
+        )
+        .await?;
 
         Ok(inserted_people)
     }
@@ -141,7 +175,7 @@ pub struct Person {
     #[diesel(embed)]
     person: PersonRow,
     #[diesel(embed)]
-    institution: Institution
+    institution: Institution,
 }
 
 #[derive(Deserialize, Default)]
@@ -149,7 +183,7 @@ pub struct PersonFilter {
     ids: Vec<Uuid>,
     name: Option<String>,
     email: Option<String>,
-    lab_id: Option<Uuid>
+    lab_id: Option<Uuid>,
 }
 
 impl Person {
@@ -160,21 +194,38 @@ impl Person {
 }
 
 impl Read for Person {
-    type Id = Uuid;
     type Filter = PersonFilter;
+    type Id = Uuid;
 
-    async fn fetch_by_id(person_id: Self::Id, conn: &mut AsyncPgConnection, ) -> super::Result<Self> {
+    async fn fetch_by_id(person_id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         let base_query = Self::base_query().select(Self::as_select()); // I want to factor out this whole expression into `Self::base_query`, but it doesn't work
 
-        Ok(base_query.filter(person::id.eq(person_id)).first(conn).await?)
+        Ok(base_query
+            .filter(person::id.eq(person_id))
+            .first(conn)
+            .await?)
     }
 
-    async fn fetch_many(filter: Option<&Self::Filter>, Pagination{limit, offset}: &Pagination, conn: &mut AsyncPgConnection, ) -> super::Result<Vec<Self>> {
-        use person::dsl::{id, full_name as name_col, email as email_col};
+    async fn fetch_many(
+        filter: Option<&Self::Filter>,
+        Pagination { limit, offset }: &Pagination,
+        conn: &mut AsyncPgConnection,
+    ) -> super::Result<Vec<Self>> {
+        use person::dsl::{email as email_col, full_name as name_col, id};
 
-        let mut base_query = Self::base_query().into_boxed().select(Self::as_select()).limit(*limit).offset(*offset);
+        let mut base_query = Self::base_query()
+            .into_boxed()
+            .select(Self::as_select())
+            .limit(*limit)
+            .offset(*offset);
 
-        let Some(PersonFilter {ids, name, email, lab_id}) = filter else {
+        let Some(PersonFilter {
+            ids,
+            name,
+            email,
+            lab_id,
+        }) = filter
+        else {
             return Ok(base_query.load(conn).await?);
         };
 
@@ -182,7 +233,8 @@ impl Read for Person {
             base_query = base_query.filter(id.eq_any(ids));
         }
 
-        // The next two conditions are pretty much the same thing, there's probably some way to improve this
+        // The next two conditions are pretty much the same thing, there's probably some
+        // way to improve this
         if let Some(name) = name {
             base_query = base_query.filter(name_col.ilike(format!("%{name}%"))); // Notice we allow for any characters on either side of the string, so that a person can search by last name if that's all they remember
         }
@@ -193,6 +245,5 @@ impl Read for Person {
 
         // ignore lab_id for now
         Ok(base_query.load(conn).await?)
-
     }
 }

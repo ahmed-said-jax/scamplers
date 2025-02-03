@@ -1,31 +1,14 @@
-use std::str::FromStr;
-
-use axum::{extract::FromRequestParts, response::IntoResponse, Router};
-use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use diesel::{
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{self, SqlType},
-};
-use diesel_async::{pooled_connection::deadpool, AsyncPgConnection, RunQueryDsl};
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use strum::VariantArray;
+use axum::{Router, extract::FromRequestParts, response::IntoResponse};
+use diesel_async::{AsyncPgConnection, pooled_connection::deadpool};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    db::{self, person::{User, UserRole}, Entity},
-    schema::sql_types as custom_types,
     AppState,
+    db::{self, person::User},
 };
-mod v0;
 pub mod api_key;
-use api_key::{AsApiKey, ApiKeyHash};
+mod v0;
 
 pub fn router() -> Router<AppState> {
     // In theory, we should be able to inspect the header and route the request
@@ -34,12 +17,13 @@ pub fn router() -> Router<AppState> {
     v0::router()
 }
 
-
 struct ApiUser(db::person::User);
 
 impl ApiUser {
     async fn fetch_by_api_key(conn: &mut AsyncPgConnection, api_key: Uuid) -> Result<Self> {
-        let user = User::fetch_by_api_key(conn, api_key).await.map_err(|e| Error::InvalidApiKey)?;
+        let user = User::fetch_by_api_key(conn, api_key)
+            .await
+            .map_err(|e| Error::InvalidApiKey)?;
 
         Ok(Self(user))
     }
@@ -52,9 +36,7 @@ impl FromRequestParts<AppState> for ApiUser {
         parts: &mut axum::http::request::Parts,
         state: &AppState,
     ) -> std::result::Result<Self, Self::Rejection> {
-        use Error::{ApiKeyNotFound, InvalidApiKey};
-
-        use crate::schema::person::dsl::{api_key_hash, id, person, roles};
+        use Error::ApiKeyNotFound;
 
         if !state.production {
             return Ok(Self(db::person::User::test_user()));
@@ -89,9 +71,9 @@ pub enum Error {
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
+        use Error::{ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, Permission};
         use axum::http::StatusCode;
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
-        use Error::{ApiKeyNotFound, Database, InvalidApiKey, Permission, ApiKeyGeneration};
 
         match self {
             ApiKeyGeneration(..) => StatusCode::INTERNAL_SERVER_ERROR,

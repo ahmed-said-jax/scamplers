@@ -1,12 +1,11 @@
 use std::str::FromStr;
 
-use diesel::{backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::{ToSql, WriteTuple}, sql_types::{self, Record, Text}, BoxableExpression, Table};
-use diesel_async::{pooled_connection::deadpool, AsyncPgConnection};
+use diesel::result::DatabaseErrorInformation;
+use diesel_async::{AsyncPgConnection, pooled_connection::deadpool};
 use futures::FutureExt;
 use regex::Regex;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use valuable::Valuable;
-use crate::{api, schema::sql_types as custom_types};
 
 pub mod institution;
 pub mod person;
@@ -28,7 +27,11 @@ pub trait Read: Serialize + Sized {
     type Id;
     type Filter;
 
-    async fn fetch_many(filter: Option<&Self::Filter>, pagination: &Pagination, conn: &mut AsyncPgConnection, ) -> Result<Vec<Self>>;
+    async fn fetch_many(
+        filter: Option<&Self::Filter>,
+        pagination: &Pagination,
+        conn: &mut AsyncPgConnection,
+    ) -> Result<Vec<Self>>;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> Result<Self>;
 }
@@ -54,7 +57,12 @@ impl<T: Update> Update for Vec<T> {
 }
 
 pub trait ReadRelatives<T: Read>: DeserializeOwned {
-    async fn fetch_relatives(&self, filter: Option<&T::Filter>, pagination: &Pagination, conn: &mut AsyncPgConnection) -> Result<Vec<T>>;
+    async fn fetch_relatives(
+        &self,
+        filter: Option<&T::Filter>,
+        pagination: &Pagination,
+        conn: &mut AsyncPgConnection,
+    ) -> Result<Vec<T>>;
 }
 
 #[derive(Deserialize)]
@@ -79,7 +87,7 @@ impl Default for Pagination {
     strum::Display,
     strum::VariantNames,
     strum::VariantArray,
-    Valuable
+    Valuable,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]

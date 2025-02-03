@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use argon2::password_hash::{rand_core::OsRng, SaltString, PasswordHasher};
+use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -13,7 +13,7 @@ pub trait AsApiKey {
 #[derive(Deserialize)]
 pub struct ApiKeyHash2 {
     prefix: String,
-    pub hash: String
+    pub hash: String,
 }
 impl ApiKeyHash2 {
     pub fn new() -> Self {
@@ -25,10 +25,11 @@ impl ApiKeyHash2 {
 
         // unwraps is fine because we don't expect this to fail
         let hash = hasher.hash_password(uuid, &salt).unwrap().to_string();
-        
-        let prefix = String::from_utf8(uuid[0..API_KEY_PUBLIC_PREFIX_LEN].to_ascii_lowercase()).unwrap();
 
-        Self{prefix, hash}
+        let prefix =
+            String::from_utf8(uuid[0..API_KEY_PUBLIC_PREFIX_LEN].to_ascii_lowercase()).unwrap();
+
+        Self { prefix, hash }
     }
 }
 
@@ -43,12 +44,15 @@ impl FromStr for ApiKeyHash2 {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split(".").collect();
-        
+
         let (Some(prefix), Some(hash)) = (parts.get(0), parts.get(1)) else {
             return Err(super::Error::InvalidApiKey);
         };
 
-        Ok(Self {prefix: prefix.to_string(), hash: hash.to_string() })
+        Ok(Self {
+            prefix: prefix.to_string(),
+            hash: hash.to_string(),
+        })
     }
 }
 
@@ -63,11 +67,13 @@ impl ApiKeyHash {
 
         // unwraps is fine because we don't expect this to fail
         let hash = hasher.hash_password(uuid, &salt).unwrap().to_string();
-        
-        let prefix = String::from_utf8(uuid[0..API_KEY_PUBLIC_PREFIX_LEN].to_ascii_lowercase()).unwrap();
+
+        let prefix =
+            String::from_utf8(uuid[0..API_KEY_PUBLIC_PREFIX_LEN].to_ascii_lowercase()).unwrap();
 
         Self(prefix, hash)
     }
+
     pub fn hashed_part(&self) -> &str {
         &self.1
     }
@@ -84,7 +90,7 @@ impl FromStr for ApiKeyHash {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split(".").collect();
-        
+
         let (Some(prefix), Some(hash)) = (parts.get(0), parts.get(1)) else {
             return Err(super::Error::InvalidApiKey);
         };

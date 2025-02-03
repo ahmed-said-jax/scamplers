@@ -4,11 +4,11 @@ use anyhow::Context;
 use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};
 use diesel_async::{
-    async_connection_wrapper::AsyncConnectionWrapper,
-    pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager},
     AsyncConnection, AsyncPgConnection,
+    async_connection_wrapper::AsyncConnectionWrapper,
+    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use serde::Deserialize;
 use tokio::net::TcpListener;
 
@@ -31,7 +31,9 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 
     let app_state = AppState::from_config(&mut app_config).context("failed to create app state")?;
 
-    insert_seed_data(&app_config.seed_data_paths, app_state.db_pool.clone()).await.context("failed to insert seed data")?;
+    insert_seed_data(&app_config.seed_data_paths, app_state.db_pool.clone())
+        .await
+        .context("failed to insert seed data")?;
     tracing::info!("inserted seed data");
 
     let app = Router::new()
@@ -45,7 +47,10 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
     axum::serve(listener, app)
         .await
         .context("failed to serve app")?;
-    tracing::info!("scamplers server listening on {}", app_config.server_address);
+    tracing::info!(
+        "scamplers server listening on {}",
+        app_config.server_address
+    );
 
     Ok(())
 }

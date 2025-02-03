@@ -1,11 +1,11 @@
 use diesel::{pg::Pg, prelude::*};
-use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, Update};
-use crate::{api, schema};
+use crate::schema;
 
 // We can just use one struct for inserting, upserting, updating, and fetching
 // institutions because they're simple. We also don't need to implement `Update`
@@ -42,15 +42,20 @@ impl Create for Vec<NewInstitution> {
 struct UpdatedInstitution {
     id: Uuid,
     name: Option<String>,
-    ms_tenant_id: Option<Uuid>
+    ms_tenant_id: Option<Uuid>,
 }
 
 impl Update for UpdatedInstitution {
     type Returns = Institution;
+
     async fn update(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         let as_immut = &*self;
 
-        Ok(diesel::update(as_immut).set(as_immut).returning(Self::Returns::as_returning()).get_result(conn).await?)
+        Ok(diesel::update(as_immut)
+            .set(as_immut)
+            .returning(Self::Returns::as_returning())
+            .get_result(conn)
+            .await?)
     }
 }
 
@@ -62,15 +67,14 @@ pub struct Institution {
     link: String,
 }
 
-
 impl Read for Institution {
-    type Id = Uuid;
     type Filter = ();
+    type Id = Uuid;
 
     async fn fetch_many(
         _filter: Option<&Self::Filter>,
         Pagination { limit, offset }: &Pagination,
-        conn: &mut AsyncPgConnection
+        conn: &mut AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
@@ -84,7 +88,7 @@ impl Read for Institution {
         Ok(institutions)
     }
 
-    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection, ) -> super::Result<Self> {
+    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         use schema::institution::dsl::institution;
 
         let found = institution
