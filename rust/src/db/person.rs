@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
 use crate::{
-    api::api_key::{ApiKeyHash2, AsApiKey},
+    api::api_key::{ApiKeyHash, AsApiKey},
     schema::{institution, person, sql_types as custom_types},
 };
 
@@ -100,7 +100,7 @@ impl User {
         };
 
         // These steps shouldn't fail, and the clone is cheap
-        let found_api_key_hash: ApiKeyHash2 =
+        let found_api_key_hash: ApiKeyHash =
             serde_json::from_value(found_api_key_hash.clone()).unwrap();
         let found_api_key_hash = PasswordHash::new(&found_api_key_hash.hash).unwrap();
 
