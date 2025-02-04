@@ -35,7 +35,7 @@ use crate::{
     PartialEq,
     Deserialize,
     Serialize,
-    TS
+    TS,
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = custom_types::UserRole)]
@@ -116,11 +116,12 @@ impl User {
     }
 }
 
-// We don't export this to TypeScript because people will be created using Microsoft authentication rather than in the frontend
+// We don't export this to TypeScript because people will be created using
+// Microsoft authentication rather than in the frontend
 #[derive(Insertable, Validate, Deserialize)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
-struct NewPerson {
+pub struct NewPerson {
     first_name: String,
     last_name: String,
     #[garde(email)]
@@ -189,7 +190,7 @@ pub struct Person {
 pub struct PersonFilter {
     ids: Vec<Uuid>,
     name: Option<String>,
-    email: Option<String>
+    email: Option<String>,
 }
 
 impl Person {
@@ -225,12 +226,7 @@ impl Read for Person {
             .limit(*limit)
             .offset(*offset);
 
-        let Some(PersonFilter {
-            ids,
-            name,
-            email,
-        }) = filter
-        else {
+        let Some(PersonFilter { ids, name, email }) = filter else {
             return Ok(base_query.load(conn).await?);
         };
 
@@ -252,4 +248,3 @@ impl Read for Person {
         Ok(base_query.load(conn).await?)
     }
 }
-

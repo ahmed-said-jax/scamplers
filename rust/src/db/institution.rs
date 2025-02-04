@@ -38,7 +38,8 @@ impl Create for Vec<NewInstitution> {
     }
 }
 
-// It's unlikely we'll need this, but it serves as a simple example for the patterns I want to establish in this package
+// It's unlikely we'll need this, but it serves as a simple example for the
+// patterns I want to establish in this package
 #[derive(Identifiable, AsChangeset, Deserialize, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 #[ts(export)]

@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 use axum::Router;
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8Path;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection,
     async_connection_wrapper::AsyncConnectionWrapper,
@@ -11,6 +11,7 @@ use diesel_async::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use serde::Deserialize;
 use tokio::net::TcpListener;
+use url::Url;
 
 mod api;
 pub mod db;
@@ -31,7 +32,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 
     let app_state = AppState::from_config(&mut app_config).context("failed to create app state")?;
 
-    insert_seed_data(&app_config.seed_data_paths, app_state.db_pool.clone())
+    insert_seed_data(app_state.clone(), &app_config)
         .await
         .context("failed to insert seed data")?;
     tracing::info!("inserted seed data");
@@ -57,8 +58,8 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 
 #[derive(Deserialize)]
 struct AppConfig {
-    db_url: String, // this url should allow the `scamplers` db user to connect, not root
-    seed_data_paths: Vec<Utf8PathBuf>,
+    db_url: String,
+    index_set_urls: Vec<Url>,
     server_address: String,
     #[serde(default)]
     production: bool,
@@ -112,15 +113,16 @@ impl AppState {
     }
 }
 
+// Right now, the only seed data we're inserting is the sample index sets
 async fn insert_seed_data(
-    files: &[Utf8PathBuf],
-    db_pool: Pool<AsyncPgConnection>,
+    AppState {
+        db_pool,
+        http_client,
+        ..
+    }: AppState,
+    AppConfig { index_set_urls, .. }: &AppConfig,
 ) -> anyhow::Result<()> {
     let mut conn = db_pool.get().await?;
-
-    for file in files {
-        seed_data::insert(file, &mut conn).await?;
-    }
 
     Ok(())
 }

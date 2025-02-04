@@ -7,6 +7,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use valuable::Valuable;
 
+pub mod index_sets;
 pub mod institution;
 pub mod person;
 

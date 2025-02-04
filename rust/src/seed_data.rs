@@ -2,23 +2,16 @@ use camino::Utf8Path;
 use diesel_async::AsyncPgConnection;
 use serde::Deserialize;
 
-use crate::db::{Create, institution::NewInstitution};
+use crate::db::{Create, institution::NewInstitution, person::NewPerson};
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum StaticData {
-    Institutions(Vec<NewInstitution>),
-}
+enum SeedData {}
 
+// TODO: we want to insert index sets and chemistries here
 pub(super) async fn insert(path: &Utf8Path, db_conn: &mut AsyncPgConnection) -> anyhow::Result<()> {
-    use StaticData::Institutions;
-
     let contents = std::fs::read_to_string(path)?;
-    let data: StaticData = serde_json::from_str(&contents)?;
-
-    match data {
-        Institutions(mut new_institutions) => new_institutions.create(db_conn).await?,
-    };
+    let _data: SeedData = serde_json::from_str(&contents)?;
 
     Ok(())
 }
