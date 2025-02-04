@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
 use crate::{
-    api::api_key::{ApiKeyHash, AsApiKey},
+    api::api_key::{ApiKey, AsApiKey},
     schema::{institution, person, sql_types as custom_types},
 };
 
@@ -40,7 +40,7 @@ use crate::{
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = custom_types::UserRole)]
 #[serde(rename_all = "snake_case")]
-#[ts(export)]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/person.ts")]
 pub enum UserRole {
     Admin,
     ComputationalStaff,
@@ -70,49 +70,17 @@ impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct User {
     pub id: Uuid,
+    pub first_name: String,
     pub roles: Vec<UserRole>,
-    pub api_key_hash: Option<serde_json::Value>, // change this to our custom ApiKey struct
 }
 
 impl User {
     pub fn test_user() -> Self {
         Self {
             id: Uuid::nil(),
+            first_name: String::new(),
             roles: UserRole::VARIANTS.to_vec(),
-            api_key_hash: None,
         }
-    }
-}
-
-impl User {
-    pub async fn fetch_by_api_key(
-        conn: &mut AsyncPgConnection,
-        api_key: Uuid,
-    ) -> super::Result<Self> {
-        use person::dsl::api_key_hash;
-
-        let prefix = api_key.prefix();
-
-        let found = person::table
-            .filter(api_key_hash.retrieve_as_text("prefix").eq(prefix))
-            .select(Self::as_select())
-            .first(conn)
-            .await?;
-
-        let Some(ref found_api_key_hash) = found.api_key_hash else {
-            return Err(super::Error::RecordNotFound);
-        };
-
-        // These steps shouldn't fail, and the clone is cheap
-        let found_api_key_hash: ApiKeyHash =
-            serde_json::from_value(found_api_key_hash.clone()).unwrap();
-        let found_api_key_hash = PasswordHash::new(&found_api_key_hash.hash).unwrap();
-
-        Argon2::default()
-            .verify_password(api_key.as_bytes(), &found_api_key_hash)
-            .map_err(|_| super::Error::RecordNotFound)?;
-
-        Ok(found)
     }
 }
 
@@ -176,7 +144,7 @@ pub struct PersonRow {
 
 #[derive(Serialize, Queryable, Selectable, TS)]
 #[diesel(table_name = schema::person, check_for_backend(Pg))]
-#[ts(export)]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/person.ts")]
 pub struct Person {
     #[serde(flatten)]
     #[diesel(embed)]
@@ -186,7 +154,7 @@ pub struct Person {
 }
 
 #[derive(Deserialize, Default, TS)]
-#[ts(export)]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/person.ts")]
 pub struct PersonFilter {
     ids: Vec<Uuid>,
     name: Option<String>,

@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, sync::LazyLock};
 
-use anyhow::Context;
 use diesel::{expression::AsExpression, prelude::*, sql_types};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::{Validate, error::PathComponentKind};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use url::Url;
 
 use super::Create;
@@ -20,8 +20,8 @@ fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
         return Err(garde::Error::new("malformed URL"));
     };
 
-    if domain != "10xgenomics.com" {
-        return Err(garde::Error::new("URL domain must be 10xgenomics.com"));
+    if domain != "cdn.10xgenomics.com" {
+        return Err(garde::Error::new(format!("URL domain must be 'cdn.10xgenomics.com', found {domain}")));
     }
 
     Ok(())
@@ -61,7 +61,7 @@ impl Create for IndexSets {
 }
 
 static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^SI-[A,N,T,S]{2}-[A-Z]\d{1,2}$").unwrap());
+    LazyLock::new(|| Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap());
 static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
 
 #[derive(Deserialize, Validate, Hash, PartialEq, Eq, Clone)]
@@ -171,9 +171,10 @@ impl Create for Vec<NewSingleIndexSet> {
 
 // This and DualIndexSet are written generically so they can either borrow their
 // data (useful for cases like insertion from a different type of struct) or own
-// their data (useful for getting data out of the database)
-#[derive(Queryable, Selectable, Insertable, Serialize)]
+// their data (useful for reading from the database)
+#[derive(Queryable, Selectable, Insertable, Serialize, TS)]
 #[diesel(table_name = single_index_set, primary_key(name))]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/index_set.ts", concrete(Str = String))]
 pub struct SingleIndexSet<Str: AsRef<str> + AsExpression<sql_types::Text>>
 where
     for<'a> &'a Str: AsExpression<sql_types::Text>,
@@ -197,8 +198,9 @@ pub struct NewDualIndexSet {
     index2_workflow_b_i5: DnaSequence,
 }
 
-#[derive(Queryable, Selectable, Insertable, Serialize)]
+#[derive(Queryable, Selectable, Insertable, Serialize, TS)]
 #[diesel(table_name = dual_index_set, primary_key(name))]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/index_set.ts", concrete(Str = String))]
 pub struct DualIndexSet<Str: AsRef<str> + AsExpression<sql_types::Text>>
 where
     for<'a> &'a Str: AsExpression<sql_types::Text>,

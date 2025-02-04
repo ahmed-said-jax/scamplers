@@ -12,7 +12,7 @@ use crate::schema;
 // because `Upsert` works for this case
 #[derive(Insertable, Deserialize, Clone, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
-#[ts(export)]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/institution.ts")]
 pub struct NewInstitution {
     name: String,
     ms_tenant_id: Option<Uuid>,
@@ -42,7 +42,7 @@ impl Create for Vec<NewInstitution> {
 // patterns I want to establish in this package
 #[derive(Identifiable, AsChangeset, Deserialize, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
-#[ts(export)]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/institution.ts")]
 struct UpdatedInstitution {
     id: Uuid,
     name: Option<String>,
@@ -65,7 +65,7 @@ impl Update for UpdatedInstitution {
 
 #[derive(Queryable, Selectable, Serialize, TS)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
-#[ts(export)]
+#[ts(export, export_to = "../../typescript/src/lib/bindings/institution.ts")]
 pub struct Institution {
     id: Uuid,
     name: String,

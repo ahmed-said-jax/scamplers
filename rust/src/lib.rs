@@ -11,7 +11,7 @@ use diesel_async::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use garde::Validate;
-use seed_data::{download_and_insert_index_sets};
+use seed_data::download_and_insert_index_sets;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 
@@ -25,7 +25,7 @@ const LOGIN_USER: &str = "login_user";
 
 pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
     let mut app_config =
-        AppConfig::from_path(config_path).context("failed to parse configuration file")?;
+        AppConfig::from_path(config_path).context("failed to parse and validate configuration file")?;
 
     run_migrations(&app_config)
         .await
@@ -63,12 +63,20 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
 struct AppConfig {
     db_url: String,
     #[garde(dive)]
-    index_set_urls: Vec<IndexSetFileUrl>,
+    index_set_file_urls: Vec<IndexSetFileUrl>,
     server_address: String,
-    #[serde(default)]
+    #[garde(custom(|auth_url: &Option<String>, _| production_has_auth_url(auth_url, self.production)))]
     auth_url: Option<String>,
     #[serde(default)]
     production: bool,
+}
+
+fn production_has_auth_url(auth_url: &Option<String>, production: bool) -> garde::Result {
+    if auth_url.is_none() && production {
+        return Err(garde::Error::new("auth_url must be supplied for production"));
+    }
+
+    Ok(())
 }
 
 impl AppConfig {
@@ -128,7 +136,7 @@ impl AppState {
 // Right now, the only seed data we're inserting is the sample index sets
 async fn insert_seed_data(
     app_state: AppState,
-    AppConfig { index_set_urls, .. }: &AppConfig,
+    AppConfig { index_set_file_urls: index_set_urls, .. }: &AppConfig,
 ) -> anyhow::Result<()> {
     download_and_insert_index_sets(app_state, &index_set_urls).await?;
 

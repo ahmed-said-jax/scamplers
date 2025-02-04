@@ -19,16 +19,6 @@ pub fn router() -> Router<AppState> {
 
 struct ApiUser(db::person::User);
 
-impl ApiUser {
-    async fn fetch_by_api_key(conn: &mut AsyncPgConnection, api_key: Uuid) -> Result<Self> {
-        let user = User::fetch_by_api_key(conn, api_key)
-            .await
-            .map_err(|e| Error::InvalidApiKey)?;
-
-        Ok(Self(user))
-    }
-}
-
 impl FromRequestParts<AppState> for ApiUser {
     type Rejection = Error;
 
@@ -51,7 +41,7 @@ impl FromRequestParts<AppState> for ApiUser {
         let api_key = Uuid::from_slice(raw_api_key).map_err(|_| Error::InvalidApiKey)?;
         let mut conn = state.db_pool.get().await?;
 
-        ApiUser::fetch_by_api_key(&mut conn, api_key).await
+        ApiUser::fetch_by_api_key(api_key, &mut conn).await
     }
 }
 
