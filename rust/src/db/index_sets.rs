@@ -1,4 +1,4 @@
-use std::{collections::HashSet, hash::Hash, sync::LazyLock};
+use std::{hash::Hash, sync::LazyLock};
 
 use diesel::{expression::AsExpression, prelude::*, sql_types};
 use diesel_async::RunQueryDsl;
@@ -7,7 +7,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::Create;
-use crate::schema::{dual_index_set, index_kit, single_index_set};
+use crate::schema::{index_kit, single_index_set};
 
 static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^SI-[A-Z]{2}-[A-Z]\d{1,2}$").unwrap()); // this should be improved

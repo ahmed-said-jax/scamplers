@@ -117,12 +117,12 @@ impl AppState {
 async fn insert_seed_data(
     AppState {
         db_pool,
-        http_client,
+        
         ..
     }: AppState,
-    AppConfig { index_set_urls, .. }: &AppConfig,
+    AppConfig {  .. }: &AppConfig,
 ) -> anyhow::Result<()> {
-    let mut conn = db_pool.get().await?;
+    let conn = db_pool.get().await?;
 
     Ok(())
 }
