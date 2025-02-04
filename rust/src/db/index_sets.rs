@@ -10,8 +10,8 @@ use super::Create;
 use crate::schema::{dual_index_set, index_kit, single_index_set};
 
 static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^SI-[A-Z]{2}-[A-Z]\d{1,2}$").unwrap()); // this should be improved
-static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]+$").unwrap()); // so should this
+    LazyLock::new(|| Regex::new(r"^SI-[A,N,T,S]{2}-[A-Z]\d{1,2}$").unwrap());
+static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
 
 #[derive(Deserialize, Validate, Hash, PartialEq, Eq, Clone)]
 #[garde(transparent)]
