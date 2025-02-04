@@ -15,7 +15,7 @@ static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]+$").un
 
 #[derive(Deserialize, Validate, Hash, PartialEq, Eq, Clone)]
 #[garde(transparent)]
-struct IndexSetName(#[garde(pattern(INDEX_SET_NAME_REGEX))] String);
+pub struct IndexSetName(#[garde(pattern(INDEX_SET_NAME_REGEX))] String);
 impl Display for IndexSetName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
@@ -47,8 +47,7 @@ impl PathComponentKind for IndexSetName {
 async fn insert_kit_name(kit_name: &str, conn: &mut AsyncPgConnection) -> super::Result<()> {
     diesel::insert_into(index_kit::table)
         .values(index_kit::name.eq(kit_name))
-        .on_conflict(index_kit::name)
-        .do_nothing()
+        .on_conflict_do_nothing()
         .execute(conn)
         .await?;
 
@@ -65,7 +64,7 @@ pub struct NewSingleIndexSet(#[garde(dive)] IndexSetName, #[garde(dive)] [DnaSeq
 // It's expected that one sample index set is a Vec<NewSampleIndex>, so we can
 // bake in some validation and do a bunch of things at once
 impl Create for Vec<NewSingleIndexSet> {
-    type Returns = Vec<SingleIndexSet<String>>;
+    type Returns = ();
 
     // return an owned type
 
@@ -78,10 +77,9 @@ impl Create for Vec<NewSingleIndexSet> {
     ) -> super::Result<Self::Returns> {
         // This one clone is necessary
         let Some(NewSingleIndexSet(index_set_name, ..)) = self.get(0).cloned() else {
-            return Ok(Vec::with_capacity(0));
+            return Ok(());
         };
 
-        // We expect a very specific structure for these
         let kit_name = index_set_name.kit_name()?;
         insert_kit_name(kit_name, conn).await?;
 
@@ -110,18 +108,19 @@ impl Create for Vec<NewSingleIndexSet> {
             });
         }
 
-        // This is kinda dumb because we're literally getting out the same thing we put
-        // in
-        let inserted = diesel::insert_into(single_index_set::table)
+        diesel::insert_into(single_index_set::table)
             .values(insertables)
-            .returning(SingleIndexSet::as_returning())
-            .get_results(conn)
+            .on_conflict_do_nothing()
+            .execute(conn)
             .await?;
 
-        Ok(inserted)
+        Ok(())
     }
 }
 
+// This and DualIndexSet are written generically so they can either borrow their
+// data (useful for cases like insertion from a different type of struct) or own
+// their data (useful for getting data out of the database)
 #[derive(Queryable, Selectable, Insertable, Serialize)]
 #[diesel(table_name = single_index_set, primary_key(name))]
 pub struct SingleIndexSet<Str: AsRef<str> + AsExpression<sql_types::Text>>
@@ -162,17 +161,18 @@ where
 }
 
 impl Create for HashMap<IndexSetName, NewDualIndexSet> {
-    type Returns = Vec<DualIndexSet<String>>;
+    type Returns = ();
 
     async fn create(
         &mut self,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Self::Returns> {
         let Some(index_set_name) = self.keys().next().cloned() else {
-            return Ok(Vec::with_capacity(0));
+            return Ok(());
         };
 
         let kit_name = index_set_name.kit_name()?;
+        insert_kit_name(kit_name, conn).await?;
 
         let mut insertables = Vec::with_capacity(self.len());
         for (
@@ -196,19 +196,12 @@ impl Create for HashMap<IndexSetName, NewDualIndexSet> {
             });
         }
 
-        let inserted = diesel::insert_into(dual_index_set::table)
+        diesel::insert_into(dual_index_set::table)
             .values(insertables)
-            .returning(DualIndexSet::as_returning())
-            .get_results(conn)
+            .on_conflict_do_nothing()
+            .execute(conn)
             .await?;
 
-        Ok(inserted)
+        Ok(())
     }
-}
-
-#[derive(Deserialize, Validate)]
-#[serde(untagged)]
-enum IndexSetFile {
-    Single(#[garde(dive)] Vec<NewSingleIndexSet>),
-    Dual(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>),
 }

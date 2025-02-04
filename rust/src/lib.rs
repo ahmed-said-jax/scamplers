@@ -9,6 +9,8 @@ use diesel_async::{
     pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+use futures::FutureExt;
+use seed_data::IndexSetFile;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use url::Url;
@@ -115,10 +117,13 @@ impl AppState {
 
 // Right now, the only seed data we're inserting is the sample index sets
 async fn insert_seed_data(
-    AppState { db_pool, .. }: AppState,
-    AppConfig { .. }: &AppConfig,
+    app_state: AppState,
+    AppConfig { index_set_urls, .. }: &AppConfig,
 ) -> anyhow::Result<()> {
-    let conn = db_pool.get().await?;
+    let downloads = index_set_urls
+        .iter()
+        .map(|url| IndexSetFile::download_and_insert(app_state.clone(), url.clone()));
+    futures::future::try_join_all(downloads).await?;
 
     Ok(())
 }

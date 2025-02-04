@@ -1,15 +1,43 @@
-use camino::Utf8Path;
-use diesel_async::AsyncPgConnection;
+use std::collections::HashMap;
+
+use garde::Validate;
 use serde::Deserialize;
+use url::Url;
 
-#[derive(Deserialize)]
+use crate::{
+    AppState,
+    db::{
+        Create,
+        index_sets::{IndexSetName, NewDualIndexSet, NewSingleIndexSet},
+    },
+};
+
+#[derive(Deserialize, Validate)]
 #[serde(untagged)]
-enum SeedData {}
+pub enum IndexSetFile {
+    SingleIndexSets(#[garde(dive)] Vec<NewSingleIndexSet>),
+    DualIndexSets(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>),
+}
 
-// TODO: we want to insert index sets and chemistries here
-pub(super) async fn insert(path: &Utf8Path, db_conn: &mut AsyncPgConnection) -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string(path)?;
-    let _data: SeedData = serde_json::from_str(&contents)?;
+// We use anyhow::Result here because we just want to know what went wrong, we
+// don't care about serializing structured data to a client
+impl IndexSetFile {
+    pub async fn download_and_insert(
+        AppState {
+            db_pool,
+            http_client,
+            ..
+        }: AppState,
+        url: Url,
+    ) -> anyhow::Result<()> {
+        let mut conn = db_pool.get().await?;
+        let data: Self = http_client.get(url).send().await?.json().await?;
 
-    Ok(())
+        match data {
+            Self::DualIndexSets(mut sets) => sets.create(&mut conn).await?,
+            Self::SingleIndexSets(mut sets) => sets.create(&mut conn).await?,
+        };
+
+        Ok(())
+    }
 }
