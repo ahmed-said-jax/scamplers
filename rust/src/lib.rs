@@ -3,17 +3,17 @@
 use anyhow::Context;
 use axum::Router;
 use camino::Utf8Path;
+use db::{index_sets::IndexSetFileUrl, Create};
 use diesel_async::{
     AsyncConnection, AsyncPgConnection,
     async_connection_wrapper::AsyncConnectionWrapper,
     pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use futures::FutureExt;
-use seed_data::IndexSetFile;
+use garde::Validate;
+use seed_data::{download_and_insert_index_sets};
 use serde::Deserialize;
 use tokio::net::TcpListener;
-use url::Url;
 
 mod api;
 pub mod db;
@@ -58,11 +58,15 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
+#[garde(allow_unvalidated)]
 struct AppConfig {
     db_url: String,
-    index_set_urls: Vec<Url>,
+    #[garde(dive)]
+    index_set_urls: Vec<IndexSetFileUrl>,
     server_address: String,
+    #[serde(default)]
+    auth_url: Option<String>,
     #[serde(default)]
     production: bool,
 }
@@ -73,14 +77,18 @@ impl AppConfig {
             .add_source(config::File::with_name(path.as_str()))
             .build()?;
 
-        Ok(config.try_deserialize()?)
+        let config: Self = config.try_deserialize()?;
+
+        config.validate()?;
+
+        Ok(config)
     }
 }
 
-async fn run_migrations(app_config: &AppConfig) -> anyhow::Result<()> {
+async fn run_migrations(AppConfig { db_url, .. }: &AppConfig) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-    let conn = AsyncPgConnection::establish(&app_config.db_url)
+    let conn = AsyncPgConnection::establish(db_url)
         .await
         .context("failed to connect to database")?;
     let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = AsyncConnectionWrapper::from(conn);
@@ -97,18 +105,20 @@ async fn run_migrations(app_config: &AppConfig) -> anyhow::Result<()> {
 pub struct AppState {
     db_pool: Pool<AsyncPgConnection>,
     http_client: reqwest::Client,
+    auth_url: Option<String>,
     production: bool,
 }
 
 impl AppState {
-    fn from_config(app_config: &mut AppConfig) -> anyhow::Result<Self> {
-        let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&app_config.db_url);
+    fn from_config(AppConfig {db_url, production, auth_url, ..}: &AppConfig) -> anyhow::Result<Self> {
+        let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
         let db_pool = Pool::builder(db_config).build()?;
 
         let app_state = Self {
             db_pool,
             http_client: reqwest::Client::new(),
-            production: app_config.production,
+            auth_url: auth_url.clone(),
+            production: *production,
         };
 
         Ok(app_state)
@@ -120,10 +130,7 @@ async fn insert_seed_data(
     app_state: AppState,
     AppConfig { index_set_urls, .. }: &AppConfig,
 ) -> anyhow::Result<()> {
-    let downloads = index_set_urls
-        .iter()
-        .map(|url| IndexSetFile::download_and_insert(app_state.clone(), url.clone()));
-    futures::future::try_join_all(downloads).await?;
+    download_and_insert_index_sets(app_state, &index_set_urls).await?;
 
     Ok(())
 }

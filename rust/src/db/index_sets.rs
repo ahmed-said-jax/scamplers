@@ -1,13 +1,64 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, sync::LazyLock};
 
+use anyhow::Context;
 use diesel::{expression::AsExpression, prelude::*, sql_types};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::{Validate, error::PathComponentKind};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use super::Create;
 use crate::schema::{dual_index_set, index_kit, single_index_set};
+
+#[derive(Deserialize, Validate, Clone)]
+#[serde(transparent)]
+pub struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))]Url);
+
+fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
+    let Some(domain) = url.domain() else {
+        return Err(garde::Error::new("malformed URL"));
+    };
+
+    if domain != "10xgenomics.com" {
+        return Err(garde::Error::new("URL domain must be 10xgenomics.com"));
+    }
+
+    Ok(())
+}
+
+// `anyhow::Result` is fine here because this isn't user-facing code
+impl IndexSetFileUrl {
+    pub async fn download(self, http_client: reqwest::Client) -> anyhow::Result<IndexSets> {
+        let url = self.0;
+
+        let index_set: IndexSets = http_client.get(url.clone()).send().await?.json().await?;
+
+        index_set.validate()?;
+
+        Ok(index_set)
+    }
+}
+
+#[derive(Deserialize, Validate)]
+#[serde(untagged)]
+pub enum IndexSets {
+    Single(#[garde(dive)] Vec<NewSingleIndexSet>),
+    Dual(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>),
+}
+
+impl Create for IndexSets {
+    type Returns = ();
+
+    async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        match self {
+            Self::Single(sets) => sets.create(conn).await?,
+            Self::Dual(sets) => sets.create(conn).await?
+        };
+
+        Ok(())
+    }
+}
 
 static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^SI-[A,N,T,S]{2}-[A-Z]\d{1,2}$").unwrap());

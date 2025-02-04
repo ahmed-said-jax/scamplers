@@ -1,43 +1,26 @@
 use std::collections::HashMap;
 
+use anyhow::Context;
 use garde::Validate;
 use serde::Deserialize;
 use url::Url;
 
 use crate::{
-    AppState,
     db::{
-        Create,
-        index_sets::{IndexSetName, NewDualIndexSet, NewSingleIndexSet},
-    },
+        index_sets::{IndexSetFileUrl, IndexSetName, NewDualIndexSet, NewSingleIndexSet}, Create
+    }, AppState
 };
-
-#[derive(Deserialize, Validate)]
-#[serde(untagged)]
-pub enum IndexSetFile {
-    SingleIndexSets(#[garde(dive)] Vec<NewSingleIndexSet>),
-    DualIndexSets(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>),
-}
 
 // We use anyhow::Result here because we just want to know what went wrong, we
 // don't care about serializing structured data to a client
-impl IndexSetFile {
-    pub async fn download_and_insert(
-        AppState {
-            db_pool,
-            http_client,
-            ..
-        }: AppState,
-        url: Url,
-    ) -> anyhow::Result<()> {
-        let mut conn = db_pool.get().await?;
-        let data: Self = http_client.get(url).send().await?.json().await?;
+pub async fn download_and_insert_index_sets(AppState {db_pool, http_client, ..}: AppState, file_urls: &[IndexSetFileUrl]) -> anyhow::Result<()> {
+    let downloads = file_urls.into_iter().map(|url| url.clone().download(http_client.clone()));
+    let mut index_sets = futures::future::try_join_all(downloads).await.context("failed to download index set files")?;
 
-        match data {
-            Self::DualIndexSets(mut sets) => sets.create(&mut conn).await?,
-            Self::SingleIndexSets(mut sets) => sets.create(&mut conn).await?,
-        };
-
-        Ok(())
+    let mut conn = db_pool.get().await?;
+    for set in &mut index_sets {
+        set.create(&mut conn).await.context("failed to insert index sets into database")?;
     }
+
+    Ok(())
 }
