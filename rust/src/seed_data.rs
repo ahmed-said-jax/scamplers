@@ -2,7 +2,6 @@ use camino::Utf8Path;
 use diesel_async::AsyncPgConnection;
 use serde::Deserialize;
 
-
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum SeedData {}

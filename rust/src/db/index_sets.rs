@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display, hash::Hash, sync::LazyLock};
 
 use diesel::{expression::AsExpression, prelude::*, sql_types};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use garde::{error::PathComponentKind, Validate};
+use garde::{Validate, error::PathComponentKind};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -25,11 +25,15 @@ const INDEX_SET_NAME_ERROR_MESSAGE: &str = "malformed index set name";
 
 impl IndexSetName {
     fn kit_name(&self) -> super::Result<&str> {
-        Ok(self.0.get(3..5).ok_or(super::Error::Other{message: INDEX_SET_NAME_ERROR_MESSAGE.to_string()})?)
+        Ok(self.0.get(3..5).ok_or(super::Error::Other {
+            message: INDEX_SET_NAME_ERROR_MESSAGE.to_string(),
+        })?)
     }
 
     fn well_name(&self) -> super::Result<&str> {
-        Ok(self.0.get(6..8).ok_or(super::Error::Other{message: INDEX_SET_NAME_ERROR_MESSAGE.to_string()})?)
+        Ok(self.0.get(6..8).ok_or(super::Error::Other {
+            message: INDEX_SET_NAME_ERROR_MESSAGE.to_string(),
+        })?)
     }
 }
 
@@ -42,11 +46,11 @@ impl PathComponentKind for IndexSetName {
 
 async fn insert_kit_name(kit_name: &str, conn: &mut AsyncPgConnection) -> super::Result<()> {
     diesel::insert_into(index_kit::table)
-    .values(index_kit::name.eq(kit_name))
-    .on_conflict(index_kit::name)
-    .do_nothing()
-    .execute(conn)
-    .await?;
+        .values(index_kit::name.eq(kit_name))
+        .on_conflict(index_kit::name)
+        .do_nothing()
+        .execute(conn)
+        .await?;
 
     Ok(())
 }
@@ -143,24 +147,27 @@ pub struct NewDualIndexSet {
     index2_workflow_b_i5: DnaSequence,
 }
 
-
 #[derive(Queryable, Selectable, Insertable, Serialize)]
 #[diesel(table_name = dual_index_set, primary_key(name))]
 pub struct DualIndexSet<Str: AsRef<str> + AsExpression<sql_types::Text>>
 where
-    for<'a> &'a Str: AsExpression<sql_types::Text> {
+    for<'a> &'a Str: AsExpression<sql_types::Text>,
+{
     name: Str,
     kit: Str,
     well: Str,
     index_i7: Str,
     index2_workflow_a_i5: Str,
-    index2_workflow_b_i5: Str
+    index2_workflow_b_i5: Str,
 }
 
 impl Create for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = Vec<DualIndexSet<String>>;
 
-    async fn create(&mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(
+        &mut self,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> super::Result<Self::Returns> {
         let Some(index_set_name) = self.keys().next().cloned() else {
             return Ok(Vec::with_capacity(0));
         };
@@ -168,13 +175,32 @@ impl Create for HashMap<IndexSetName, NewDualIndexSet> {
         let kit_name = index_set_name.kit_name()?;
 
         let mut insertables = Vec::with_capacity(self.len());
-        for (index_set_name, NewDualIndexSet{index_i7, index2_workflow_a_i5, index2_workflow_b_i5}) in self {
+        for (
+            index_set_name,
+            NewDualIndexSet {
+                index_i7,
+                index2_workflow_a_i5,
+                index2_workflow_b_i5,
+            },
+        ) in self
+        {
             let well_name = index_set_name.well_name()?;
 
-            insertables.push(DualIndexSet {name: index_set_name.0.as_str(), kit: kit_name, well: well_name, index_i7: &index_i7.0, index2_workflow_a_i5: &index2_workflow_a_i5.0, index2_workflow_b_i5: &index2_workflow_b_i5.0});
+            insertables.push(DualIndexSet {
+                name: index_set_name.0.as_str(),
+                kit: kit_name,
+                well: well_name,
+                index_i7: &index_i7.0,
+                index2_workflow_a_i5: &index2_workflow_a_i5.0,
+                index2_workflow_b_i5: &index2_workflow_b_i5.0,
+            });
         }
 
-        let inserted = diesel::insert_into(dual_index_set::table).values(insertables).returning(DualIndexSet::as_returning()).get_results(conn).await?;
+        let inserted = diesel::insert_into(dual_index_set::table)
+            .values(insertables)
+            .returning(DualIndexSet::as_returning())
+            .get_results(conn)
+            .await?;
 
         Ok(inserted)
     }
@@ -184,5 +210,5 @@ impl Create for HashMap<IndexSetName, NewDualIndexSet> {
 #[serde(untagged)]
 enum IndexSetFile {
     Single(#[garde(dive)] Vec<NewSingleIndexSet>),
-    Dual(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>)
+    Dual(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>),
 }

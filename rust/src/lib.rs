@@ -115,12 +115,8 @@ impl AppState {
 
 // Right now, the only seed data we're inserting is the sample index sets
 async fn insert_seed_data(
-    AppState {
-        db_pool,
-        
-        ..
-    }: AppState,
-    AppConfig {  .. }: &AppConfig,
+    AppState { db_pool, .. }: AppState,
+    AppConfig { .. }: &AppConfig,
 ) -> anyhow::Result<()> {
     let conn = db_pool.get().await?;
 
