@@ -5,7 +5,6 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::{Validate, error::PathComponentKind};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use url::Url;
 
 use super::Create;
@@ -50,7 +49,7 @@ pub enum IndexSets {
 impl Create for IndexSets {
     type Returns = ();
 
-    async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         match self {
             Self::Single(sets) => sets.create(conn).await?,
             Self::Dual(sets) => sets.create(conn).await?
@@ -123,7 +122,7 @@ impl Create for Vec<NewSingleIndexSet> {
     // but it doesn't really matter because this won't be exposed as an API route -
     // we are downloading these files from 10X ourselves.
     async fn create(
-        &mut self,
+        &self,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Self::Returns> {
         // This one clone is necessary
@@ -172,9 +171,8 @@ impl Create for Vec<NewSingleIndexSet> {
 // This and DualIndexSet are written generically so they can either borrow their
 // data (useful for cases like insertion from a different type of struct) or own
 // their data (useful for reading from the database)
-#[derive(Queryable, Selectable, Insertable, Serialize, TS)]
+#[derive(Queryable, Selectable, Insertable, Serialize)]
 #[diesel(table_name = single_index_set, primary_key(name))]
-#[ts(export, export_to = "../../typescript/src/lib/bindings/index_set.ts", concrete(Str = String))]
 pub struct SingleIndexSet<Str: AsRef<str> + AsExpression<sql_types::Text>>
 where
     for<'a> &'a Str: AsExpression<sql_types::Text>,
@@ -198,9 +196,8 @@ pub struct NewDualIndexSet {
     index2_workflow_b_i5: DnaSequence,
 }
 
-#[derive(Queryable, Selectable, Insertable, Serialize, TS)]
+#[derive(Queryable, Selectable, Insertable, Serialize)]
 #[diesel(table_name = dual_index_set, primary_key(name))]
-#[ts(export, export_to = "../../typescript/src/lib/bindings/index_set.ts", concrete(Str = String))]
 pub struct DualIndexSet<Str: AsRef<str> + AsExpression<sql_types::Text>>
 where
     for<'a> &'a Str: AsExpression<sql_types::Text>,
@@ -217,7 +214,7 @@ impl Create for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = ();
 
     async fn create(
-        &mut self,
+        &self,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Self::Returns> {
         let Some(index_set_name) = self.keys().next().cloned() else {

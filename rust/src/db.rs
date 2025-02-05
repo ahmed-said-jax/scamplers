@@ -3,6 +3,7 @@ use std::str::FromStr;
 use diesel::result::DatabaseErrorInformation;
 use diesel_async::{AsyncPgConnection, pooled_connection::deadpool};
 use futures::FutureExt;
+use person::User;
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use valuable::Valuable;
@@ -20,8 +21,7 @@ pub mod person;
 pub trait Create {
     type Returns;
 
-    // Mutability here so that the method can change what it needs
-    async fn create(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    async fn create(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
 pub trait Read: Serialize + Sized {
@@ -40,13 +40,13 @@ pub trait Read: Serialize + Sized {
 pub trait Update {
     type Returns;
 
-    async fn update(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    async fn update(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
 impl<T: Update> Update for Vec<T> {
     type Returns = Vec<T::Returns>;
 
-    async fn update(&mut self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
+    async fn update(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
         let mut results = Vec::with_capacity(self.len());
 
         for item in self {

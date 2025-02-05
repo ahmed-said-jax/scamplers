@@ -30,7 +30,6 @@ async fn main() -> anyhow::Result<()> {
 #[derive(Parser)]
 #[command(version)]
 struct Cli {
-    #[arg(short, long, default_value_t = Utf8PathBuf::from_path_buf(home::home_dir().unwrap().join(".config/scamplers/config.toml")).unwrap())]
     config_path: Utf8PathBuf,
     #[arg(short, long, default_value_t = Utf8PathBuf::from_str("scamplers_logs").unwrap())]
     log_dir: Utf8PathBuf,

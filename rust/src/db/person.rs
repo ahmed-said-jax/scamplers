@@ -14,7 +14,6 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use strum::VariantArray;
-use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
@@ -34,13 +33,11 @@ use crate::{
     strum::EnumString,
     PartialEq,
     Deserialize,
-    Serialize,
-    TS,
+    Serialize
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = custom_types::UserRole)]
 #[serde(rename_all = "snake_case")]
-#[ts(export, export_to = "../../typescript/src/lib/bindings/person.ts")]
 pub enum UserRole {
     Admin,
     ComputationalStaff,
@@ -101,7 +98,7 @@ pub struct NewPerson {
 impl Create for Vec<NewPerson> {
     type Returns = Vec<Person>;
 
-    async fn create(&mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use person::dsl::id;
 
         let as_immut = &*self;
@@ -132,7 +129,7 @@ impl Create for Vec<NewPerson> {
 }
 
 // Do we like this struct name? Or is something like `PersonData` better
-#[derive(Queryable, Selectable, Serialize, TS)]
+#[derive(Queryable, Selectable, Serialize)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct PersonRow {
     id: Uuid,
@@ -142,9 +139,8 @@ pub struct PersonRow {
     orcid: Option<String>,
 }
 
-#[derive(Serialize, Queryable, Selectable, TS)]
+#[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = schema::person, check_for_backend(Pg))]
-#[ts(export, export_to = "../../typescript/src/lib/bindings/person.ts")]
 pub struct Person {
     #[serde(flatten)]
     #[diesel(embed)]
@@ -153,8 +149,7 @@ pub struct Person {
     institution: Institution,
 }
 
-#[derive(Deserialize, Default, TS)]
-#[ts(export, export_to = "../../typescript/src/lib/bindings/person.ts")]
+#[derive(Deserialize, Default)]
 pub struct PersonFilter {
     ids: Vec<Uuid>,
     name: Option<String>,

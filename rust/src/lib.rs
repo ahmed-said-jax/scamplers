@@ -1,7 +1,10 @@
 #![allow(async_fn_in_trait)]
 
+use std::{fs, io};
+
 use anyhow::Context;
-use axum::Router;
+use api::ApiUser;
+use axum::{middleware::from_extractor_with_state, Router};
 use camino::Utf8Path;
 use db::{index_sets::IndexSetFileUrl, Create};
 use diesel_async::{
@@ -24,7 +27,7 @@ const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
 
 pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
-    let mut app_config =
+    let app_config =
         AppConfig::from_path(config_path).context("failed to parse and validate configuration file")?;
 
     run_migrations(&app_config)
@@ -32,7 +35,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         .context("failed to run database migrations")?;
     tracing::info!("ran database migrations");
 
-    let app_state = AppState::from_config(&mut app_config).context("failed to create app state")?;
+    let app_state = AppState::from_config(&app_config).context("failed to create app state")?;
 
     insert_seed_data(app_state.clone(), &app_config)
         .await
@@ -40,7 +43,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
     tracing::info!("inserted seed data");
 
     let app = Router::new()
-        .nest("/api", api::router())
+        .nest("/api", api::router().route_layer(from_extractor_with_state::<ApiUser, AppState>(app_state.clone())))
         .with_state(app_state);
 
     let listener = TcpListener::bind(&app_config.server_address)
@@ -81,15 +84,9 @@ fn production_has_auth_url(auth_url: &Option<String>, production: bool) -> garde
 
 impl AppConfig {
     fn from_path(path: &Utf8Path) -> anyhow::Result<Self> {
-        let config = config::Config::builder()
-            .add_source(config::File::with_name(path.as_str()))
-            .build()?;
+        let contents = fs::read_to_string(path)?;
 
-        let config: Self = config.try_deserialize()?;
-
-        config.validate()?;
-
-        Ok(config)
+        Ok(toml::from_str(&contents)?)
     }
 }
 

@@ -17,7 +17,7 @@ pub fn router() -> Router<AppState> {
     v0::router()
 }
 
-struct ApiUser(db::person::User);
+pub struct ApiUser(db::person::User);
 
 impl FromRequestParts<AppState> for ApiUser {
     type Rejection = Error;
