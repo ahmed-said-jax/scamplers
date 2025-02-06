@@ -4,7 +4,7 @@ use std::fs;
 
 use anyhow::Context;
 use api::ApiUser;
-use axum::{Router, middleware::from_extractor_with_state};
+use axum::{middleware::{self, from_extractor_with_state}, Router};
 use camino::Utf8Path;
 use db::index_sets::IndexSetFileUrl;
 use diesel_async::{
@@ -152,12 +152,5 @@ async fn insert_seed_data(
 }
 
 fn app(app_state: AppState) -> Router {
-    Router::new()
-        .nest(
-            "/api",
-            api::router().route_layer(from_extractor_with_state::<ApiUser, AppState>(
-                app_state.clone(),
-            )),
-        )
-        .with_state(app_state)
+    Router::new().nest("/api",api::router()).with_state(app_state)
 }

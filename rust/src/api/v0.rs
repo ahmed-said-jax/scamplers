@@ -47,32 +47,41 @@ mod handlers {
         extract::{Path, State},
     };
     use axum_extra::extract::Query;
+    use diesel_async::{scoped_futures::ScopedFutureExt, AsyncConnection, RunQueryDsl};
 
     use super::FilterWithPagination;
     use crate::{
-        AppState,
-        api::{self},
-        db,
+        api::{self, ApiUser}, db::{self, set_transaction_user}, AppState
     };
 
-    pub async fn by_id<T: db::Read>(
+    pub async fn by_id<T: db::Read + Send>(
+        ApiUser(user): ApiUser,
         State(state): State<AppState>,
         Path(id): Path<T::Id>,
     ) -> api::Result<Json<T>> {
         let mut conn = state.db_pool.get().await?;
 
-        let item = T::fetch_by_id(id, &mut conn).await?;
+        let item = conn.transaction(|conn| async move {
+            set_transaction_user(user.id(), conn).await?;
+
+            T::fetch_by_id(id, conn).await
+        }.scope_boxed()).await?;
 
         Ok(axum::Json(item))
     }
 
     pub async fn by_filter<T: db::Read>(
+        ApiUser(user): ApiUser,
         State(state): State<AppState>,
         Query(query): Query<FilterWithPagination<T::Filter>>,
     ) -> api::Result<Json<Vec<T>>> {
         let mut conn = state.db_pool.get().await?;
 
-        let items = T::fetch_many(query.filter.as_ref(), &query.pagination, &mut conn).await?;
+        let items = conn.transaction(|conn| async move {
+            set_transaction_user(user.id(), conn).await?;
+
+            T::fetch_many(query.filter.as_ref(), &query.pagination, conn).await
+        }.scope_boxed()).await?;
 
         Ok(axum::Json(items))
     }
@@ -96,12 +105,17 @@ mod handlers {
     }
 
     pub async fn new<T: db::Create>(
+        ApiUser(user): ApiUser,
         State(state): State<AppState>,
         Json(data): Json<T>,
     ) -> api::Result<Json<T::Returns>> {
         let mut conn = state.db_pool.get().await?;
 
-        let created = data.create(&mut conn).await?;
+        let created = conn.transaction(|conn| async move {
+            set_transaction_user(user.id(), conn).await?;
+
+            data.create(conn).await
+        }.scope_boxed()).await?;
 
         Ok(Json(created))
     }

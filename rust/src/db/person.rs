@@ -103,6 +103,10 @@ impl User {
             roles: UserRole::VARIANTS.to_vec(),
         }
     }
+
+    pub fn id(&self) -> &Uuid {
+        &self.user.id
+    }
 }
 
 // We don't export this to TypeScript because people will be created using

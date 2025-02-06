@@ -1,10 +1,12 @@
 use std::str::FromStr;
 
-use diesel::result::DatabaseErrorInformation;
-use diesel_async::{AsyncPgConnection, pooled_connection::deadpool};
+use diesel::{query_builder::SqlQuery, result::DatabaseErrorInformation};
+use diesel_async::{pooled_connection::deadpool, scoped_futures::ScopedFutureExt, AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
+use person::User;
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use uuid::Uuid;
 use valuable::Valuable;
 
 pub mod index_sets;
@@ -17,23 +19,23 @@ pub mod person;
 // we don't need to `impl<T> Create for Vec<T>` for generic `T` because diesel
 // allows us to insert multiple records at once, so we can just `impl Create`
 // for a concrete Vec<T>
-pub trait Create {
-    type Returns;
+pub trait Create: Send {
+    type Returns: Send;
 
-    async fn create(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    fn create(&self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
-pub trait Read: Serialize + Sized {
-    type Id;
-    type Filter;
+pub trait Read: Serialize + Sized + Send {
+    type Id: Send;
+    type Filter: Sync + Send;
 
-    async fn fetch_many(
+    fn fetch_many(
         filter: Option<&Self::Filter>,
         pagination: &Pagination,
         conn: &mut AsyncPgConnection,
-    ) -> Result<Vec<Self>>;
+    ) -> impl Future<Output = Result<Vec<Self>>> + Send;
 
-    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> Result<Self>;
+    fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
 }
 
 pub trait Update {
@@ -101,6 +103,12 @@ pub enum Entity {
     Dataset,
     #[default]
     Unknown,
+}
+
+pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) -> Result<()> {
+    diesel::sql_query(format!(r#"set local role "{user_id}""#)).execute(conn).await?;
+
+    Ok(())
 }
 
 #[derive(thiserror::Error, Debug, Serialize, Valuable)]
