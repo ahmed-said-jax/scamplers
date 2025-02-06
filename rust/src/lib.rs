@@ -1,12 +1,12 @@
 #![allow(async_fn_in_trait)]
 
-use std::{fs, io};
+use std::fs;
 
 use anyhow::Context;
 use api::ApiUser;
-use axum::{middleware::from_extractor_with_state, Router};
+use axum::{Router, middleware::from_extractor_with_state};
 use camino::Utf8Path;
-use db::{index_sets::IndexSetFileUrl, Create};
+use db::index_sets::IndexSetFileUrl;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection,
     async_connection_wrapper::AsyncConnectionWrapper,
@@ -28,8 +28,8 @@ const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
 
 pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
-    let app_config =
-        AppConfig::from_path(config_path).context("failed to parse and validate configuration file")?;
+    let app_config = AppConfig::from_path(config_path)
+        .context("failed to parse and validate configuration file")?;
 
     run_migrations(&app_config)
         .await
@@ -75,7 +75,9 @@ struct AppConfig {
 
 fn production_has_auth_url(auth_url: &Option<String>, production: bool) -> garde::Result {
     if auth_url.is_none() && production {
-        return Err(garde::Error::new("auth_url must be supplied for production"));
+        return Err(garde::Error::new(
+            "auth_url must be supplied for production",
+        ));
     }
 
     Ok(())
@@ -114,7 +116,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    fn from_config(AppConfig {db_url, production, auth_url, ..}: &AppConfig) -> anyhow::Result<Self> {
+    fn from_config(
+        AppConfig {
+            db_url,
+            production,
+            auth_url,
+            ..
+        }: &AppConfig,
+    ) -> anyhow::Result<Self> {
         let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
         let db_pool = Pool::builder(db_config).build()?;
 
@@ -132,7 +141,10 @@ impl AppState {
 // Right now, the only seed data we're inserting is the sample index sets
 async fn insert_seed_data(
     app_state: AppState,
-    AppConfig { index_set_file_urls: index_set_urls, .. }: &AppConfig,
+    AppConfig {
+        index_set_file_urls: index_set_urls,
+        ..
+    }: &AppConfig,
 ) -> anyhow::Result<()> {
     download_and_insert_index_sets(app_state, &index_set_urls).await?;
 
@@ -140,5 +152,12 @@ async fn insert_seed_data(
 }
 
 fn app(app_state: AppState) -> Router {
-    Router::new().nest("/api", api::router().route_layer(from_extractor_with_state::<ApiUser, AppState>(app_state.clone()))).with_state(app_state)
+    Router::new()
+        .nest(
+            "/api",
+            api::router().route_layer(from_extractor_with_state::<ApiUser, AppState>(
+                app_state.clone(),
+            )),
+        )
+        .with_state(app_state)
 }

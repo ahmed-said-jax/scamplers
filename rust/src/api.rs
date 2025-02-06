@@ -1,5 +1,5 @@
 use axum::{Router, extract::FromRequestParts, response::IntoResponse};
-use diesel_async::{AsyncPgConnection, pooled_connection::deadpool};
+use diesel_async::pooled_connection::deadpool;
 use serde::Serialize;
 use uuid::Uuid;
 

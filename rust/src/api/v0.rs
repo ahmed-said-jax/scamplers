@@ -1,23 +1,30 @@
 use std::{collections::HashMap, hash::RandomState};
 
-use axum::{handler::Handler, middleware, routing::get, Json, Router};
+use axum::{Json, Router, routing::get};
 use serde::Deserialize;
-use serde_json::json;
-use strum::VariantArray;
 
 use crate::{
-    api::ApiUser, db::{self, institution::{Institution, NewInstitution}, person::Person, Pagination}, AppState
+    AppState,
+    db::{
+        Pagination,
+        institution::{Institution, NewInstitution},
+        person::Person,
+    },
 };
 
 pub(super) fn router() -> Router<AppState> {
     use handlers::*;
 
     // TODO: get a list of routes from the database and then just put them here
-    let endpoints: HashMap<&str, [&str; 1], RandomState> = HashMap::from_iter([("available_endpoints", [""])]);
+    let endpoints: HashMap<&str, [&str; 1], RandomState> =
+        HashMap::from_iter([("available_endpoints", [""])]);
 
     let router = Router::new()
         .route("/", get(|| async { Json(endpoints) }))
-        .route("/institutions", get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>))
+        .route(
+            "/institutions",
+            get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>),
+        )
         .route("/institutions/{institution_id}", get(by_id::<Institution>))
         .route("/people", get(by_filter::<Person>))
         .route("/people/{person_id}", get(by_id::<Person>));
@@ -35,11 +42,18 @@ struct FilterWithPagination<F> {
 }
 
 mod handlers {
-    use axum::{extract::{Path, State}, Json};
+    use axum::{
+        Json,
+        extract::{Path, State},
+    };
     use axum_extra::extract::Query;
 
     use super::FilterWithPagination;
-    use crate::{api::{self, ApiUser}, db, AppState};
+    use crate::{
+        AppState,
+        api::{self},
+        db,
+    };
 
     pub async fn by_id<T: db::Read>(
         State(state): State<AppState>,
@@ -81,7 +95,10 @@ mod handlers {
         Ok(axum::Json(relatives))
     }
 
-    pub async fn new<T: db::Create>(State(state): State<AppState>, Json(data): Json<T>) -> api::Result<Json<T::Returns>> {
+    pub async fn new<T: db::Create>(
+        State(state): State<AppState>,
+        Json(data): Json<T>,
+    ) -> api::Result<Json<T::Returns>> {
         let mut conn = state.db_pool.get().await?;
 
         let created = data.create(&mut conn).await?;

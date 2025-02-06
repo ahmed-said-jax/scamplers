@@ -12,7 +12,7 @@ use crate::schema::{dual_index_set, index_kit, single_index_set};
 
 #[derive(Deserialize, Validate, Clone)]
 #[serde(transparent)]
-pub struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))]Url);
+pub struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))] Url);
 
 fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
     let Some(domain) = url.domain() else {
@@ -20,7 +20,9 @@ fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
     };
 
     if domain != "cdn.10xgenomics.com" {
-        return Err(garde::Error::new(format!("URL domain must be 'cdn.10xgenomics.com', found {domain}")));
+        return Err(garde::Error::new(format!(
+            "URL domain must be 'cdn.10xgenomics.com', found {domain}"
+        )));
     }
 
     Ok(())
@@ -52,16 +54,18 @@ impl Create for IndexSets {
     async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         match self {
             Self::Single(sets) => sets.create(conn).await?,
-            Self::Dual(sets) => sets.create(conn).await?
+            Self::Dual(sets) => sets.create(conn).await?,
         };
 
         Ok(())
     }
 }
 
-static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap());
-static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
+static INDEX_SET_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap()
+});
+static DNA_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
 
 #[derive(Deserialize, Validate, Hash, PartialEq, Eq, Clone)]
 #[garde(transparent)]

@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
@@ -17,7 +16,7 @@ use strum::VariantArray;
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
-use crate::{schema::{institution, person, sql_types as custom_types}};
+use crate::schema::{institution, person};
 
 #[derive(
     Clone,
@@ -30,7 +29,7 @@ use crate::{schema::{institution, person, sql_types as custom_types}};
     strum::EnumString,
     PartialEq,
     Deserialize,
-    Serialize
+    Serialize,
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
@@ -81,7 +80,7 @@ impl UserRow {
 
         let roles = diesel::select(roles(self.id)).get_result(conn).await?;
 
-        Ok(User {user: self, roles})
+        Ok(User { user: self, roles })
     }
 }
 
@@ -89,20 +88,19 @@ impl UserRow {
 pub struct User {
     #[serde(flatten)]
     user: UserRow,
-    roles: Vec<UserRole>
+    roles: Vec<UserRole>,
 }
-
 
 impl User {
     pub fn test_user() -> Self {
         let user = UserRow {
             id: Uuid::nil(),
-            first_name: String::new()
+            first_name: String::new(),
         };
 
         Self {
             user,
-            roles: UserRole::VARIANTS.to_vec()
+            roles: UserRole::VARIANTS.to_vec(),
         }
     }
 }
