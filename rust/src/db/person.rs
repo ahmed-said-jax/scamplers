@@ -117,6 +117,7 @@ pub struct PersonRow {
     name: String,
     email: String,
     orcid: Option<String>,
+    link: String
 }
 
 #[derive(Serialize, Queryable, Selectable)]
