@@ -29,12 +29,12 @@ impl FromRequestParts<AppState> for ApiUser {
         use Error::ApiKeyNotFound;
 
         if !state.production {
-            return Ok(Self(db::person::User::test_user()));
+            return Ok(Self(User::test_user()));
         }
 
         let raw_api_key = parts
             .headers
-            .get("X-API-key")
+            .get("X-API-Key")
             .ok_or(ApiKeyNotFound)?
             .as_bytes();
 

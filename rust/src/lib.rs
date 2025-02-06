@@ -22,6 +22,7 @@ mod api;
 pub mod db;
 pub mod schema;
 mod seed_data;
+mod web;
 
 const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
@@ -42,9 +43,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         .context("failed to insert seed data")?;
     tracing::info!("inserted seed data");
 
-    let app = Router::new()
-        .nest("/api", api::router().route_layer(from_extractor_with_state::<ApiUser, AppState>(app_state.clone())))
-        .with_state(app_state);
+    let app = app(app_state);
 
     let listener = TcpListener::bind(&app_config.server_address)
         .await
@@ -138,4 +137,8 @@ async fn insert_seed_data(
     download_and_insert_index_sets(app_state, &index_set_urls).await?;
 
     Ok(())
+}
+
+fn app(app_state: AppState) -> Router {
+    Router::new().nest("/api", api::router().route_layer(from_extractor_with_state::<ApiUser, AppState>(app_state.clone()))).with_state(app_state)
 }

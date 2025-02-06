@@ -1,7 +1,7 @@
 -- Your SQL goes here
 create table chromium_run (
     id uuid primary key,
-    link text generated always as ('/api/chromium_runs/' || id) stored not null,
+    link text generated always as ('/chromium_runs/' || id) stored not null,
     legacy_id text unique not null,
     chip text not null, -- constrained by Rust enum
     run_at timestamp not null,

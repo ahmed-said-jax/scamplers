@@ -1,7 +1,7 @@
 -- Your SQL goes here
 create table chromium_library (
     id uuid primary key,
-    link text generated always as ('/api/chromium_library/' || id) stored not null,
+    link text generated always as ('/libraries/' || id) stored not null,
     legacy_id text unique not null,
     cdna_id uuid references cdna on delete restrict on update restrict not null,
     single_index_set_name text references single_index_set on delete restrict on update restrict,

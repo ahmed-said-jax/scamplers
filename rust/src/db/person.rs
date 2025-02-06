@@ -17,10 +17,7 @@ use strum::VariantArray;
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
-use crate::{
-    api::api_key::{ApiKey, AsApiKey},
-    schema::{institution, person, sql_types as custom_types},
-};
+use crate::{schema::{institution, person, sql_types as custom_types}};
 
 #[derive(
     Clone,
@@ -36,7 +33,7 @@ use crate::{
     Serialize
 )]
 #[strum(serialize_all = "snake_case")]
-#[diesel(sql_type = custom_types::UserRole)]
+#[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
 pub enum UserRole {
     Admin,
@@ -44,14 +41,14 @@ pub enum UserRole {
     LabStaff,
 }
 
-impl FromSql<custom_types::UserRole, Pg> for UserRole {
+impl FromSql<sql_types::Text, Pg> for UserRole {
     fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
         Ok(Self::from_str(&raw).unwrap())
     }
 }
 
-impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
+impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
     fn to_sql<'b>(
         &'b self,
         out: &mut diesel::serialize::Output<'b, '_, Pg>,
@@ -61,22 +58,51 @@ impl ToSql<custom_types::UserRole, diesel::pg::Pg> for UserRole {
     }
 }
 
+define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Uuid)}
+define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid)}
+define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Uuid)}
+define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -> sql_types::Array<sql_types::Text>}
+
 // This represents a person as a user of the application. It should be a
 // read-only view
-#[derive(Selectable, Queryable, Clone)]
+#[derive(Selectable, Queryable, Serialize)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub struct User {
-    pub id: Uuid,
-    pub first_name: String,
-    pub roles: Vec<UserRole>,
+pub struct UserRow {
+    id: Uuid,
+    first_name: String,
 }
+
+impl UserRow {
+    pub async fn with_roles(self, conn: &mut AsyncPgConnection) -> super::Result<User> {
+        #[diesel::dsl::auto_type(no_type_alias)]
+        fn roles(user_id: Uuid) -> _ {
+            get_user_roles(user_id)
+        }
+
+        let roles = diesel::select(roles(self.id)).get_result(conn).await?;
+
+        Ok(User {user: self, roles})
+    }
+}
+
+#[derive(Serialize)]
+pub struct User {
+    #[serde(flatten)]
+    user: UserRow,
+    roles: Vec<UserRole>
+}
+
 
 impl User {
     pub fn test_user() -> Self {
-        Self {
+        let user = UserRow {
             id: Uuid::nil(),
-            first_name: String::new(),
-            roles: UserRole::VARIANTS.to_vec(),
+            first_name: String::new()
+        };
+
+        Self {
+            user,
+            roles: UserRole::VARIANTS.to_vec()
         }
     }
 }
@@ -200,14 +226,13 @@ impl Read for Person {
         // The next two conditions are pretty much the same thing, there's probably some
         // way to improve this
         if let Some(name) = name {
-            base_query = base_query.filter(name_col.ilike(format!("%{name}%"))); // Notice we allow for any characters on either side of the string, so that a person can search by last name if that's all they remember
+            base_query = base_query.filter(name_col.ilike(format!("%{name}%"))); // This allows searching by first name or last name (or any substring within each)
         }
 
         if let Some(email) = email {
             base_query = base_query.filter(email_col.ilike(format!("{email}%")));
         }
 
-        // ignore lab_id for now
         Ok(base_query.load(conn).await?)
     }
 }

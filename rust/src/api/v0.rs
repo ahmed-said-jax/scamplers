@@ -1,4 +1,6 @@
-use axum::{handler::Handler, middleware, routing::get, Router};
+use std::{collections::HashMap, hash::RandomState};
+
+use axum::{handler::Handler, middleware, routing::get, Json, Router};
 use serde::Deserialize;
 use serde_json::json;
 use strum::VariantArray;
@@ -9,19 +11,13 @@ use crate::{
 
 pub(super) fn router() -> Router<AppState> {
     use handlers::*;
-    use auth::*;
 
-    let mut router = Router::new();
+    // TODO: get a list of routes from the database and then just put them here
+    let endpoints: HashMap<&str, [&str; 1], RandomState> = HashMap::from_iter([("available_endpoints", [""])]);
 
-    let endpoints: Vec<&str> = db::Entity::VARIANTS
-        .iter()
-        .map(|entity| entity.v0_endpoint())
-        .collect();
-    let endpoints = json!({"available_endpoints": endpoints});
-
-    router = router
-        .route("/", get(|| async { axum::Json(endpoints) }))
-        .route("/institutions", get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>.layer(middleware::from_fn(user_has_admin))))
+    let router = Router::new()
+        .route("/", get(|| async { Json(endpoints) }))
+        .route("/institutions", get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>))
         .route("/institutions/{institution_id}", get(by_id::<Institution>))
         .route("/people", get(by_filter::<Person>))
         .route("/people/{person_id}", get(by_id::<Person>));
@@ -91,37 +87,5 @@ mod handlers {
         let created = data.create(&mut conn).await?;
 
         Ok(Json(created))
-    }
-}
-
-mod auth {
-    use axum::{debug_handler, debug_middleware, extract::Request, middleware::Next, response::{IntoResponse, Response}};
-
-    use crate::{api::ApiUser, db::person::UserRole};
-
-    #[debug_middleware]
-    pub async fn user_has_admin(ApiUser(user): ApiUser, req: Request, next: Next) -> Response {
-        if !user.roles.contains(&UserRole::Admin) {
-            super::super::Error::permission().into_response()
-        } else {
-            next.run(req).await
-        }
-    }
-}
-
-impl db::Entity {
-    pub fn v0_endpoint(&self) -> &'static str {
-        use db::Entity::*;
-
-        match self {
-            Institution => "/institutions/{institution_id}",
-            Person => "/people/{person_id}",
-            Lab => "/labs/{lab_id}",
-            Sample => "/samples/{sample_id}",
-            Library => "/libraries/{library_id}",
-            SequencingRun => "/sequencing_runs/{sequencing_run_id}",
-            Dataset => "/datasets/{dataset_id}",
-            Unknown => "/",
-        }
     }
 }

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use diesel::result::DatabaseErrorInformation;
 use diesel_async::{AsyncPgConnection, pooled_connection::deadpool};
 use futures::FutureExt;
-use person::User;
+use person::UserRow;
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use valuable::Valuable;

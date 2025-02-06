@@ -1,7 +1,7 @@
 -- Your SQL goes here
 create table multiplexed_suspension (
     id uuid primary key,
-    link text generated always as ('/api/samples/' || id) stored not null,
+    link text generated always as ('/samples/' || id) stored not null,
     legacy_id text unique not null,
     date_pooled date not null,
     tag_type text not null, -- constrained by Rust enum

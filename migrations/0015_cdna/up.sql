@@ -1,7 +1,7 @@
 -- Your SQL goes here
 create table cdna (
     id uuid primary key,
-    link text generated always as ('/api/cdna/' || id) stored not null,
+    link text generated always as ('/cdna/' || id) stored not null,
     legacy_id text unique not null,
     prepared_at timestamp not null,
     gems_id uuid references gems not null,

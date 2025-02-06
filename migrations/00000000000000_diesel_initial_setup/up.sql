@@ -35,17 +35,62 @@ BEGIN
 END;
 $$ language plpgsql;
 
-create function create_role_if_not_exists(
-    role_name text
-) returns void language plpgsql volatile strict as $$
-    declare role_exists boolean;
+create function user_exists(user_id uuid) returns boolean language plpgsql volatile strict as $$
+    declare user_exists boolean;
     begin
-        select exists (select 1 from pg_roles where rolname = role_name) into role_exists;
-        if not role_exists then 
-            execute format('create role %I', role_name);
-        end if;
+        select exists (select 1 from pg_roles where rolname = user_id::text) into user_exists;
+        return user_exists;
     end;
 $$;
 
-select create_role_if_not_exists('scamplers');
-select create_role_if_not_exists('scamplers_plot');
+create function grant_roles_to_user(
+    user_id uuid,
+    roles text []
+) returns void language plpgsql volatile strict as $$
+    declare r text;
+    begin
+        foreach r in array roles loop
+            execute format('grant "%I" to "%I"', r, user_id::text);
+        end loop;
+    end;
+$$;
+
+create function revoke_roles_from_user(
+    user_id uuid,
+    roles text []
+) returns void language plpgsql volatile strict as $$
+    declare r text;
+    begin
+        if not user_exists(user_id) then
+            return;
+        end if;
+
+        foreach r in array roles loop
+            execute format('revoke "%I" from "%I"', r, user_id::text);
+        end loop;
+    end;
+$$;
+
+create function create_user_if_not_exists(
+    user_id uuid,
+    roles text []
+) returns void language plpgsql volatile strict as $$
+    begin
+        if not user_exists(user_id) then
+            execute format('create role "%I"', user_id::text);
+        end if;
+        select grant_roles_to_user(user_id, roles);
+    end;
+$$;
+
+create function get_user_roles(
+    user_id uuid
+) returns text [] language plpgsql volatile strict as $$
+    declare roles text [];
+    begin
+        select array_agg(pg_roles.rolname) from pg_roles inner join pg_auth_members on pg_roles.oid = pg_auth_members.roleid and pg_auth_members.member = (select usesysid from pg_user where usename = user_id::text) into roles;
+        return roles;
+    end;
+$$;
+
+-- TODO: create roles here from the enum above
