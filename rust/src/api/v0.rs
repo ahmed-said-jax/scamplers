@@ -47,11 +47,13 @@ mod handlers {
         extract::{Path, State},
     };
     use axum_extra::extract::Query;
-    use diesel_async::{scoped_futures::ScopedFutureExt, AsyncConnection, RunQueryDsl};
+    use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
 
     use super::FilterWithPagination;
     use crate::{
-        api::{self, ApiUser}, db::{self, set_transaction_user}, AppState
+        AppState,
+        api::{self, ApiUser},
+        db::{self, set_transaction_user},
     };
 
     pub async fn by_id<T: db::Read + Send>(
@@ -61,11 +63,16 @@ mod handlers {
     ) -> api::Result<Json<T>> {
         let mut conn = state.db_pool.get().await?;
 
-        let item = conn.transaction(|conn| async move {
-            set_transaction_user(user.id(), conn).await?;
+        let item = conn
+            .transaction(|conn| {
+                async move {
+                    set_transaction_user(user.id(), conn).await?;
 
-            T::fetch_by_id(id, conn).await
-        }.scope_boxed()).await?;
+                    T::fetch_by_id(id, conn).await
+                }
+                .scope_boxed()
+            })
+            .await?;
 
         Ok(axum::Json(item))
     }
@@ -77,11 +84,16 @@ mod handlers {
     ) -> api::Result<Json<Vec<T>>> {
         let mut conn = state.db_pool.get().await?;
 
-        let items = conn.transaction(|conn| async move {
-            set_transaction_user(user.id(), conn).await?;
+        let items = conn
+            .transaction(|conn| {
+                async move {
+                    set_transaction_user(user.id(), conn).await?;
 
-            T::fetch_many(query.filter.as_ref(), &query.pagination, conn).await
-        }.scope_boxed()).await?;
+                    T::fetch_many(query.filter.as_ref(), &query.pagination, conn).await
+                }
+                .scope_boxed()
+            })
+            .await?;
 
         Ok(axum::Json(items))
     }
@@ -111,11 +123,16 @@ mod handlers {
     ) -> api::Result<Json<T::Returns>> {
         let mut conn = state.db_pool.get().await?;
 
-        let created = conn.transaction(|conn| async move {
-            set_transaction_user(user.id(), conn).await?;
+        let created = conn
+            .transaction(|conn| {
+                async move {
+                    set_transaction_user(user.id(), conn).await?;
 
-            data.create(conn).await
-        }.scope_boxed()).await?;
+                    data.create(conn).await
+                }
+                .scope_boxed()
+            })
+            .await?;
 
         Ok(Json(created))
     }

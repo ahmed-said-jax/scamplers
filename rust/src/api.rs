@@ -1,4 +1,8 @@
-use axum::{extract::{FromRequestParts, State}, response::IntoResponse, Router};
+use axum::{
+    Router,
+    extract::{FromRequestParts, State},
+    response::IntoResponse,
+};
 use diesel_async::pooled_connection::deadpool;
 use serde::Serialize;
 use uuid::Uuid;

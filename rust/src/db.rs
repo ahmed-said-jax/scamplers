@@ -1,7 +1,10 @@
 use std::str::FromStr;
 
 use diesel::{query_builder::SqlQuery, result::DatabaseErrorInformation};
-use diesel_async::{pooled_connection::deadpool, scoped_futures::ScopedFutureExt, AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use diesel_async::{
+    AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool,
+    scoped_futures::ScopedFutureExt,
+};
 use futures::FutureExt;
 use person::User;
 use regex::Regex;
@@ -22,7 +25,10 @@ pub mod person;
 pub trait Create: Send {
     type Returns: Send;
 
-    fn create(&self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
+    fn create(
+        &self,
+        conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
 pub trait Read: Serialize + Sized + Send {
@@ -35,7 +41,10 @@ pub trait Read: Serialize + Sized + Send {
         conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = Result<Vec<Self>>> + Send;
 
-    fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
+    fn fetch_by_id(
+        id: Self::Id,
+        conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = Result<Self>> + Send;
 }
 
 pub trait Update {
@@ -106,7 +115,9 @@ pub enum Entity {
 }
 
 pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) -> Result<()> {
-    diesel::sql_query(format!(r#"set local role "{user_id}""#)).execute(conn).await?;
+    diesel::sql_query(format!(r#"set local role "{user_id}""#))
+        .execute(conn)
+        .await?;
 
     Ok(())
 }
