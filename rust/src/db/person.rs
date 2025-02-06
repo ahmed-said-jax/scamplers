@@ -12,7 +12,6 @@ use diesel::{
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use strum::VariantArray;
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, institution::Institution};
@@ -57,57 +56,11 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
     }
 }
 
-define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Uuid)}
-define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid)}
+define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Uuid, roles: sql_types::Array<sql_types::Text>)}
+define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid, roles: sql_types::Array<sql_types::Text>)}
 define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Uuid)}
 define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -> sql_types::Array<sql_types::Text>}
 
-// This represents a person as a user of the application. It should be a
-// read-only view
-#[derive(Selectable, Queryable, Serialize)]
-#[diesel(table_name = person, check_for_backend(Pg))]
-pub struct UserRow {
-    id: Uuid,
-    first_name: String,
-}
-
-impl UserRow {
-    pub async fn with_roles(self, conn: &mut AsyncPgConnection) -> super::Result<User> {
-        #[diesel::dsl::auto_type(no_type_alias)]
-        fn roles(user_id: Uuid) -> _ {
-            get_user_roles(user_id)
-        }
-
-        let roles = diesel::select(roles(self.id)).get_result(conn).await?;
-
-        Ok(User { user: self, roles })
-    }
-}
-
-#[derive(Serialize)]
-pub struct User {
-    #[serde(flatten)]
-    user: UserRow,
-    roles: Vec<UserRole>,
-}
-
-impl User {
-    pub fn test_user() -> Self {
-        let user = UserRow {
-            id: Uuid::nil(),
-            first_name: String::new(),
-        };
-
-        Self {
-            user,
-            roles: UserRole::VARIANTS.to_vec(),
-        }
-    }
-
-    pub fn id(&self) -> &Uuid {
-        &self.user.id
-    }
-}
 
 // We don't export this to TypeScript because people will be created using
 // Microsoft authentication rather than in the frontend

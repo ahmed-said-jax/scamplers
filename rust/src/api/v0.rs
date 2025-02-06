@@ -57,7 +57,7 @@ mod handlers {
     };
 
     pub async fn by_id<T: db::Read + Send>(
-        ApiUser(user): ApiUser,
+        ApiUser(user_id): ApiUser,
         State(state): State<AppState>,
         Path(id): Path<T::Id>,
     ) -> api::Result<Json<T>> {
@@ -66,7 +66,7 @@ mod handlers {
         let item = conn
             .transaction(|conn| {
                 async move {
-                    set_transaction_user(user.id(), conn).await?;
+                    set_transaction_user(&user_id, conn).await?;
 
                     T::fetch_by_id(id, conn).await
                 }
@@ -78,7 +78,7 @@ mod handlers {
     }
 
     pub async fn by_filter<T: db::Read>(
-        ApiUser(user): ApiUser,
+        ApiUser(user_id): ApiUser,
         State(state): State<AppState>,
         Query(query): Query<FilterWithPagination<T::Filter>>,
     ) -> api::Result<Json<Vec<T>>> {
@@ -87,7 +87,7 @@ mod handlers {
         let items = conn
             .transaction(|conn| {
                 async move {
-                    set_transaction_user(user.id(), conn).await?;
+                    set_transaction_user(&user_id, conn).await?;
 
                     T::fetch_many(query.filter.as_ref(), &query.pagination, conn).await
                 }
@@ -117,7 +117,7 @@ mod handlers {
     }
 
     pub async fn new<T: db::Create>(
-        ApiUser(user): ApiUser,
+        ApiUser(user_id): ApiUser,
         State(state): State<AppState>,
         Json(data): Json<T>,
     ) -> api::Result<Json<T::Returns>> {
@@ -126,7 +126,7 @@ mod handlers {
         let created = conn
             .transaction(|conn| {
                 async move {
-                    set_transaction_user(user.id(), conn).await?;
+                    set_transaction_user(&user_id, conn).await?;
 
                     data.create(conn).await
                 }

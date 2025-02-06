@@ -1,17 +1,15 @@
+use argon2::{password_hash::SaltString, PasswordHasher};
 use axum::{
     Router,
     extract::FromRequestParts,
     response::IntoResponse,
 };
-use diesel_async::pooled_connection::deadpool;
+use diesel::prelude::*;
+use diesel_async::{pooled_connection::deadpool, AsyncPgConnection, RunQueryDsl};
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::{
-    AppState,
-    db::{self, person::User},
-};
-pub mod api_key;
+use crate::{db, AppState};
 mod v0;
 
 pub fn router() -> Router<AppState> {
@@ -21,7 +19,52 @@ pub fn router() -> Router<AppState> {
     v0::router()
 }
 
-pub struct ApiUser(db::person::User);
+pub struct ApiUser(Uuid);
+impl ApiUser {
+    async fn fetch_by_api_key(api_key: &ApiKey, conn: &mut AsyncPgConnection) -> Result<Self> {
+        use crate::schema::person::dsl::*;
+        let hash = api_key.hash();
+
+        let result = person
+            .filter(api_key_hash.eq(hash))
+            .select(id)
+            .first(conn)
+            .await
+            .map_err(db::Error::from);
+
+        let Ok(user_id) = result else {
+            match result {
+                Err(db::Error::RecordNotFound) => return Err(Error::InvalidApiKey),
+                Err(e) => return Err(Error::from(e)),
+                Ok(_) => unreachable!(),
+            }
+        };
+
+        Ok(Self(user_id))
+    }
+}
+struct ApiKey(Uuid);
+impl ApiKey {
+    fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+
+    fn hash(&self) -> String {
+        let hasher = argon2::Argon2::default();
+        let bytes = self.0.as_bytes();
+
+        // We don't care about salting because it's already highly random, being a UUID
+        let salt = SaltString::from_b64("0000").unwrap();
+
+        let hash = hasher.hash_password(bytes, &salt).unwrap().to_string();
+
+        hash
+    }
+
+    fn from_slice(b: &[u8]) -> Result<Self> {
+        Ok(Self(Uuid::from_slice(b).map_err(|_| Error::InvalidApiKey)?))
+    }
+}
 
 impl FromRequestParts<AppState> for ApiUser {
     type Rejection = Error;
@@ -32,8 +75,9 @@ impl FromRequestParts<AppState> for ApiUser {
     ) -> std::result::Result<Self, Self::Rejection> {
         use Error::ApiKeyNotFound;
 
-        if !state.production {
-            return Ok(Self(User::test_user()));
+        // If there's no way to authenticate and generate an API key, then this is not a production build
+        if state.auth_url.is_none() {
+            return Ok(Self(Uuid::nil()));
         }
 
         let raw_api_key = parts
@@ -42,10 +86,10 @@ impl FromRequestParts<AppState> for ApiUser {
             .ok_or(ApiKeyNotFound)?
             .as_bytes();
 
-        let api_key = Uuid::from_slice(raw_api_key).map_err(|_| Error::InvalidApiKey)?;
+        let api_key = ApiKey::from_slice(raw_api_key)?;
         let mut conn = state.db_pool.get().await?;
 
-        ApiUser::fetch_by_api_key(api_key, &mut conn).await
+        ApiUser::fetch_by_api_key(&api_key, &mut conn).await
     }
 }
 

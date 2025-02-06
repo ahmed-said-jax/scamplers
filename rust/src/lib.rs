@@ -5,17 +5,16 @@ use std::fs;
 use anyhow::Context;
 use axum::Router;
 use camino::Utf8Path;
-use db::index_sets::IndexSetFileUrl;
+use db::{index_sets::IndexSetFileUrl, person::{create_user_if_not_exists, grant_roles_to_user, UserRole}};
 use diesel_async::{
-    AsyncConnection, AsyncPgConnection,
-    async_connection_wrapper::AsyncConnectionWrapper,
-    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
+    async_connection_wrapper::AsyncConnectionWrapper, pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager}, AsyncConnection, AsyncPgConnection, RunQueryDsl
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use garde::Validate;
 use seed_data::download_and_insert_index_sets;
 use serde::Deserialize;
 use tokio::net::TcpListener;
+use uuid::Uuid;
 
 mod api;
 pub mod db;
@@ -35,7 +34,7 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         .context("failed to run database migrations")?;
     tracing::info!("ran database migrations");
 
-    let app_state = AppState::from_config(&app_config).context("failed to create app state")?;
+    let app_state = AppState::from_config(&app_config).await.context("failed to create app state")?;
 
     insert_seed_data(app_state.clone(), &app_config)
         .await
@@ -66,20 +65,7 @@ struct AppConfig {
     #[garde(dive)]
     index_set_file_urls: Vec<IndexSetFileUrl>,
     server_address: String,
-    #[garde(custom(|auth_url: &Option<String>, _| production_has_auth_url(auth_url, self.production)))]
     auth_url: Option<String>,
-    #[serde(default)]
-    production: bool,
-}
-
-fn production_has_auth_url(auth_url: &Option<String>, production: bool) -> garde::Result {
-    if auth_url.is_none() && production {
-        return Err(garde::Error::new(
-            "auth_url must be supplied for production",
-        ));
-    }
-
-    Ok(())
 }
 
 impl AppConfig {
@@ -111,14 +97,12 @@ pub struct AppState {
     db_pool: Pool<AsyncPgConnection>,
     http_client: reqwest::Client,
     auth_url: Option<String>,
-    production: bool,
 }
 
 impl AppState {
-    fn from_config(
+    async fn from_config(
         AppConfig {
             db_url,
-            production,
             auth_url,
             ..
         }: &AppConfig,
@@ -126,11 +110,17 @@ impl AppState {
         let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
         let db_pool = Pool::builder(db_config).build()?;
 
+        // If there's no authentication mechanism, we're testing, so all users are admin
+        if auth_url.is_none() {
+            let mut conn = db_pool.get().await?;
+            diesel::select(create_user_if_not_exists(Uuid::nil())).execute(&mut conn).await?;
+            diesel::select(grant_roles_to_user(Uuid::nil(), vec![UserRole::Admin])).execute(&mut conn).await?;
+        }
+
         let app_state = Self {
             db_pool,
             http_client: reqwest::Client::new(),
             auth_url: auth_url.clone(),
-            production: *production,
         };
 
         Ok(app_state)
