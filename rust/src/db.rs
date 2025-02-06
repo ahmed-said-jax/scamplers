@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
 use diesel::result::DatabaseErrorInformation;
-use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
-use futures::FutureExt;
+use diesel_async::{pooled_connection::deadpool, AsyncPgConnection, RunQueryDsl};
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
@@ -12,12 +11,19 @@ pub mod index_sets;
 pub mod institution;
 pub mod person;
 
-// the following traits are not used to enforce anything, they just help to
-// provide a uniform interface for database CRUD operations
+// struct AsyncDbConnection(AsyncPgConnection);
+// impl AsyncDbConnection {
+//     async fn execute_as_user<F: AsyncFnMut(&mut AsyncPgConnection) -> Result<R>, R: Send>(mut self, user_id: &Uuid, f: F) -> Result<R> {
+//         let result = self.0.transaction(|conn| async move {
+//             diesel::sql_query(format!(r#"set local role "{user_id}""#)).execute(conn).await?;
+//             f(conn).await
+//         }.scope_boxed()).await?;
 
-// we don't need to `impl<T> Create for Vec<T>` for generic `T` because diesel
-// allows us to insert multiple records at once, so we can just `impl Create`
-// for a concrete Vec<T>
+//         Ok(result)
+//     }
+// }
+
+// Do not implement this trait for a scalar T - just implement it for Vec<T> because diesel allows you to insert many things at once
 pub trait Create: Send {
     type Returns: Send;
 
