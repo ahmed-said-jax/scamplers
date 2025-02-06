@@ -3,11 +3,7 @@
 use std::fs;
 
 use anyhow::Context;
-use api::ApiUser;
-use axum::{
-    Router,
-    middleware::{self, from_extractor_with_state},
-};
+use axum::Router;
 use camino::Utf8Path;
 use db::index_sets::IndexSetFileUrl;
 use diesel_async::{

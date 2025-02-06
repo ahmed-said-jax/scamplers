@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    extract::{FromRequestParts, State},
+    extract::FromRequestParts,
     response::IntoResponse,
 };
 use diesel_async::pooled_connection::deadpool;

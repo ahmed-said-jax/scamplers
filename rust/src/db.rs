@@ -1,12 +1,10 @@
 use std::str::FromStr;
 
-use diesel::{query_builder::SqlQuery, result::DatabaseErrorInformation};
+use diesel::result::DatabaseErrorInformation;
 use diesel_async::{
-    AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool,
-    scoped_futures::ScopedFutureExt,
+    AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool,
 };
 use futures::FutureExt;
-use person::User;
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;

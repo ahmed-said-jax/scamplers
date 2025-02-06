@@ -47,7 +47,7 @@ mod handlers {
         extract::{Path, State},
     };
     use axum_extra::extract::Query;
-    use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+    use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
 
     use super::FilterWithPagination;
     use crate::{
