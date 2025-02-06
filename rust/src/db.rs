@@ -1,9 +1,7 @@
 use std::str::FromStr;
 
 use diesel::result::DatabaseErrorInformation;
-use diesel_async::{
-    AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool,
-};
+use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use futures::FutureExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};

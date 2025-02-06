@@ -5,9 +5,14 @@ use std::fs;
 use anyhow::Context;
 use axum::Router;
 use camino::Utf8Path;
-use db::{index_sets::IndexSetFileUrl, person::{create_user_if_not_exists, grant_roles_to_user, UserRole}};
+use db::{
+    index_sets::IndexSetFileUrl,
+    person::{UserRole, create_user_if_not_exists, grant_roles_to_user},
+};
 use diesel_async::{
-    async_connection_wrapper::AsyncConnectionWrapper, pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager}, AsyncConnection, AsyncPgConnection, RunQueryDsl
+    AsyncConnection, AsyncPgConnection, RunQueryDsl,
+    async_connection_wrapper::AsyncConnectionWrapper,
+    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use garde::Validate;
@@ -34,7 +39,9 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
         .context("failed to run database migrations")?;
     tracing::info!("ran database migrations");
 
-    let app_state = AppState::from_config(&app_config).await.context("failed to create app state")?;
+    let app_state = AppState::from_config(&app_config)
+        .await
+        .context("failed to create app state")?;
 
     insert_seed_data(app_state.clone(), &app_config)
         .await
@@ -102,9 +109,7 @@ pub struct AppState {
 impl AppState {
     async fn from_config(
         AppConfig {
-            db_url,
-            auth_url,
-            ..
+            db_url, auth_url, ..
         }: &AppConfig,
     ) -> anyhow::Result<Self> {
         let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
@@ -113,8 +118,12 @@ impl AppState {
         // If there's no authentication mechanism, we're testing, so all users are admin
         if auth_url.is_none() {
             let mut conn = db_pool.get().await?;
-            diesel::select(create_user_if_not_exists(Uuid::nil())).execute(&mut conn).await?;
-            diesel::select(grant_roles_to_user(Uuid::nil(), vec![UserRole::Admin])).execute(&mut conn).await?;
+            diesel::select(create_user_if_not_exists(Uuid::nil()))
+                .execute(&mut conn)
+                .await?;
+            diesel::select(grant_roles_to_user(Uuid::nil(), vec![UserRole::Admin]))
+                .execute(&mut conn)
+                .await?;
         }
 
         let app_state = Self {

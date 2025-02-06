@@ -61,7 +61,6 @@ define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid, roles:
 define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Uuid)}
 define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -> sql_types::Array<sql_types::Text>}
 
-
 // We don't export this to TypeScript because people will be created using
 // Microsoft authentication rather than in the frontend
 #[derive(Insertable, Validate, Deserialize)]

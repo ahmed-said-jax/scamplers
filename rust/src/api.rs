@@ -1,15 +1,11 @@
-use argon2::{password_hash::SaltString, PasswordHasher};
-use axum::{
-    Router,
-    extract::FromRequestParts,
-    response::IntoResponse,
-};
+use argon2::{PasswordHasher, password_hash::SaltString};
+use axum::{Router, extract::FromRequestParts, response::IntoResponse};
 use diesel::prelude::*;
-use diesel_async::{pooled_connection::deadpool, AsyncPgConnection, RunQueryDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::{db, AppState};
+use crate::{AppState, db};
 mod v0;
 
 pub fn router() -> Router<AppState> {
@@ -75,7 +71,8 @@ impl FromRequestParts<AppState> for ApiUser {
     ) -> std::result::Result<Self, Self::Rejection> {
         use Error::ApiKeyNotFound;
 
-        // If there's no way to authenticate and generate an API key, then this is not a production build
+        // If there's no way to authenticate and generate an API key, then this is not a
+        // production build
         if state.auth_url.is_none() {
             return Ok(Self(Uuid::nil()));
         }
