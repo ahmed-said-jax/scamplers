@@ -41,12 +41,14 @@ valuable = { version = "0.1.1", features = ["derive"] }
 argon2 = "0.5.3"
 garde = { version = "0.22.0", features = ["derive", "email", "serde"] }
 toml = { version = "0.8.20", default-features = false, features = ["parse"] }
+testcontainers-modules = { version = "0.11.5", features = ["postgres"], optional = true}
 
+[features]
+dev-or-test = ["testcontainers-modules"]
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 rstest = "0.24.0"
-testcontainers-modules = { version = "0.11.5", features = ["postgres", "blocking"] }
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

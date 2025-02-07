@@ -35,6 +35,14 @@ BEGIN
 END;
 $$ language plpgsql;
 
+-- We will do something with these roles later
+create role app_admin;
+create role biology_staff;
+create role computational_staff;
+
+create role login_user;
+create role auth;
+
 create function user_exists(user_id uuid) returns boolean language plpgsql volatile strict as $$
     declare user_exists boolean;
     begin

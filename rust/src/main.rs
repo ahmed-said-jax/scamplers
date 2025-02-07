@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use camino::Utf8PathBuf;
 use clap::Parser;
-use scamplers::serve_app;
+use scamplers::{serve_app, AppConfig2};
 use tracing::Level;
 use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -12,6 +12,10 @@ async fn main() -> anyhow::Result<()> {
         config_path,
         log_dir,
     } = Cli::parse();
+
+    let Some(log_dir) = log_dir else {
+        serve_app(&config_path).await
+    };
 
     let log_writer = tracing_appender::rolling::daily(log_dir, "scamplers.log");
 
@@ -30,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
 #[derive(Parser)]
 #[command(version)]
 struct Cli {
-    config_path: Utf8PathBuf,
+    config_path: Option<Utf8PathBuf>,
     #[arg(short, long, default_value_t = Utf8PathBuf::from_str("scamplers_logs").unwrap())]
-    log_dir: Utf8PathBuf,
+    log_dir: Option<Utf8PathBuf>,
 }

@@ -34,7 +34,7 @@ use crate::schema::{institution, person};
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
 pub enum UserRole {
-    Admin,
+    AppAdmin,
     ComputationalStaff,
     LabStaff,
 }

@@ -1,6 +1,6 @@
 #![allow(async_fn_in_trait)]
 
-use std::fs;
+use std::{default, fs};
 
 use anyhow::Context;
 use axum::Router;
@@ -17,7 +17,7 @@ use diesel_async::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use garde::Validate;
 use seed_data::download_and_insert_index_sets;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use uuid::Uuid;
 
@@ -30,7 +30,19 @@ mod web;
 const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
 
-pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
+pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
+    let app_config = match (config_path) {
+        Some(path) => AppConfig2::from_path(path).context("failed to parse and validate configuration file")?,
+        None => AppConfig2::default()
+    };
+
+    match (app_config.is_prod(), cfg!(feature = "dev-or-test")) {
+        (true, true) => return Err(anyhow::Error::msg("production build must not be built with 'dev-or-test' feature flag")),
+        (false, false) => return Err(anyhow::Error::msg("dev or test builds must be built with 'dev-or-test' feature flag")),
+        (false, false) => todo!("build a test database and return a connection to it"),
+        _ => ()
+    };
+
     let app_config = AppConfig::from_path(config_path)
         .context("failed to parse and validate configuration file")?;
 
@@ -63,6 +75,46 @@ pub async fn serve_app(config_path: &Utf8Path) -> anyhow::Result<()> {
     );
 
     Ok(())
+}
+
+#[derive(Deserialize, Validate, Serialize, Default)]
+#[garde(allow_unvalidated)]
+#[serde(tag = "build", rename_all = "snake_case")]
+enum AppConfig2 {
+    #[default]
+    Dev,
+    Test {
+        auth_config: AuthConfig,
+        server_address: Option<String>
+    },
+    Prod {
+        db_url: String,
+        #[garde(dive)]
+        index_set_file_urls: Vec<IndexSetFileUrl>,
+        auth_config: AuthConfig,
+        server_address: String
+    }
+}
+
+impl AppConfig2 {
+    fn from_path(path: &Utf8Path) -> anyhow::Result<Self> {
+        let contents = fs::read_to_string(path)?;
+        let config: Self = toml::from_str(&contents)?;
+        config.validate()?;
+
+        Ok(config)
+    }
+
+    fn is_prod(&self) -> bool {
+        matches!(self, Self::Prod{..})
+    }
+}
+
+// Liable to change
+#[derive(Deserialize, Validate, Serialize, Default)]
+#[garde(allow_unvalidated)]
+struct AuthConfig {
+    ms_client_id: String,
 }
 
 #[derive(Deserialize, Validate)]
@@ -121,7 +173,7 @@ impl AppState {
             diesel::select(create_user_if_not_exists(Uuid::nil()))
                 .execute(&mut conn)
                 .await?;
-            diesel::select(grant_roles_to_user(Uuid::nil(), vec![UserRole::Admin]))
+            diesel::select(grant_roles_to_user(Uuid::nil(), vec![UserRole::AppAdmin]))
                 .execute(&mut conn)
                 .await?;
         }

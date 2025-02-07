@@ -10,7 +10,7 @@ use url::Url;
 use super::Create;
 use crate::schema::{dual_index_set, index_kit, single_index_set};
 
-#[derive(Deserialize, Validate, Clone)]
+#[derive(Deserialize, Validate, Clone, Serialize)]
 #[serde(transparent)]
 pub struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))] Url);
 
