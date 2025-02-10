@@ -171,7 +171,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         legacy_id -> Text,
-        chromium_run_id -> Nullable<Uuid>,
+        chromium_run_id -> Uuid,
     }
 }
 

@@ -171,7 +171,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         legacy_id -> Text,
-        chromium_run_id -> Nullable<Uuid>,
+        chromium_run_id -> Uuid,
     }
 }
 
@@ -469,4 +469,3 @@ diesel::allow_tables_to_appear_in_same_query!(
     suspension_measurement,
     suspension_preparers,
 );
-

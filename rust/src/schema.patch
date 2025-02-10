@@ -1,5 +1,5 @@
---- src/schema.rs	2025-02-06 08:12:15
-+++ src/schema_patch.rs	2025-02-06 08:12:26
+--- src/schema.rs
++++ src/schema.patch
 @@ -16,13 +16,13 @@
          link -> Text,
          legacy_id -> Text,
@@ -159,11 +159,3 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -466,6 +466,7 @@
-     specimen,
-     specimen_measurement,
-     suspension,
-     suspension_measurement,
-     suspension_preparers,
- );
-+

@@ -19,7 +19,7 @@ create table gems (
     id uuid primary key,
     link text generated always as ('/gems/' || id) stored not null,
     legacy_id text unique not null,
-    chromium_run_id uuid references chromium_run on delete restrict on update restrict
+    chromium_run_id uuid not null references chromium_run on delete restrict on update restrict
 );
 
 create table chip_loading (

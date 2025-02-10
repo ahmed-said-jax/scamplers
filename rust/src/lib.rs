@@ -1,6 +1,6 @@
 #![allow(async_fn_in_trait)]
 
-use std::{default, fs};
+use std::{default, fs, path};
 
 use anyhow::Context;
 use axum::Router;
@@ -31,19 +31,18 @@ const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
 
 pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
-    let app_config = match (config_path) {
+    let app_config = match config_path {
         Some(path) => AppConfig2::from_path(path).context("failed to parse and validate configuration file")?,
         None => AppConfig2::default()
     };
 
-    match (app_config.is_prod(), cfg!(feature = "dev-or-test")) {
-        (true, true) => return Err(anyhow::Error::msg("production build must not be built with 'dev-or-test' feature flag")),
-        (false, false) => return Err(anyhow::Error::msg("dev or test builds must be built with 'dev-or-test' feature flag")),
-        (false, false) => todo!("build a test database and return a connection to it"),
-        _ => ()
-    };
+    if app_config.is_prod() == cfg!(feature = "dev-or-test") {
+        return Err(anyhow::Error::msg("production builds and the 'dev-or-test' feature flag are mutually exclusive"));
+    }
 
-    let app_config = AppConfig::from_path(config_path)
+    // let app_state = AppState2::from_config(&app_config);
+
+    let app_config = AppConfig::from_path(config_path.unwrap())
         .context("failed to parse and validate configuration file")?;
 
     run_migrations(&app_config)
@@ -80,7 +79,7 @@ pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
 #[derive(Deserialize, Validate, Serialize, Default)]
 #[garde(allow_unvalidated)]
 #[serde(tag = "build", rename_all = "snake_case")]
-enum AppConfig2 {
+pub enum AppConfig2 {
     #[default]
     Dev,
     Test {
@@ -135,6 +134,8 @@ impl AppConfig {
     }
 }
 
+async fn run_migrations2() {}
+
 async fn run_migrations(AppConfig { db_url, .. }: &AppConfig) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
@@ -185,6 +186,13 @@ impl AppState {
         };
 
         Ok(app_state)
+    }
+}
+
+enum AppState2 {
+    #[cfg(feature = "dev-or-test")]
+    Dev {
+        container: String
     }
 }
 

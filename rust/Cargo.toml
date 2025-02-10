@@ -52,3 +52,10 @@ rstest = "0.24.0"
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
+
+[build-dependencies]
+testcontainers-modules = { version = "0.11.5", features = ["postgres", "blocking"] }
+serde_json = { version = "1.0.137" }
+camino = { version = "1.1.9" }
+regex = "1.11.1"
+similar = "2.7.0"
