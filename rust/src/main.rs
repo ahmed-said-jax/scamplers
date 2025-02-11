@@ -11,12 +11,13 @@ async fn main() -> anyhow::Result<()> {
         log_dir,
     } = Cli::parse();
 
-    let log_filter = tracing_subscriber::filter::Targets::new().with_target("scamplers", Level::INFO);
+    let log_filter =
+        tracing_subscriber::filter::Targets::new().with_target("scamplers", Level::INFO);
 
     match log_dir {
         Some(log_dir) => {
             let log_writer = tracing_appender::rolling::daily(log_dir, "scamplers.log");
-        
+
             let log_layer = tracing_subscriber::fmt::layer()
                 .json()
                 .with_writer(log_writer)
@@ -25,7 +26,9 @@ async fn main() -> anyhow::Result<()> {
             tracing_subscriber::registry().with(log_layer).init();
         }
         None => {
-            let log_layer = tracing_subscriber::fmt::layer().pretty().with_filter(log_filter);
+            let log_layer = tracing_subscriber::fmt::layer()
+                .pretty()
+                .with_filter(log_filter);
 
             tracing_subscriber::registry().with(log_layer).init();
         }

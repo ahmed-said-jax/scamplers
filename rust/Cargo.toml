@@ -25,7 +25,7 @@ url = { version = "2.5.4", features = ["serde"] }
 clap = { version = "4.5.27", features = ["derive"] }
 anyhow = "1.0.95"
 axum = { version = "0.8.1", default-features = false, features = ["http2", "json", "macros", "query", "tokio"] }
-axum-extra = { version = "0.10.0", features = ["query"] }
+axum-extra = { version = "0.10.0", features = ["query", "typed-header"] }
 serde_json = { version = "1.0.137", features = ["arbitrary_precision"] }
 diesel = {version = "2.2.7", default-features = false, features = ["without-deprecated", "chrono", "uuid", "serde_json"]}
 chrono = { version = "0.4.39", features = ["serde"]}
@@ -41,7 +41,8 @@ valuable = { version = "0.1.1", features = ["derive"] }
 argon2 = "0.5.3"
 garde = { version = "0.22.0", features = ["derive", "email", "serde"] }
 toml = { version = "0.8.20", default-features = false, features = ["parse"] }
-testcontainers-modules = { version = "0.11.5", features = ["postgres", "blocking"]}
+testcontainers-modules = { version = "0.11.5", features = ["postgres"]}
+serde_with = "3.12.0"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

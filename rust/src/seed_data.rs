@@ -1,20 +1,24 @@
 use anyhow::Context;
 
 use crate::{
-    AppState,
+    AppState2,
     db::{Create, index_sets::IndexSetFileUrl},
 };
 
 // We use anyhow::Result here because we just want to know what went wrong, we
 // don't care about serializing structured data to a client
 pub async fn download_and_insert_index_sets(
-    AppState {
-        db_pool,
-        http_client,
-        ..
-    }: AppState,
+    app_state: AppState2,
     file_urls: &[IndexSetFileUrl],
 ) -> anyhow::Result<()> {
+    // Clone is fine here because everything in AppState is meant to be cloned
+    // (cheaply clonable)
+    let AppState2::Prod { http_client, .. } = app_state.clone() else {
+        return Err(anyhow::Error::msg(
+            "index sets should only be downloaded in production builds",
+        ));
+    };
+
     let downloads = file_urls
         .into_iter()
         .map(|url| url.clone().download(http_client.clone()));
@@ -24,7 +28,7 @@ pub async fn download_and_insert_index_sets(
 
     // A for-loop is fine because this is like 10 URLs max, and each of these is a
     // bulk insert
-    let mut conn = db_pool.get().await?;
+    let mut conn = app_state.db_conn().await?;
     for set in &mut index_sets {
         set.create(&mut conn)
             .await

@@ -1,6 +1,6 @@
 --- src/schema.rs
 +++ src/schema.patch
-@@ -16,13 +16,13 @@
+@@ -25,13 +25,13 @@
          link -> Text,
          legacy_id -> Text,
          prepared_at -> Timestamp,
@@ -15,7 +15,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -56,24 +56,24 @@
+@@ -65,24 +65,24 @@
      chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
          gem_id -> Uuid,
          suspension_id -> Uuid,
@@ -42,7 +42,7 @@
  
  diesel::table! {
      chromium_library (id) {
-@@ -82,13 +82,13 @@
+@@ -91,13 +91,13 @@
          legacy_id -> Text,
          cdna_id -> Uuid,
          single_index_set_name -> Nullable<Text>,
@@ -57,7 +57,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -112,13 +112,13 @@
+@@ -121,13 +121,13 @@
          id -> Uuid,
          link -> Text,
          legacy_id -> Text,
@@ -72,7 +72,7 @@
  diesel::table! {
      chromium_runners (run_id, run_by) {
          run_id -> Uuid,
-@@ -225,13 +225,13 @@
+@@ -234,13 +234,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
          link -> Text,
@@ -87,7 +87,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -284,37 +284,37 @@
+@@ -293,37 +293,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -129,7 +129,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -324,13 +324,13 @@
+@@ -333,13 +333,13 @@
          #[sql_name = "type"]
          type_ -> Text,
          derived_from -> Nullable<Uuid>,
@@ -144,7 +144,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::Measurement;
-@@ -353,13 +353,13 @@
+@@ -362,13 +362,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,

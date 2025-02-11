@@ -98,7 +98,7 @@ impl Create for Vec<NewPerson> {
             Some(&filter),
             &Pagination {
                 limit: n,
-                ..Default::default()
+                offset: 0,
             },
             conn,
         )
@@ -117,7 +117,7 @@ pub struct PersonRow {
     name: String,
     email: String,
     orcid: Option<String>,
-    link: String
+    link: String,
 }
 
 #[derive(Serialize, Queryable, Selectable)]

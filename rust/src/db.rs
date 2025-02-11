@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
 use diesel::result::DatabaseErrorInformation;
-use diesel_async::{pooled_connection::deadpool, AsyncPgConnection, RunQueryDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_with::{DisplayFromStr, serde_as};
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -13,17 +14,19 @@ pub mod person;
 
 // struct AsyncDbConnection(AsyncPgConnection);
 // impl AsyncDbConnection {
-//     async fn execute_as_user<F: AsyncFnMut(&mut AsyncPgConnection) -> Result<R>, R: Send>(mut self, user_id: &Uuid, f: F) -> Result<R> {
+//     async fn execute_as_user<F: AsyncFnMut(&mut AsyncPgConnection) ->
+// Result<R>, R: Send>(mut self, user_id: &Uuid, f: F) -> Result<R> {
 //         let result = self.0.transaction(|conn| async move {
-//             diesel::sql_query(format!(r#"set local role "{user_id}""#)).execute(conn).await?;
-//             f(conn).await
+//             diesel::sql_query(format!(r#"set local role
+// "{user_id}""#)).execute(conn).await?;             f(conn).await
 //         }.scope_boxed()).await?;
 
 //         Ok(result)
 //     }
 // }
 
-// Do not implement this trait for a scalar T - just implement it for Vec<T> because diesel allows you to insert many things at once
+// Do not implement this trait for a scalar T - just implement it for Vec<T>
+// because diesel allows you to insert many things at once
 pub trait Create: Send {
     type Returns: Send;
 
@@ -69,26 +72,33 @@ impl<T: Update> Update for Vec<T> {
     }
 }
 
-pub trait ReadRelatives<T: Read>: DeserializeOwned {
-    async fn fetch_relatives(
+pub trait ReadRelatives<T: Read>: DeserializeOwned + Send {
+    fn fetch_relatives(
         &self,
         filter: Option<&T::Filter>,
         pagination: &Pagination,
         conn: &mut AsyncPgConnection,
-    ) -> Result<Vec<T>>;
+    ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
+#[serde_as]
 #[derive(Deserialize)]
 pub struct Pagination {
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(default = "Pagination::default_limit")]
     limit: i64,
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(default = "Pagination::default_limit")]
     offset: i64,
 }
-impl Default for Pagination {
-    fn default() -> Self {
-        Self {
-            limit: 100,
-            offset: 0,
-        }
+
+impl Pagination {
+    fn default_limit() -> i64 {
+        100
+    }
+
+    fn default_offset() -> i64 {
+        0
     }
 }
 
@@ -101,6 +111,7 @@ impl Default for Pagination {
     strum::VariantNames,
     strum::VariantArray,
     Valuable,
+    Clone,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -124,7 +135,7 @@ pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) 
     Ok(())
 }
 
-#[derive(thiserror::Error, Debug, Serialize, Valuable)]
+#[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
     #[error("duplicate record")]
@@ -167,6 +178,12 @@ impl From<diesel::result::Error> for Error {
 
 impl From<deadpool::PoolError> for Error {
     fn from(err: deadpool::PoolError) -> Self {
+        Self::from_other_error(err)
+    }
+}
+
+impl From<diesel::ConnectionError> for Error {
+    fn from(err: diesel::ConnectionError) -> Self {
         Self::from_other_error(err)
     }
 }

@@ -1,14 +1,26 @@
 use argon2::{PasswordHasher, password_hash::SaltString};
-use axum::{Router, extract::FromRequestParts, response::IntoResponse};
+use axum::{
+    RequestPartsExt, Router,
+    extract::{FromRequestParts, Query},
+    response::{IntoResponse, Redirect},
+};
+use axum_extra::{TypedHeader, headers};
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::{db::{self, person::UserRole}, AppState};
+use crate::{
+    AppState2,
+    db::{
+        self,
+        person::{UserRole, get_user_roles},
+    },
+};
 mod v0;
 
-pub fn router() -> Router<AppState> {
+pub fn router() -> Router<AppState2> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
@@ -37,64 +49,147 @@ enum User {
     Web {
         user_id: Uuid,
         first_name: String,
-        roles: Vec<UserRole>
+        roles: Vec<UserRole>,
     },
     Api {
-        user_id: Uuid
-    }
+        user_id: Uuid,
+    },
 }
 
 impl User {
-    async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> Result<Self> {
+    fn id(&self) -> &Uuid {
+        match self {
+            User::Web { user_id, .. } | User::Api { user_id, .. } => user_id,
+        }
+    }
+
+    async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+        use Error::InvalidApiKey;
+
         use crate::schema::person::dsl::*;
+
         let hash = api_key.hash();
 
-        let result = person
+        let user_id = person
             .filter(api_key_hash.eq(hash))
             .select(id)
             .first(conn)
-            .await
-            .map_err(db::Error::from);
-
-        let Ok(user_id) = result else {
-            match result {
-                Err(db::Error::RecordNotFound) => return Err(Error::InvalidApiKey),
-                Err(e) => return Err(Error::from(e)),
-                Ok(_) => unreachable!(),
-            }
-        };
+            .await?;
 
         Ok(Self::Api { user_id })
     }
 
-    // async fn fetch_by_session_id(session_id: &Uuid, conn: &mut AsyncPgConnection) -> Result<Self> {
+    async fn fetch_by_session_id(
+        session_id: &Uuid,
+        conn: &mut AsyncPgConnection,
+    ) -> db::Result<Self> {
+        use crate::schema::{
+            cache::dsl::{cache, session_id_hash},
+            person::dsl::{first_name as person_first_name, id as person_id, person},
+        };
 
-    // }
+        let hash = session_id.hash();
+
+        let (user_id, user_first_name) = cache
+            .inner_join(person)
+            .filter(session_id_hash.eq(hash))
+            .select((person_id, person_first_name))
+            .first(conn)
+            .await?;
+        let roles = Vec::with_capacity(0); // TODO: actually get user_roles
+
+        Ok(Self::Web {
+            user_id,
+            first_name: user_first_name,
+            roles,
+        })
+    }
 }
 
-impl FromRequestParts<AppState> for User {
+impl FromRequestParts<AppState2> for User {
     type Rejection = Error;
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        state: &AppState,
+        app_state: &AppState2,
     ) -> std::result::Result<Self, Self::Rejection> {
-        use Error::ApiKeyNotFound;
+        use Error::{ApiKeyNotFound, InvalidApiKey, InvalidSessionId};
 
-        let raw_api_key = parts
-            .headers
-            .get("X-API-Key")
-            .ok_or(ApiKeyNotFound)?
-            .as_bytes();
+        #[derive(Deserialize, Default)]
+        struct Web {
+            web: bool,
+        }
 
-        let api_key = ApiKey::from_slice(raw_api_key)?;
-        let mut conn = state.db_pool.get().await?;
+        if let AppState2::Dev { user_id, .. } = app_state {
+            return Ok(User::Web {
+                user_id: user_id.clone(),
+                first_name: "you".to_string(),
+                roles: UserRole::VARIANTS.to_vec(),
+            });
+        }
 
-        ApiUser::fetch_by_api_key(&api_key, &mut conn).await
+        let Query(Web { web }): Query<Web> = parts.extract().await.unwrap_or_default();
+
+        let mut conn = app_state.db_conn().await?;
+
+        if !web {
+            let raw_api_key = parts
+                .headers
+                .get("X-API-Key")
+                .ok_or(ApiKeyNotFound)?
+                .as_bytes();
+
+            let api_key = Uuid::from_slice(raw_api_key).map_err(|_| InvalidApiKey)?;
+            let result = User::fetch_by_api_key(&api_key, &mut conn).await;
+
+            let Ok(user) = result else {
+                let err = match result {
+                    Err(db::Error::RecordNotFound) => Err(Error::InvalidApiKey),
+                    Err(e) => Err(Error::from(e)),
+                    Ok(_) => unreachable!(),
+                };
+
+                return err;
+            };
+
+            return Ok(user);
+        }
+
+        let (AppState2::Test { auth_url, .. } | AppState2::Prod { auth_url, .. }) = app_state
+        else {
+            unreachable!("we already tested for the only other variant")
+        };
+
+        let err = InvalidSessionId {
+            auth_url: auth_url.to_string(),
+        };
+
+        let Ok(cookies) = parts.extract::<TypedHeader<headers::Cookie>>().await else {
+            return Err(err);
+        };
+
+        let session_id = cookies
+            .get("SESSION")
+            .ok_or(err.clone())?
+            .parse()
+            .map_err(|_| err.clone())?;
+
+        let result = User::fetch_by_session_id(&session_id, &mut conn).await;
+        let Ok(user) = result else {
+            let err = match result {
+                Err(db::Error::RecordNotFound) => Err(err),
+                Err(db_err) => Err(Error::from(db_err)),
+                Ok(_) => unreachable!("we already extracted the 'Ok' variant"),
+            };
+
+            return err;
+        };
+
+        Ok(user)
     }
 }
 
-#[derive(thiserror::Error, Serialize, Debug)]
+#[derive(thiserror::Error, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
     #[error("failed to generate API key")]
@@ -105,18 +200,23 @@ pub enum Error {
     Database(#[from] db::Error),
     #[error("invalid API key")]
     InvalidApiKey,
+    #[error("invalid session ID")]
+    InvalidSessionId { auth_url: String },
     #[error("operation not permitted")]
     Permission { message: String },
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
-        use Error::{ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, Permission};
+        use Error::{
+            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId, Permission,
+        };
         use axum::http::StatusCode;
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
             ApiKeyGeneration(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiKeyNotFound | InvalidApiKey => StatusCode::UNAUTHORIZED,
+            InvalidSessionId { .. } => StatusCode::TEMPORARY_REDIRECT,
             Permission { .. } => StatusCode::FORBIDDEN,
             Database(inner) => match inner {
                 Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,
@@ -168,23 +268,26 @@ impl IntoResponse for Error {
         let status = self.staus_code();
 
         if status == StatusCode::INTERNAL_SERVER_ERROR {
-            (
+            return (
                 status,
                 axum::Json(ErrorResponse {
                     status: status.as_u16(),
                     error: None,
                 }),
             )
-                .into_response()
-        } else {
-            (
+                .into_response();
+        }
+
+        match self {
+            Self::InvalidSessionId { auth_url } => Redirect::temporary(&auth_url).into_response(),
+            _ => (
                 status,
                 axum::Json(ErrorResponse {
                     status: status.as_u16(),
                     error: Some(self),
                 }),
             )
-                .into_response()
+                .into_response(),
         }
     }
 }

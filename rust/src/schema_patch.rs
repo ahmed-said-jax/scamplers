@@ -11,6 +11,15 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    cache (session_id_hash) {
+        session_id_hash -> Text,
+        user_id -> Uuid,
+        data -> Nullable<Jsonb>,
+        inserted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     cdna (id) {
         id -> Uuid,
         link -> Text,
@@ -380,6 +389,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(cache -> person (user_id));
 diesel::joinable!(cdna -> gems (gems_id));
 diesel::joinable!(cdna -> library_type_specification (specification_id));
 diesel::joinable!(cdna_measurement -> cdna (cdna_id));
@@ -433,6 +443,7 @@ diesel::joinable!(suspension_preparers -> person (prepared_by));
 diesel::joinable!(suspension_preparers -> suspension (suspension_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    cache,
     cdna,
     cdna_measurement,
     cdna_preparers,
