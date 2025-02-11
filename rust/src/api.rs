@@ -15,7 +15,7 @@ use crate::{
     AppState2,
     db::{
         self,
-        person::{UserRole, get_user_roles},
+        person::UserRole,
     },
 };
 mod v0;
@@ -64,7 +64,7 @@ impl User {
     }
 
     async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
-        use Error::InvalidApiKey;
+        
 
         use crate::schema::person::dsl::*;
 

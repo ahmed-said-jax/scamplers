@@ -1,25 +1,19 @@
 #![allow(async_fn_in_trait)]
 use std::{
-    borrow::Cow,
-    default, fs,
-    net::{SocketAddrV4, SocketAddrV6},
-    path,
+    fs,
     sync::Arc,
 };
 
 use anyhow::Context;
 use axum::Router;
-use camino::{Utf8Path, Utf8PathBuf};
-use db::{
-    index_sets::IndexSetFileUrl,
-    person::{UserRole, create_user_if_not_exists, grant_roles_to_user},
-};
+use camino::Utf8Path;
+use db::index_sets::IndexSetFileUrl;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection, RunQueryDsl,
     async_connection_wrapper::AsyncConnectionWrapper,
     pooled_connection::{
         AsyncDieselConnectionManager,
-        deadpool::{self, Pool},
+        deadpool::{Pool},
     },
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
@@ -28,7 +22,7 @@ use seed_data::download_and_insert_index_sets;
 use serde::{Deserialize, Serialize};
 use testcontainers_modules::{
     postgres::Postgres,
-    testcontainers::{ContainerAsync, Image, ImageExt, runners::AsyncRunner},
+    testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
 use tokio::net::TcpListener;
 use url::Url;

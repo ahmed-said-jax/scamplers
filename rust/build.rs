@@ -1,4 +1,4 @@
-use std::{fs, os::unix::process::CommandExt, process::Command, str::FromStr};
+use std::{fs, process::Command, str::FromStr};
 
 use camino::Utf8PathBuf;
 use regex::Regex;
