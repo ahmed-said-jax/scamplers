@@ -1,6 +1,5 @@
 #![allow(async_fn_in_trait)]
-
-use std::{default, fs, path};
+use std::{borrow::Cow, default, fs, path, sync::Arc};
 
 use anyhow::Context;
 use axum::Router;
@@ -19,7 +18,9 @@ use garde::Validate;
 use seed_data::download_and_insert_index_sets;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
+use url::Url;
 use uuid::Uuid;
+use testcontainers_modules::{testcontainers::{Container, ImageExt, runners::SyncRunner}, postgres::Postgres};
 
 mod api;
 pub mod db;
@@ -36,11 +37,7 @@ pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
         None => AppConfig2::default()
     };
 
-    if app_config.is_prod() == cfg!(feature = "dev-or-test") {
-        return Err(anyhow::Error::msg("production builds and the 'dev-or-test' feature flag are mutually exclusive"));
-    }
-
-    // let app_state = AppState2::from_config(&app_config);
+    let app_state = AppState2::from_config(&app_config);
 
     let app_config = AppConfig::from_path(config_path.unwrap())
         .context("failed to parse and validate configuration file")?;
@@ -87,6 +84,7 @@ pub enum AppConfig2 {
         server_address: Option<String>
     },
     Prod {
+        #[garde(pattern("postgres://login_user@.*"))] // Just make sure that the user is the `login_user`
         db_url: String,
         #[garde(dive)]
         index_set_file_urls: Vec<IndexSetFileUrl>,
@@ -114,6 +112,7 @@ impl AppConfig2 {
 #[garde(allow_unvalidated)]
 struct AuthConfig {
     ms_client_id: String,
+    url: Url
 }
 
 #[derive(Deserialize, Validate)]
@@ -189,10 +188,75 @@ impl AppState {
     }
 }
 
+#[derive(Clone)]
 enum AppState2 {
-    #[cfg(feature = "dev-or-test")]
     Dev {
-        container: String
+        container: Arc<Container<Postgres>>,
+        user_id: Uuid
+    },
+    Test {
+        container: Arc<Container<Postgres>>
+    },
+    Prod {
+        db_pool: Pool<AsyncPgConnection>,
+        http_client: reqwest::Client,
+        auth_url: Url,
+    }
+}
+
+
+fn postgres_container_instance() -> anyhow::Result<Container<Postgres>> {
+    use anyhow::Error;
+
+    let docker_compose = include_bytes!("../../compose.yaml");
+    let docker_compose: serde_json::Value = serde_json::from_slice(docker_compose)?;
+
+    let e = "failed to parse postgres image tag specifier";
+
+    let postgres_version = docker_compose["services"]["db"]["image"].as_str().ok_or(Error::msg(e))?.split(":").nth(1).ok_or(Error::msg(e))?;
+
+    Ok(Postgres::default().with_host_auth().with_tag(postgres_version).start()?)
+}
+
+trait PostgresContainerExt {
+    fn database_url(&self) -> anyhow::Result<String>;
+}
+
+impl PostgresContainerExt for Container<Postgres> {
+    fn database_url(&self) -> anyhow::Result<String> {
+        Ok(format!("postgres://postgres@{}:{}/postgres", self.get_host()?, self.get_host_port_ipv4(5432)?))
+    }
+}
+
+
+impl AppState2 {
+    async fn from_config(app_config: &AppConfig2) -> anyhow::Result<Self> {
+        use AppConfig2::*;
+
+        let e = "failed to start postgres container instance";
+
+        match app_config {
+            Dev => {
+                let postgres_instance = postgres_container_instance().context(e)?;
+                let mut conn = AsyncPgConnection::establish(&postgres_instance.database_url()?).await?;
+                let user_id = Uuid::new_v4();
+                diesel::sql_query(format!("create user {user_id} with superuser")).execute(&mut conn).await.context("failed to create dev superuser")?;
+
+                Ok(Self::Dev { container: Arc::new(postgres_instance), user_id})
+            },
+            Test {..} => {
+                let postgres_instance = postgres_container_instance().context(e)?;
+                Ok(Self::Test { container: Arc::new(postgres_instance) })
+            },
+            Prod { db_url, auth_config, .. } => {
+                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
+                let db_pool = Pool::builder(db_config).build()?;
+
+                let auth_url = auth_config.url.clone();
+
+                Ok(Self::Prod { db_pool, http_client: reqwest::Client::new(), auth_url })
+            }
+        }
     }
 }
 

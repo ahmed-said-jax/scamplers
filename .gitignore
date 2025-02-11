@@ -85,3 +85,6 @@ docs/_build/
 
 # Logs written by test run
 *log*
+
+# The diesel CLI config is ignored because we generate it dynamically, use the diesel CLI to generate a schema, patch the schema, then delete the config so that the generation of the schema.rs file is stateless. This all happens in the build step of the rust binary.
+diesel.toml

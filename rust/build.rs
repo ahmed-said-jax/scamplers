@@ -1,7 +1,8 @@
 use std::{fs, process::Command, str::FromStr};
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use regex::Regex;
+use serde::Serialize;
 use similar::TextDiff;
 use testcontainers_modules::{postgres::Postgres, testcontainers::{runners::SyncRunner, Container, ImageExt}};
 
@@ -12,14 +13,25 @@ fn main() {
     let postgres_instance = postgres_container();
     let connection_string = format!("postgres://postgres@{}:{}/postgres",postgres_instance.get_host().unwrap(),postgres_instance.get_host_port_ipv4(5432).unwrap());
 
+    // Create a config with no patch file
+    let mut diesel_config = DieselConfig::new();
+    diesel_config.write();
+
     // Run migrations and generate schema.rs file
-    diesel_setup(&connection_string);
+    generate_schema(&connection_string);
 
     // Generate a schema patch if needed
-    generate_schema_patch();
+    patch_schema();
+
+    // Put the patch file in the config
+    diesel_config = diesel_config.with_patch_file();
+    diesel_config.write();
 
     // Run migrations one more time, but this time diesel will apply the just-generated patch
-    diesel_setup(&connection_string);
+    generate_schema(&connection_string);
+
+    // The container is not always cleaned up
+    drop(postgres_instance)
 }
 
 fn postgres_container() -> Container<Postgres> {
@@ -28,17 +40,17 @@ fn postgres_container() -> Container<Postgres> {
 
     let postgres_version = docker_compose["services"]["db"]["image"].as_str().unwrap().split(":").nth(1).unwrap();
 
-     Postgres::default().with_host_auth().with_tag(postgres_version).start().unwrap()
+    Postgres::default().with_host_auth().with_tag(postgres_version).start().unwrap()
 }
 
-fn diesel_setup(connection_string: &str) {
+fn generate_schema(connection_string: &str) {
     let mut diesel_setup = Command::new("diesel");
     let args = ["migration", "run", "--database-url", &format!("{connection_string}")];
     diesel_setup.args(args);
     diesel_setup.output().unwrap();
 }
 
-fn generate_schema_patch() {
+fn patch_schema() {
     let schema = Utf8PathBuf::from_str("src/schema.rs").unwrap();
     let schema_str = fs::read_to_string(schema).unwrap();
     let schema_lines: Vec<&str> = schema_str.split("\n").collect();
@@ -75,4 +87,43 @@ fn generate_schema_patch() {
     let diff = diff.unified_diff().context_radius(6).header("src/schema.rs", "src/schema.patch").to_string();
 
     fs::write("src/schema.patch", &diff).unwrap();
+}
+
+// These structs represent just the options we need from the `diesel.toml` file
+#[derive(Serialize)]
+struct DieselConfig<'a> {
+    print_schema: PrintSchema<'a>,
+    migrations_directory: MigrationsDirectory<'a>
+}
+
+impl<'a> DieselConfig<'a> {
+    fn new() -> Self {
+        Self {
+            print_schema: PrintSchema {
+                file: "src/schema.rs",
+                custom_type_derives: ["diesel::query_builder::QueryId", "Clone"],
+                patch_file: None
+            },
+            migrations_directory: MigrationsDirectory {dir: "../migrations"}
+        }
+    }
+    fn with_patch_file(mut self) -> Self {
+        self.print_schema.patch_file = Some("src/schema.patch");
+        self
+    }
+    fn write(&self) {
+        fs::write("diesel.toml", toml::to_string(self).unwrap()).unwrap();
+    }
+}
+
+#[derive(Serialize)]
+struct PrintSchema<'a> {
+    file: &'a str,
+    custom_type_derives: [&'a str; 2],
+    patch_file: Option<&'a str>
+}
+
+#[derive(Serialize)]
+struct MigrationsDirectory<'a> {
+    dir: &'a str
 }

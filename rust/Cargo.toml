@@ -41,10 +41,7 @@ valuable = { version = "0.1.1", features = ["derive"] }
 argon2 = "0.5.3"
 garde = { version = "0.22.0", features = ["derive", "email", "serde"] }
 toml = { version = "0.8.20", default-features = false, features = ["parse"] }
-testcontainers-modules = { version = "0.11.5", features = ["postgres"], optional = true}
-
-[features]
-dev-or-test = ["testcontainers-modules"]
+testcontainers-modules = { version = "0.11.5", features = ["postgres", "blocking"]}
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
@@ -59,3 +56,5 @@ serde_json = { version = "1.0.137" }
 camino = { version = "1.1.9" }
 regex = "1.11.1"
 similar = "2.7.0"
+serde = { version = "1.0.217", features = ["derive"] }
+toml = { version = "0.8.20", default-features = false, features = ["display"] }

@@ -1,8 +1,6 @@
-use std::str::FromStr;
-
 use camino::Utf8PathBuf;
 use clap::Parser;
-use scamplers::{serve_app, AppConfig2};
+use scamplers::serve_app;
 use tracing::Level;
 use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
 

@@ -15,20 +15,14 @@ pub fn router() -> Router<AppState> {
     v0::router()
 }
 
-enum SessionId {
-    ApiKey(Uuid),
-    Cookie(Uuid)
+trait SessionIdOrApiKey {
+    fn hash(&self) -> String;
 }
 
-struct ApiKey(Uuid);
-impl ApiKey {
-    fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-
+impl SessionIdOrApiKey for Uuid {
     fn hash(&self) -> String {
         let hasher = argon2::Argon2::default();
-        let bytes = self.0.as_bytes();
+        let bytes = self.as_bytes();
 
         // We don't care about salting because it's already highly random, being a UUID
         let salt = SaltString::from_b64("0000").unwrap();
@@ -36,10 +30,6 @@ impl ApiKey {
         let hash = hasher.hash_password(bytes, &salt).unwrap().to_string();
 
         hash
-    }
-
-    fn from_slice(b: &[u8]) -> Result<Self> {
-        Ok(Self(Uuid::from_slice(b).map_err(|_| Error::InvalidApiKey)?))
     }
 }
 
@@ -55,7 +45,7 @@ enum User {
 }
 
 impl User {
-    async fn fetch_by_api_key(api_key: &ApiKey, conn: &mut AsyncPgConnection) -> Result<Self> {
+    async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> Result<Self> {
         use crate::schema::person::dsl::*;
         let hash = api_key.hash();
 
@@ -77,35 +67,12 @@ impl User {
         Ok(Self::Api { user_id })
     }
 
-    // async fn fetch_by_session_id(session_id: )
+    // async fn fetch_by_session_id(session_id: &Uuid, conn: &mut AsyncPgConnection) -> Result<Self> {
+
+    // }
 }
 
-pub struct ApiUser(Uuid);
-impl ApiUser {
-    async fn fetch_by_api_key(api_key: &ApiKey, conn: &mut AsyncPgConnection) -> Result<Self> {
-        use crate::schema::person::dsl::*;
-        let hash = api_key.hash();
-
-        let result = person
-            .filter(api_key_hash.eq(hash))
-            .select(id)
-            .first(conn)
-            .await
-            .map_err(db::Error::from);
-
-        let Ok(user_id) = result else {
-            match result {
-                Err(db::Error::RecordNotFound) => return Err(Error::InvalidApiKey),
-                Err(e) => return Err(Error::from(e)),
-                Ok(_) => unreachable!(),
-            }
-        };
-
-        Ok(Self(user_id))
-    }
-}
-
-impl FromRequestParts<AppState> for ApiUser {
+impl FromRequestParts<AppState> for User {
     type Rejection = Error;
 
     async fn from_request_parts(
@@ -113,12 +80,6 @@ impl FromRequestParts<AppState> for ApiUser {
         state: &AppState,
     ) -> std::result::Result<Self, Self::Rejection> {
         use Error::ApiKeyNotFound;
-
-        // If there's no way to authenticate and generate an API key, then this is not a
-        // production build
-        if state.auth_url.is_none() {
-            return Ok(Self(Uuid::nil()));
-        }
 
         let raw_api_key = parts
             .headers
