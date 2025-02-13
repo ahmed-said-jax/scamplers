@@ -133,9 +133,7 @@ pub struct PersonFilter {
     #[valuable(skip)]
     #[serde(default)]
     ids: Vec<Uuid>,
-    #[serde(default)]
     name: Option<String>,
-    #[serde(default)]
     email: Option<String>,
 }
 impl Paginate for PersonFilter {}

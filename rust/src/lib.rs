@@ -3,7 +3,7 @@ use std::{fs, sync::Arc};
 
 use anyhow::Context;
 use axum::Router;
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 use db::index_sets::IndexSetFileUrl;
 use diesel::sql_query;
 use diesel_async::{
@@ -29,16 +29,20 @@ pub mod schema;
 mod seed_data;
 mod web;
 
-const TIMEZONE: &str = "America/New_York";
 const LOGIN_USER: &str = "login_user";
 const DOCKER_COMPOSE: &[u8] = include_bytes!("../../compose.yaml");
 
-pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
+pub async fn serve_app(
+    config_path: Option<Utf8PathBuf>,
+    log_dir: Option<Utf8PathBuf>,
+) -> anyhow::Result<()> {
     let app_config = match config_path {
-        Some(path) => AppConfig2::from_path(path)
+        Some(path) => AppConfig2::from_path(&path)
             .context("failed to parse and validate configuration file")?,
         None => AppConfig2::default(),
     };
+
+    initialize_logging(&app_config, &log_dir).context("failed to initialize logging")?;
 
     let app_state = AppState2::new(&app_config)
         .await
@@ -115,6 +119,52 @@ impl AppConfig2 {
 #[garde(allow_unvalidated)]
 pub struct AuthConfig {
     url: Url,
+}
+
+fn initialize_logging(
+    app_config: &AppConfig2,
+    log_dir: &Option<Utf8PathBuf>,
+) -> anyhow::Result<()> {
+    use AppConfig2::*;
+    use tracing::Level;
+    use tracing_subscriber::{filter::Targets, prelude::*};
+
+    let log_layer = tracing_subscriber::fmt::layer();
+    let dev_test_log_filter = Targets::new().with_target("scamplers", Level::DEBUG);
+
+    match (app_config, log_dir) {
+        (Dev | Test { .. }, None) => {
+            let log_layer = log_layer.pretty().with_filter(dev_test_log_filter);
+
+            tracing_subscriber::registry().with(log_layer).init();
+        }
+        (Test { .. }, Some(path)) => {
+            let log_writer = tracing_appender::rolling::daily(path, "scamplers.log");
+            let log_layer = log_layer
+                .json()
+                .with_writer(log_writer)
+                .with_filter(dev_test_log_filter);
+
+            tracing_subscriber::registry().with(log_layer).init();
+        }
+        (Prod { .. }, Some(path)) => {
+            let log_writer = tracing_appender::rolling::daily(path, "scamplers.log");
+            let prod_log_filter = Targets::new().with_target("scamplers", Level::INFO);
+            let log_layer = log_layer
+                .json()
+                .with_writer(log_writer)
+                .with_filter(prod_log_filter);
+
+            tracing_subscriber::registry().with(log_layer).init();
+        }
+        _ => {
+            return Err(anyhow::Error::msg(
+                "this combination of configuration and 'log_dir' is not supported",
+            ));
+        }
+    };
+
+    Ok(())
 }
 
 #[derive(Clone)]
