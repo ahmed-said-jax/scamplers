@@ -1,8 +1,14 @@
 use argon2::{PasswordHasher, password_hash::SaltString};
 use axum::{
-    extract::{rejection::{JsonRejection, PathRejection}, FromRequest, FromRequestParts, Query}, http::StatusCode, response::{IntoResponse, Redirect, Response}, RequestPartsExt, Router
+    RequestPartsExt, Router,
+    extract::{
+        FromRequest, FromRequestParts, Query,
+        rejection::{JsonRejection, PathRejection},
+    },
+    http::StatusCode,
+    response::{IntoResponse, Redirect, Response},
 };
-use axum_extra::{extract::QueryRejection, headers, TypedHeader};
+use axum_extra::{TypedHeader, extract::QueryRejection, headers};
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use serde::{Deserialize, Serialize};
@@ -11,10 +17,7 @@ use uuid::Uuid;
 
 use crate::{
     AppState2,
-    db::{
-        self,
-        person::UserRole,
-    },
+    db::{self, person::UserRole},
 };
 mod v0;
 
@@ -195,7 +198,6 @@ impl FromRequestParts<AppState2> for User {
     }
 }
 
-
 #[derive(thiserror::Error, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
@@ -210,14 +212,19 @@ pub enum Error {
     #[error("invalid session ID")]
     InvalidSessionId { auth_url: String },
     #[error("malformed request")]
-    MalformedRequest{#[serde(skip)] status: StatusCode, message: String},
+    MalformedRequest {
+        #[serde(skip)]
+        status: StatusCode,
+        message: String,
+    },
     #[error("operation not permitted")]
     Permission { message: String },
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use Error::{
-            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId, Permission, MalformedRequest
+            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId,
+            MalformedRequest, Permission,
         };
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
@@ -232,7 +239,7 @@ impl Error {
                 RecordNotFound => StatusCode::NOT_FOUND,
                 ReferenceNotFound { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             },
-            MalformedRequest{ status, .. } => *status
+            MalformedRequest { status, .. } => *status,
         }
     }
 
@@ -260,19 +267,28 @@ impl Error {
 
 impl From<JsonRejection> for Error {
     fn from(err: JsonRejection) -> Self {
-        Self::MalformedRequest {status: err.status(), message: err.body_text()}
+        Self::MalformedRequest {
+            status: err.status(),
+            message: err.body_text(),
+        }
     }
 }
 
 impl From<QueryRejection> for Error {
     fn from(err: QueryRejection) -> Self {
-        Self::MalformedRequest{status: err.status(), message: format!("{err:#}")}
+        Self::MalformedRequest {
+            status: err.status(),
+            message: format!("{err:#}"),
+        }
     }
 }
 
 impl From<PathRejection> for Error {
     fn from(err: PathRejection) -> Self {
-        Self::MalformedRequest { status: err.status(), message: err.body_text() }
+        Self::MalformedRequest {
+            status: err.status(),
+            message: err.body_text(),
+        }
     }
 }
 

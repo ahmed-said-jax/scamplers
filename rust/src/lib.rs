@@ -1,7 +1,5 @@
 #![allow(async_fn_in_trait)]
-use std::{
-    fs, ops::Deref, sync::Arc
-};
+use std::{fs, sync::Arc};
 
 use anyhow::Context;
 use axum::Router;
@@ -11,10 +9,7 @@ use diesel::sql_query;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection, RunQueryDsl,
     async_connection_wrapper::AsyncConnectionWrapper,
-    pooled_connection::{
-        AsyncDieselConnectionManager,
-        deadpool::{Pool},
-    },
+    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use garde::Validate;
@@ -216,9 +211,12 @@ impl AppState2 {
                     pg_container.host_spec().await?
                 );
 
-                run_migrations(&db_root_user_url).await.context(migrations_err)?;
+                run_migrations(&db_root_user_url)
+                    .await
+                    .context(migrations_err)?;
 
-                // `run_migrations` takes ownership over the connection, so we have to make another so as to give the `superuser` to the dev user
+                // `run_migrations` takes ownership over the connection, so we have to make
+                // another so as to give the `superuser` to the dev user
                 let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
                 let user_id = Uuid::new_v4();
                 diesel::sql_query(format!(r#"create user "{user_id}" with superuser"#))
@@ -226,7 +224,8 @@ impl AppState2 {
                     .await
                     .context("failed to create dev superuser")?;
 
-                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
+                let db_config =
+                    AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
                 let db_pool = Pool::builder(db_config).build()?;
 
                 Ok(Self::Dev {
@@ -246,9 +245,13 @@ impl AppState2 {
                     .await
                     .context(migrations_err)?;
 
-                // `run_migrations` takes ownership over the connection, so we have to make another so as to perform our slight hack of giving login_user `insert` on all tables
+                // `run_migrations` takes ownership over the connection, so we have to make
+                // another so as to perform our slight hack of giving login_user `insert` on all
+                // tables
                 let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
-                sql_query("grant insert on all tables to login_user;").execute(&mut db_conn).await?;
+                sql_query("grant insert on all tables to login_user;")
+                    .execute(&mut db_conn)
+                    .await?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
                     "postgres://{LOGIN_USER}@{db_host_spec}/postgres"
@@ -277,11 +280,17 @@ impl AppState2 {
                 let secrets = secrets?;
 
                 let (db_root_username, db_root_password) = (&secrets[0], &secrets[1]);
-                let db_root_user_url = format!("postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/{db_name}");
-                run_migrations(&db_root_user_url).await.context(migrations_err)?;
+                let db_root_user_url = format!(
+                    "postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/\
+                     {db_name}"
+                );
+                run_migrations(&db_root_user_url)
+                    .await
+                    .context(migrations_err)?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://{LOGIN_USER}:{db_login_user_password}@{db_host}:{db_port}/{db_name}"
+                    "postgres://{LOGIN_USER}:{db_login_user_password}@{db_host}:{db_port}/\
+                     {db_name}"
                 ));
                 let db_pool = Pool::builder(db_config).build()?;
 
@@ -330,7 +339,9 @@ async fn insert_seed_data(app_state: AppState2, app_config: &AppConfig2) -> anyh
             index_set_file_urls,
             ..
         } => download_and_insert_index_sets(app_state, index_set_file_urls).await,
-        _ => insert_test_data(app_state).await.context("failed to populate database with test data")
+        _ => insert_test_data(app_state)
+            .await
+            .context("failed to populate database with test data"),
     }
 }
 
@@ -354,7 +365,6 @@ async fn shutdown_signal(app_state: AppState2) {
             .recv()
             .await;
     };
-
 
     tokio::select! {
         _ = ctrl_c => {drop(app_state);},

@@ -36,7 +36,9 @@ mod handlers {
     use valuable::Valuable;
 
     use crate::{
-        api::{self, ApiJson, User}, db::{self, set_transaction_user}, AppState2
+        AppState2,
+        api::{self, ApiJson, User},
+        db::{self, set_transaction_user},
     };
 
     pub async fn by_id<T: db::Read + Send>(
@@ -100,8 +102,7 @@ mod handlers {
                 async move {
                     set_transaction_user(user.id(), conn).await?;
 
-                    id.fetch_relatives(query, conn)
-                        .await
+                    id.fetch_relatives(query, conn).await
                 }
                 .scope_boxed()
             })

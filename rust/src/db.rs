@@ -83,23 +83,27 @@ pub trait Paginate {
         Pagination::default()
     }
 }
-// If we don't really need pagination (for example, institutions and people), you don't have to `impl` the trait for the corresponding filter
+// If we don't really need pagination (for example, institutions and people),
+// you don't have to `impl` the trait for the corresponding filter
 impl<T: Paginate> Paginate for Option<T> {
     fn paginate(&self) -> Pagination {
         match self {
             Some(item) => item.paginate(),
-            None => Pagination::default()
+            None => Pagination::default(),
         }
     }
 }
 
 pub struct Pagination {
     limit: i64,
-    offset: i64
+    offset: i64,
 }
 impl Default for Pagination {
     fn default() -> Self {
-        Pagination {limit: 500, offset: 0}
+        Pagination {
+            limit: 500,
+            offset: 0,
+        }
     }
 }
 

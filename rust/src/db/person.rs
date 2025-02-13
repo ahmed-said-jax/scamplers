@@ -15,8 +15,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{institution::Institution, Create, Paginate, Read};
-use crate::{db::Pagination, schema::{institution, person}};
+use super::{Create, Paginate, Read, institution::Institution};
+use crate::{
+    db::Pagination,
+    schema::{institution, person},
+};
 
 #[derive(
     Clone,
@@ -84,7 +87,8 @@ impl Create for Vec<NewPerson> {
 
         let as_immut = &*self;
 
-        // This can be improved by doing the join on the insertion rather than two queries
+        // This can be improved by doing the join on the insertion rather than two
+        // queries
         let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table)
             .values(as_immut)
             .returning(id)
@@ -96,11 +100,7 @@ impl Create for Vec<NewPerson> {
             ids: inserted_people_ids,
             ..Default::default()
         };
-        let inserted_people = Person::fetch_many(
-            filter,
-            conn,
-        )
-        .await?;
+        let inserted_people = Person::fetch_many(filter, conn).await?;
 
         Ok(inserted_people)
     }
@@ -166,7 +166,7 @@ impl Read for Person {
     ) -> super::Result<Vec<Self>> {
         use person::dsl::{email as email_col, full_name as name_col, id};
 
-        let Pagination {limit, offset} = filter.paginate();
+        let Pagination { limit, offset } = filter.paginate();
 
         let mut base_query = Self::base_query()
             .into_boxed()

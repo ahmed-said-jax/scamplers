@@ -76,8 +76,9 @@ impl Read for Institution {
     ) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
-        // Calling this over and over again for all of our methods sucks, but it's the simplest way to do it
-        let Pagination {limit, offset} = filter.paginate();
+        // Calling this over and over again for all of our methods sucks, but it's the
+        // simplest way to do it
+        let Pagination { limit, offset } = filter.paginate();
 
         let institutions = institution
             .select(Self::as_select())
