@@ -13,9 +13,10 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use valuable::Valuable;
 
-use super::{Create, Pagination, Read, institution::Institution};
-use crate::schema::{institution, person};
+use super::{institution::Institution, Create, Paginate, Read};
+use crate::{db::Pagination, schema::{institution, person}};
 
 #[derive(
     Clone,
@@ -83,6 +84,7 @@ impl Create for Vec<NewPerson> {
 
         let as_immut = &*self;
 
+        // This can be improved by doing the join on the insertion rather than two queries
         let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table)
             .values(as_immut)
             .returning(id)
@@ -95,11 +97,7 @@ impl Create for Vec<NewPerson> {
             ..Default::default()
         };
         let inserted_people = Person::fetch_many(
-            Some(&filter),
-            &Pagination {
-                limit: n,
-                offset: 0,
-            },
+            filter,
             conn,
         )
         .await?;
@@ -130,12 +128,17 @@ pub struct Person {
     institution: Institution,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Valuable)]
 pub struct PersonFilter {
+    #[valuable(skip)]
+    #[serde(default)]
     ids: Vec<Uuid>,
+    #[serde(default)]
     name: Option<String>,
+    #[serde(default)]
     email: Option<String>,
 }
+impl Paginate for PersonFilter {}
 
 impl Person {
     #[diesel::dsl::auto_type(no_type_alias)]
@@ -158,21 +161,20 @@ impl Read for Person {
     }
 
     async fn fetch_many(
-        filter: Option<&Self::Filter>,
-        Pagination { limit, offset }: &Pagination,
+        filter: Self::Filter,
         conn: &mut AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
         use person::dsl::{email as email_col, full_name as name_col, id};
 
+        let Pagination {limit, offset} = filter.paginate();
+
         let mut base_query = Self::base_query()
             .into_boxed()
             .select(Self::as_select())
-            .limit(*limit)
-            .offset(*offset);
+            .limit(limit)
+            .offset(offset);
 
-        let Some(PersonFilter { ids, name, email }) = filter else {
-            return Ok(base_query.load(conn).await?);
-        };
+        let PersonFilter { ids, name, email } = filter;
 
         if !ids.is_empty() {
             base_query = base_query.filter(id.eq_any(ids));

@@ -1,12 +1,10 @@
 use std::{collections::HashMap, hash::RandomState};
 
 use axum::{Json, Router, routing::get};
-use serde::Deserialize;
 
 use crate::{
     AppState2,
     db::{
-        Pagination,
         institution::{Institution, NewInstitution},
         person::Person,
     },
@@ -31,35 +29,21 @@ pub(super) fn router() -> Router<AppState2> {
     router
 }
 
-#[derive(Deserialize)]
-struct FilterWithPagination<F> {
-    #[serde(flatten)]
-    #[serde(default)]
-    filter: Option<F>,
-    #[serde(flatten)]
-    pagination: Pagination,
-}
-
 mod handlers {
-    use axum::{
-        Json,
-        extract::{Path, State},
-    };
+    use axum::extract::{Path, State};
     use axum_extra::extract::Query;
     use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
+    use valuable::Valuable;
 
-    use super::FilterWithPagination;
     use crate::{
-        AppState2,
-        api::{self, User},
-        db::{self, set_transaction_user},
+        api::{self, ApiJson, User}, db::{self, set_transaction_user}, AppState2
     };
 
     pub async fn by_id<T: db::Read + Send>(
         user: User,
         State(app_state): State<AppState2>,
         Path(id): Path<T::Id>,
-    ) -> api::Result<Json<T>> {
+    ) -> api::Result<ApiJson<T>> {
         let mut conn = app_state.db_conn().await?;
 
         let item = conn
@@ -73,14 +57,16 @@ mod handlers {
             })
             .await?;
 
-        Ok(axum::Json(item))
+        Ok(ApiJson(item))
     }
 
     pub async fn by_filter<T: db::Read>(
         user: User,
         State(app_state): State<AppState2>,
-        Query(query): Query<FilterWithPagination<T::Filter>>,
-    ) -> api::Result<Json<Vec<T>>> {
+        Query(query): Query<T::Filter>,
+    ) -> api::Result<ApiJson<Vec<T>>> {
+        tracing::info!(deserialized_query = query.as_value());
+
         let mut conn = app_state.db_conn().await?;
 
         let items = conn
@@ -88,21 +74,21 @@ mod handlers {
                 async move {
                     set_transaction_user(user.id(), conn).await?;
 
-                    T::fetch_many(query.filter.as_ref(), &query.pagination, conn).await
+                    T::fetch_many(query, conn).await
                 }
                 .scope_boxed()
             })
             .await?;
 
-        Ok(axum::Json(items))
+        Ok(ApiJson(items))
     }
 
     pub async fn by_relationship<T, U>(
         user: User,
         State(app_state): State<AppState2>,
         Path(id): Path<T>,
-        Query(query): Query<FilterWithPagination<U::Filter>>,
-    ) -> api::Result<Json<Vec<U>>>
+        Query(query): Query<U::Filter>,
+    ) -> api::Result<ApiJson<Vec<U>>>
     where
         T: db::ReadRelatives<U>,
         U: db::Read,
@@ -114,21 +100,21 @@ mod handlers {
                 async move {
                     set_transaction_user(user.id(), conn).await?;
 
-                    id.fetch_relatives(query.filter.as_ref(), &query.pagination, conn)
+                    id.fetch_relatives(query, conn)
                         .await
                 }
                 .scope_boxed()
             })
             .await?;
 
-        Ok(axum::Json(relatives))
+        Ok(ApiJson(relatives))
     }
 
     pub async fn new<T: db::Create>(
         user: User,
         State(app_state): State<AppState2>,
-        Json(data): Json<T>,
-    ) -> api::Result<Json<T::Returns>> {
+        ApiJson(data): ApiJson<T>,
+    ) -> api::Result<ApiJson<T::Returns>> {
         let mut conn = app_state.db_conn().await?;
 
         let created = conn
@@ -142,6 +128,6 @@ mod handlers {
             })
             .await?;
 
-        Ok(Json(created))
+        Ok(ApiJson(created))
     }
 }

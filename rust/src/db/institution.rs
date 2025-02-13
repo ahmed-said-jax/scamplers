@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{Create, Pagination, Read, Update};
-use crate::schema;
+use crate::{db::Paginate, schema};
 
 #[derive(Insertable, Deserialize, Clone)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
@@ -64,22 +64,25 @@ pub struct Institution {
     name: String,
     link: String,
 }
+impl Paginate for () {}
 
 impl Read for Institution {
     type Filter = ();
     type Id = Uuid;
 
     async fn fetch_many(
-        _filter: Option<&Self::Filter>,
-        Pagination { limit, offset }: &Pagination,
+        filter: Self::Filter,
         conn: &mut AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
+        // Calling this over and over again for all of our methods sucks, but it's the simplest way to do it
+        let Pagination {limit, offset} = filter.paginate();
+
         let institutions = institution
-            .limit(*limit)
-            .offset(*offset)
             .select(Self::as_select())
+            .limit(limit)
+            .offset(offset)
             .load(conn)
             .await?;
 

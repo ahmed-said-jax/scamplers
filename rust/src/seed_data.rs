@@ -1,4 +1,5 @@
 use anyhow::Context;
+use diesel_async::SimpleAsyncConnection;
 
 use crate::{
     AppState2,
@@ -34,6 +35,15 @@ pub async fn download_and_insert_index_sets(
             .await
             .context("failed to insert index sets into database")?;
     }
+
+    Ok(())
+}
+
+pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
+    let db_setup = include_str!("../../dev-test_db.sql");
+
+    let mut conn = app_state.db_conn().await?;
+    conn.batch_execute(db_setup).await.context("failed to populate database with test data")?;
 
     Ok(())
 }

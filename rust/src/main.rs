@@ -12,7 +12,7 @@ async fn main() -> anyhow::Result<()> {
     } = Cli::parse();
 
     let log_filter =
-        tracing_subscriber::filter::Targets::new().with_target("scamplers", Level::INFO);
+        tracing_subscriber::filter::Targets::new().with_target("scamplers", Level::INFO).with_target("tower_http", Level::DEBUG);
 
     match log_dir {
         Some(log_dir) => {

@@ -3,8 +3,7 @@ use std::str::FromStr;
 use diesel::result::DatabaseErrorInformation;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use serde_with::{DisplayFromStr, serde_as};
+use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -38,11 +37,10 @@ pub trait Create: Send {
 
 pub trait Read: Serialize + Sized + Send {
     type Id: Send;
-    type Filter: Sync + Send;
+    type Filter: Sync + Send + Valuable + Paginate;
 
     fn fetch_many(
-        filter: Option<&Self::Filter>,
-        pagination: &Pagination,
+        filter: Self::Filter,
         conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = Result<Vec<Self>>> + Send;
 
@@ -75,30 +73,33 @@ impl<T: Update> Update for Vec<T> {
 pub trait ReadRelatives<T: Read>: DeserializeOwned + Send {
     fn fetch_relatives(
         &self,
-        filter: Option<&T::Filter>,
-        pagination: &Pagination,
+        filter: T::Filter,
         conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
-#[serde_as]
-#[derive(Deserialize)]
-pub struct Pagination {
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(default = "Pagination::default_limit")]
-    limit: i64,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(default = "Pagination::default_limit")]
-    offset: i64,
+pub trait Paginate {
+    fn paginate(&self) -> Pagination {
+        Pagination::default()
+    }
+}
+// If we don't really need pagination (for example, institutions and people), you don't have to `impl` the trait for the corresponding filter
+impl<T: Paginate> Paginate for Option<T> {
+    fn paginate(&self) -> Pagination {
+        match self {
+            Some(item) => item.paginate(),
+            None => Pagination::default()
+        }
+    }
 }
 
-impl Pagination {
-    fn default_limit() -> i64 {
-        100
-    }
-
-    fn default_offset() -> i64 {
-        0
+pub struct Pagination {
+    limit: i64,
+    offset: i64
+}
+impl Default for Pagination {
+    fn default() -> Self {
+        Pagination {limit: 500, offset: 0}
     }
 }
 

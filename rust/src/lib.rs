@@ -1,13 +1,13 @@
 #![allow(async_fn_in_trait)]
 use std::{
-    fs,
-    sync::Arc,
+    fs, ops::Deref, sync::Arc
 };
 
 use anyhow::Context;
 use axum::Router;
 use camino::Utf8Path;
 use db::index_sets::IndexSetFileUrl;
+use diesel::sql_query;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection, RunQueryDsl,
     async_connection_wrapper::AsyncConnectionWrapper,
@@ -18,13 +18,13 @@ use diesel_async::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use garde::Validate;
-use seed_data::download_and_insert_index_sets;
+use seed_data::{download_and_insert_index_sets, insert_test_data};
 use serde::{Deserialize, Serialize};
 use testcontainers_modules::{
     postgres::Postgres,
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, signal};
 use url::Url;
 use uuid::Uuid;
 
@@ -55,7 +55,7 @@ pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
         .context("failed to insert seed data")?;
     tracing::info!("inserted seed data");
 
-    let app = app(app_state);
+    let app = app(app_state.clone());
 
     let addr = app_config.server_address();
 
@@ -63,10 +63,11 @@ pub async fn serve_app(config_path: Option<&Utf8Path>) -> anyhow::Result<()> {
         .await
         .context(format!("failed to listen on {addr}"))?;
 
+    tracing::info!("scamplers server listening on {addr}");
     axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal(app_state))
         .await
         .context("failed to serve app")?;
-    tracing::info!("scamplers server listening on {addr}");
 
     Ok(())
 }
@@ -210,22 +211,23 @@ impl AppState2 {
                 let pg_container: ContainerAsync<Postgres> = ContainerAsync::from_docker_compose()
                     .await
                     .context(container_err)?;
-                let db_url = format!(
+                let db_root_user_url = format!(
                     "postgres://postgres@{}/postgres",
                     pg_container.host_spec().await?
                 );
 
-                run_migrations(&db_url).await.context(migrations_err)?;
+                run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
-                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_url);
-                let db_pool = Pool::builder(db_config).build()?;
-
-                let mut db_conn = db_pool.get().await?;
+                // `run_migrations` takes ownership over the connection, so we have to make another so as to give the `superuser` to the dev user
+                let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
                 let user_id = Uuid::new_v4();
                 diesel::sql_query(format!(r#"create user "{user_id}" with superuser"#))
                     .execute(&mut db_conn)
                     .await
                     .context("failed to create dev superuser")?;
+
+                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
+                let db_pool = Pool::builder(db_config).build()?;
 
                 Ok(Self::Dev {
                     db_pool,
@@ -238,13 +240,18 @@ impl AppState2 {
                     .await
                     .context(container_err)?;
                 let db_host_spec = pg_container.host_spec().await?;
+                let db_root_user_url = format!("postgres://postgres@{db_host_spec}/postgres");
 
-                run_migrations(&format!("postgres://postgres@{db_host_spec}/postgres"))
+                run_migrations(&db_root_user_url)
                     .await
                     .context(migrations_err)?;
 
+                // `run_migrations` takes ownership over the connection, so we have to make another so as to perform our slight hack of giving login_user `insert` on all tables
+                let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
+                sql_query("grant insert on all tables to login_user;").execute(&mut db_conn).await?;
+
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://login_user@{db_host_spec}/postgres"
+                    "postgres://{LOGIN_USER}@{db_host_spec}/postgres"
                 ));
                 let db_pool = Pool::builder(db_config).build()?;
 
@@ -270,15 +277,11 @@ impl AppState2 {
                 let secrets = secrets?;
 
                 let (db_root_username, db_root_password) = (&secrets[0], &secrets[1]);
-                run_migrations(&format!(
-                    "postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/\
-                     {db_name}"
-                ))
-                .await
-                .context(migrations_err)?;
+                let db_root_user_url = format!("postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/{db_name}");
+                run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://login_user:{db_login_user_password}@{db_host}:{db_port}/{db_name}"
+                    "postgres://{LOGIN_USER}:{db_login_user_password}@{db_host}:{db_port}/{db_name}"
                 ));
                 let db_pool = Pool::builder(db_config).build()?;
 
@@ -326,17 +329,35 @@ async fn insert_seed_data(app_state: AppState2, app_config: &AppConfig2) -> anyh
         AppConfig2::Prod {
             index_set_file_urls,
             ..
-        } => {
-            download_and_insert_index_sets(app_state, index_set_file_urls).await?;
-        }
-        _ => (),
+        } => download_and_insert_index_sets(app_state, index_set_file_urls).await,
+        _ => insert_test_data(app_state).await.context("failed to populate database with test data")
     }
-
-    Ok(())
 }
 
 fn app(app_state: AppState2) -> Router {
     Router::new()
         .nest("/api", api::router())
         .with_state(app_state)
+}
+
+// I don't entirely understand why I need to manually call `drop` here
+async fn shutdown_signal(app_state: AppState2) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+
+    tokio::select! {
+        _ = ctrl_c => {drop(app_state);},
+        _ = terminate => {drop(app_state)},
+    }
 }

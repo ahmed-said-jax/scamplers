@@ -1,10 +1,8 @@
 use argon2::{PasswordHasher, password_hash::SaltString};
 use axum::{
-    RequestPartsExt, Router,
-    extract::{FromRequestParts, Query},
-    response::{IntoResponse, Redirect},
+    extract::{rejection::{JsonRejection, PathRejection}, FromRequest, FromRequestParts, Query}, http::StatusCode, response::{IntoResponse, Redirect, Response}, RequestPartsExt, Router
 };
-use axum_extra::{TypedHeader, headers};
+use axum_extra::{extract::QueryRejection, headers, TypedHeader};
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use serde::{Deserialize, Serialize};
@@ -25,6 +23,16 @@ pub fn router() -> Router<AppState2> {
     // based on the API version set in the header, but I don't know how to do that
     // yet
     v0::router()
+}
+
+#[derive(FromRequest)]
+#[from_request(via(axum::Json), rejection(Error))]
+struct ApiJson<T>(T);
+
+impl<T: Serialize> IntoResponse for ApiJson<T> {
+    fn into_response(self) -> Response {
+        axum::Json(self.0).into_response()
+    }
 }
 
 trait SessionIdOrApiKey {
@@ -64,8 +72,6 @@ impl User {
     }
 
     async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
-        
-
         use crate::schema::person::dsl::*;
 
         let hash = api_key.hash();
@@ -189,6 +195,7 @@ impl FromRequestParts<AppState2> for User {
     }
 }
 
+
 #[derive(thiserror::Error, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
@@ -202,15 +209,16 @@ pub enum Error {
     InvalidApiKey,
     #[error("invalid session ID")]
     InvalidSessionId { auth_url: String },
+    #[error("malformed request")]
+    MalformedRequest{#[serde(skip)] status: StatusCode, message: String},
     #[error("operation not permitted")]
     Permission { message: String },
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use Error::{
-            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId, Permission,
+            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId, Permission, MalformedRequest
         };
-        use axum::http::StatusCode;
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
@@ -224,6 +232,7 @@ impl Error {
                 RecordNotFound => StatusCode::NOT_FOUND,
                 ReferenceNotFound { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             },
+            MalformedRequest{ status, .. } => *status
         }
     }
 
@@ -246,6 +255,24 @@ impl Error {
         }
 
         err
+    }
+}
+
+impl From<JsonRejection> for Error {
+    fn from(err: JsonRejection) -> Self {
+        Self::MalformedRequest {status: err.status(), message: err.body_text()}
+    }
+}
+
+impl From<QueryRejection> for Error {
+    fn from(err: QueryRejection) -> Self {
+        Self::MalformedRequest{status: err.status(), message: format!("{err:#}")}
+    }
+}
+
+impl From<PathRejection> for Error {
+    fn from(err: PathRejection) -> Self {
+        Self::MalformedRequest { status: err.status(), message: err.body_text() }
     }
 }
 
