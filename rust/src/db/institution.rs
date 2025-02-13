@@ -2,14 +2,16 @@ use diesel::{pg::Pg, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use valuable::Valuable;
 
 use super::{Create, Pagination, Read, Update};
 use crate::{db::Paginate, schema};
 
-#[derive(Insertable, Deserialize, Clone)]
+#[derive(Insertable, Deserialize, Clone, Valuable)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 pub struct NewInstitution {
     name: String,
+    #[valuable(skip)]
     ms_tenant_id: Option<Uuid>,
 }
 

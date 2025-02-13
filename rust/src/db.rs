@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use diesel::result::DatabaseErrorInformation;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
@@ -36,8 +36,8 @@ pub trait Create: Send {
 }
 
 pub trait Read: Serialize + Sized + Send {
-    type Id: Send;
-    type Filter: Sync + Send + Valuable + Paginate;
+    type Id: Send + Display;
+    type Filter: Sync + Send + Paginate;
 
     fn fetch_many(
         filter: Self::Filter,
@@ -70,7 +70,7 @@ impl<T: Update> Update for Vec<T> {
     }
 }
 
-pub trait ReadRelatives<T: Read>: DeserializeOwned + Send {
+pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     fn fetch_relatives(
         &self,
         filter: T::Filter,

@@ -46,6 +46,8 @@ mod handlers {
         State(app_state): State<AppState2>,
         Path(id): Path<T::Id>,
     ) -> api::Result<ApiJson<T>> {
+        tracing::debug!(id = id.to_string());
+
         let mut conn = app_state.db_conn().await?;
 
         let item = conn
@@ -66,8 +68,8 @@ mod handlers {
         user: User,
         State(app_state): State<AppState2>,
         Query(query): Query<T::Filter>,
-    ) -> api::Result<ApiJson<Vec<T>>> {
-        tracing::info!(deserialized_query = query.as_value());
+    ) -> api::Result<ApiJson<Vec<T>>> where T::Filter: Valuable {
+        tracing::debug!(query = query.as_value());
 
         let mut conn = app_state.db_conn().await?;
 
@@ -94,7 +96,10 @@ mod handlers {
     where
         T: db::ReadRelatives<U>,
         U: db::Read,
+        U::Filter: Valuable
     {
+        tracing::debug!(id = id.to_string(), query = query.as_value());
+
         let mut conn = app_state.db_conn().await?;
 
         let relatives = conn
@@ -115,7 +120,9 @@ mod handlers {
         user: User,
         State(app_state): State<AppState2>,
         ApiJson(data): ApiJson<T>,
-    ) -> api::Result<ApiJson<T::Returns>> {
+    ) -> api::Result<ApiJson<T::Returns>>  where T: Valuable {
+        tracing::debug!(data = data.as_value());
+
         let mut conn = app_state.db_conn().await?;
 
         let created = conn

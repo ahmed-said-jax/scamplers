@@ -67,7 +67,7 @@ define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -
 
 // We don't export this to TypeScript because people will be created using
 // Microsoft authentication rather than in the frontend
-#[derive(Insertable, Validate, Deserialize)]
+#[derive(Insertable, Validate, Deserialize, Valuable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewPerson {
@@ -76,6 +76,7 @@ pub struct NewPerson {
     #[garde(email)]
     email: String,
     orcid: Option<String>,
+    #[valuable(skip)]
     institution_id: Uuid,
 }
 
