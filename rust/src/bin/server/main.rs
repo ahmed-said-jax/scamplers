@@ -1,6 +1,12 @@
 use camino::Utf8PathBuf;
 use clap::Parser;
-use scamplers::serve_app;
+use app::serve_app;
+
+mod app;
+mod api;
+mod seed_data;
+mod web;
+mod db;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
