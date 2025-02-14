@@ -1,5 +1,6 @@
 use diesel::{pg::Pg, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
@@ -7,7 +8,7 @@ use valuable::Valuable;
 use super::{Create, Pagination, Read, Update};
 use crate::{db::Paginate, schema};
 
-#[derive(Insertable, Deserialize, Clone, Valuable)]
+#[derive(Insertable, Deserialize, Clone, Valuable, JsonSchema)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 pub struct NewInstitution {
     name: String,
@@ -37,9 +38,9 @@ impl Create for Vec<NewInstitution> {
 
 // It's unlikely we'll need this, but it serves as a simple example for the
 // patterns I want to establish in this package
-#[derive(Identifiable, AsChangeset, Deserialize)]
+#[derive(Identifiable, AsChangeset, Deserialize, JsonSchema)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
-struct UpdatedInstitution {
+pub struct UpdatedInstitution {
     id: Uuid,
     name: Option<String>,
     ms_tenant_id: Option<Uuid>,
@@ -59,7 +60,7 @@ impl Update for UpdatedInstitution {
     }
 }
 
-#[derive(Queryable, Selectable, Serialize)]
+#[derive(Queryable, Selectable, Serialize, JsonSchema)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 pub struct Institution {
     id: Uuid,

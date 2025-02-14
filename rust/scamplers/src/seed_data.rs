@@ -40,7 +40,7 @@ pub async fn download_and_insert_index_sets(
 }
 
 pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
-    let db_setup = include_str!("../../dev-test_db.sql");
+    let db_setup = include_str!("../../../dev-test_db.sql");
 
     let mut conn = app_state.db_conn().await?;
     conn.batch_execute(db_setup)

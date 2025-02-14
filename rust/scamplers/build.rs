@@ -10,7 +10,7 @@ use testcontainers_modules::{
 };
 
 fn main() {
-    println!("cargo::rerun-if-changed=../migrations");
+    println!("cargo::rerun-if-changed=../../migrations");
 
     // Start a temporary container for diesel to run migrations against
     let postgres_instance = postgres_container();
@@ -43,7 +43,7 @@ fn main() {
 }
 
 fn postgres_container() -> Container<Postgres> {
-    let docker_compose = include_bytes!("../compose.yaml");
+    let docker_compose = include_bytes!("../../compose.yaml");
     let docker_compose: serde_json::Value = serde_json::from_slice(docker_compose).unwrap();
 
     let postgres_version = docker_compose["services"]["db"]["image"]
@@ -57,7 +57,7 @@ fn postgres_container() -> Container<Postgres> {
         .with_host_auth()
         .with_tag(postgres_version)
         .start()
-        .unwrap()
+        .expect("Failed to start Postgres container. Is the Docker daemon running?")
 }
 
 fn generate_schema(connection_string: &str) {
@@ -136,7 +136,7 @@ impl<'a> DieselConfig<'a> {
                 patch_file: None,
             },
             migrations_directory: MigrationsDirectory {
-                dir: "../migrations",
+                dir: "../../migrations",
             },
         }
     }

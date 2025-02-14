@@ -30,7 +30,7 @@ mod seed_data;
 mod web;
 
 const LOGIN_USER: &str = "login_user";
-const DOCKER_COMPOSE: &[u8] = include_bytes!("../../compose.yaml");
+const DOCKER_COMPOSE: &[u8] = include_bytes!("../../../compose.yaml");
 
 pub async fn serve_app(
     config_path: Option<Utf8PathBuf>,

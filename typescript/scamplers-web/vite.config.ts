@@ -6,6 +6,13 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
 
+	// For the dev environment, we run the backend at localhost:8000 and proxy '/api' to that
+	server: {
+		proxy: {
+			'/api': 'http://localhost:8000/api'
+		}
+	},
+
 	test: {
 		workspace: [
 			{
