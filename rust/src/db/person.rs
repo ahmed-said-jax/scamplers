@@ -21,7 +21,44 @@ use crate::{
     schema::{institution, person},
 };
 
-pub mod user;
+#[derive(
+    Clone,
+    SqlType,
+    FromSqlRow,
+    strum::VariantArray,
+    AsExpression,
+    Debug,
+    strum::IntoStaticStr,
+    strum::EnumString,
+    PartialEq,
+    Deserialize,
+    Serialize,
+)]
+#[strum(serialize_all = "snake_case")]
+#[diesel(sql_type = sql_types::Text)]
+#[serde(rename_all = "snake_case")]
+pub enum UserRole {
+    AppAdmin,
+    ComputationalStaff,
+    LabStaff,
+}
+
+impl FromSql<sql_types::Text, Pg> for UserRole {
+    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
+        Ok(Self::from_str(&raw).unwrap())
+    }
+}
+
+impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
+    fn to_sql<'b>(
+        &'b self,
+        out: &mut diesel::serialize::Output<'b, '_, Pg>,
+    ) -> diesel::serialize::Result {
+        let as_str: &str = self.into();
+        ToSql::<sql_types::Text, Pg>::to_sql(as_str, out)
+    }
+}
 
 define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Uuid, roles: sql_types::Array<sql_types::Text>)}
 define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid, roles: sql_types::Array<sql_types::Text>)}

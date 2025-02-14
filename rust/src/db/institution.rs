@@ -1,6 +1,19 @@
-use scamplers::models::institution::{Institution, NewInstitution};
+use diesel::{pg::Pg, prelude::*};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use valuable::Valuable;
 
-use super::Create;
+use super::{Create, Pagination, Read, Update};
+use crate::{db::Paginate, schema};
+
+#[derive(Insertable, Deserialize, Clone, Valuable)]
+#[diesel(table_name = schema::institution, check_for_backend(Pg))]
+pub struct NewInstitution {
+    name: String,
+    #[valuable(skip)]
+    ms_tenant_id: Option<Uuid>,
+}
 
 // We don't need to `impl Create` for an individual `Institution` because it's
 // more efficient to just do batches
@@ -10,8 +23,10 @@ impl Create for Vec<NewInstitution> {
     async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::*;
 
+        let as_immut = &*self;
+
         let inserted = diesel::insert_into(institution)
-            .values(self)
+            .values(as_immut)
             .returning(Institution::as_returning())
             .get_results(conn)
             .await?;
@@ -20,20 +35,37 @@ impl Create for Vec<NewInstitution> {
     }
 }
 
-// impl Update for UpdatedInstitution {
-//     type Returns = Institution;
+// It's unlikely we'll need this, but it serves as a simple example for the
+// patterns I want to establish in this package
+#[derive(Identifiable, AsChangeset, Deserialize)]
+#[diesel(table_name = schema::institution, check_for_backend(Pg))]
+struct UpdatedInstitution {
+    id: Uuid,
+    name: Option<String>,
+    ms_tenant_id: Option<Uuid>,
+}
 
-//     async fn update(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-//         let as_immut = &*self;
+impl Update for UpdatedInstitution {
+    type Returns = Institution;
 
-//         Ok(diesel::update(as_immut)
-//             .set(as_immut)
-//             .returning(Self::Returns::as_returning())
-//             .get_result(conn)
-//             .await?)
-//     }
-// }
+    async fn update(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        let as_immut = &*self;
 
+        Ok(diesel::update(as_immut)
+            .set(as_immut)
+            .returning(Self::Returns::as_returning())
+            .get_result(conn)
+            .await?)
+    }
+}
+
+#[derive(Queryable, Selectable, Serialize)]
+#[diesel(table_name = schema::institution, check_for_backend(Pg))]
+pub struct Institution {
+    id: Uuid,
+    name: String,
+    link: String,
+}
 impl Paginate for () {}
 
 impl Read for Institution {

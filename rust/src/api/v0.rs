@@ -1,9 +1,14 @@
 use std::{collections::HashMap, hash::RandomState};
 
 use axum::{Json, Router, routing::get};
-use crate::app::AppState2;
 
-use scamplers::db::{institution::{Institution, NewInstitution}, person::Person};
+use crate::{
+    AppState2,
+    db::{
+        institution::{Institution, NewInstitution},
+        person::Person,
+    },
+};
 
 pub(super) fn router() -> Router<AppState2> {
     use handlers::*;
@@ -29,10 +34,12 @@ mod handlers {
     use axum_extra::extract::Query;
     use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use valuable::Valuable;
-    use super::AppState2;
-    use crate::api::{self, ApiJson};
-    use scamplers::db::person::user::User;
-    use scamplers::db::{self, set_transaction_user};
+
+    use crate::{
+        AppState2,
+        api::{self, ApiJson, User},
+        db::{self, set_transaction_user},
+    };
 
     pub async fn by_id<T: db::Read + Send>(
         user: User,

@@ -11,13 +11,14 @@ use axum::{
 use axum_extra::{TypedHeader, extract::QueryRejection, headers};
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
-use scamplers::db::{self, person::user::{User, UserRole}};
 use serde::{Deserialize, Serialize};
 use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::app::AppState2;
-
+use crate::{
+    AppState2,
+    db::{self, person::UserRole},
+};
 mod v0;
 
 pub fn router() -> Router<AppState2> {
@@ -25,6 +26,16 @@ pub fn router() -> Router<AppState2> {
     // based on the API version set in the header, but I don't know how to do that
     // yet
     v0::router()
+}
+
+#[derive(FromRequest)]
+#[from_request(via(axum::Json), rejection(Error))]
+struct ApiJson<T>(T);
+
+impl<T: Serialize> IntoResponse for ApiJson<T> {
+    fn into_response(self) -> Response {
+        axum::Json(self.0).into_response()
+    }
 }
 
 trait SessionIdOrApiKey {
@@ -45,13 +56,62 @@ impl SessionIdOrApiKey for Uuid {
     }
 }
 
-#[derive(FromRequest)]
-#[from_request(via(axum::Json), rejection(Error))]
-struct ApiJson<T>(T);
+enum User {
+    Web {
+        user_id: Uuid,
+        first_name: String,
+        roles: Vec<UserRole>,
+    },
+    Api {
+        user_id: Uuid,
+    },
+}
 
-impl<T: Serialize> IntoResponse for ApiJson<T> {
-    fn into_response(self) -> Response {
-        axum::Json(self.0).into_response()
+impl User {
+    fn id(&self) -> &Uuid {
+        match self {
+            User::Web { user_id, .. } | User::Api { user_id, .. } => user_id,
+        }
+    }
+
+    async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+        use crate::schema::person::dsl::*;
+
+        let hash = api_key.hash();
+
+        let user_id = person
+            .filter(api_key_hash.eq(hash))
+            .select(id)
+            .first(conn)
+            .await?;
+
+        Ok(Self::Api { user_id })
+    }
+
+    async fn fetch_by_session_id(
+        session_id: &Uuid,
+        conn: &mut AsyncPgConnection,
+    ) -> db::Result<Self> {
+        use crate::schema::{
+            cache::dsl::{cache, session_id_hash},
+            person::dsl::{first_name as person_first_name, id as person_id, person},
+        };
+
+        let hash = session_id.hash();
+
+        let (user_id, user_first_name) = cache
+            .inner_join(person)
+            .filter(session_id_hash.eq(hash))
+            .select((person_id, person_first_name))
+            .first(conn)
+            .await?;
+        let roles = Vec::with_capacity(0); // TODO: actually get user_roles
+
+        Ok(Self::Web {
+            user_id,
+            first_name: user_first_name,
+            roles,
+        })
     }
 }
 
