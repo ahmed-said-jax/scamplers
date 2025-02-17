@@ -1,0 +1,4 @@
+
+struct NewLab {
+    name: String,
+}

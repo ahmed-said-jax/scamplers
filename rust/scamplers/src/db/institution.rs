@@ -1,5 +1,6 @@
 use diesel::{pg::Pg, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use garde::Validate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -8,8 +9,9 @@ use valuable::Valuable;
 use super::{Create, Pagination, Read, Update};
 use crate::{db::Paginate, schema};
 
-#[derive(Insertable, Deserialize, Clone, Valuable, JsonSchema)]
+#[derive(Insertable, Deserialize, Clone, Valuable, JsonSchema, Validate)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
 pub struct NewInstitution {
     name: String,
     #[valuable(skip)]

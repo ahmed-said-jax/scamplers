@@ -10,6 +10,8 @@ use valuable::Valuable;
 pub mod index_sets;
 pub mod institution;
 pub mod person;
+pub mod lab;
+
 
 // struct AsyncDbConnection(AsyncPgConnection);
 // impl AsyncDbConnection {

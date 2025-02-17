@@ -1,16 +1,13 @@
 use argon2::{PasswordHasher, password_hash::SaltString};
 use axum::{
-    RequestPartsExt, Router,
     extract::{
-        FromRequest, FromRequestParts, Query,
-        rejection::{JsonRejection, PathRejection},
-    },
-    http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+        rejection::{JsonRejection, PathRejection}, FromRequest, FromRequestParts, Query, Request
+    }, http::StatusCode, response::{IntoResponse, Redirect, Response}, RequestPartsExt, Router
 };
 use axum_extra::{TypedHeader, extract::QueryRejection, headers};
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use strum::VariantArray;
 use uuid::Uuid;
@@ -28,11 +25,26 @@ pub fn router() -> Router<AppState2> {
     v0::router()
 }
 
-#[derive(FromRequest)]
-#[from_request(via(axum::Json), rejection(Error))]
-struct ApiJson<T>(T);
+struct ValidJson<T>(T);
+impl <S, T> FromRequest<S> for ValidJson<T>
+where
+    axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,
+    S: Send + Sync,
+    T: Validate,
+    <T as Validate>::Context: std::default::Default
+{
+    type Rejection = Error;
 
-impl<T: Serialize> IntoResponse for ApiJson<T> {
+    async  fn from_request(req: Request, state: &S) -> std::result::Result<Self,Self::Rejection> {
+        let axum::Json(data) = axum::Json::<T>::from_request(req, state).await?;
+        data.validate()?;
+
+        Ok(Self(data))
+    }
+}
+
+
+impl<T: Serialize> IntoResponse for ValidJson<T> {
     fn into_response(self) -> Response {
         axum::Json(self.0).into_response()
     }
@@ -209,6 +221,8 @@ pub enum Error {
     Database(#[from] db::Error),
     #[error("invalid API key")]
     InvalidApiKey,
+    #[error("invalid data")]
+    InvalidData{reason: String},
     #[error("invalid session ID")]
     InvalidSessionId { auth_url: String },
     #[error("malformed request")]
@@ -224,13 +238,14 @@ impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use Error::{
             ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId,
-            MalformedRequest, Permission,
+            MalformedRequest, Permission, InvalidData
         };
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
             ApiKeyGeneration(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiKeyNotFound | InvalidApiKey => StatusCode::UNAUTHORIZED,
+            InvalidData{..} => StatusCode::UNPROCESSABLE_ENTITY,
             InvalidSessionId { .. } => StatusCode::TEMPORARY_REDIRECT,
             Permission { .. } => StatusCode::FORBIDDEN,
             Database(inner) => match inner {
@@ -295,6 +310,12 @@ impl From<PathRejection> for Error {
 impl From<deadpool::PoolError> for Error {
     fn from(err: deadpool::PoolError) -> Self {
         Self::Database(db::Error::from(err))
+    }
+}
+
+impl From<garde::Report> for Error {
+    fn from(err: garde::Report) -> Self {
+        Self::InvalidData { reason: format!("{err:#}") }
     }
 }
 

@@ -37,7 +37,7 @@ mod handlers {
 
     use crate::{
         AppState2,
-        api::{self, ApiJson, User},
+        api::{self, ValidJson, User},
         db::{self, set_transaction_user},
     };
 
@@ -45,7 +45,7 @@ mod handlers {
         user: User,
         State(app_state): State<AppState2>,
         Path(id): Path<T::Id>,
-    ) -> api::Result<ApiJson<T>> {
+    ) -> api::Result<ValidJson<T>> {
         tracing::debug!(id = id.to_string());
 
         let mut conn = app_state.db_conn().await?;
@@ -61,14 +61,14 @@ mod handlers {
             })
             .await?;
 
-        Ok(ApiJson(item))
+        Ok(ValidJson(item))
     }
 
     pub async fn by_filter<T: db::Read>(
         user: User,
         State(app_state): State<AppState2>,
         Query(query): Query<T::Filter>,
-    ) -> api::Result<ApiJson<Vec<T>>> where T::Filter: Valuable {
+    ) -> api::Result<ValidJson<Vec<T>>> where T::Filter: Valuable {
         tracing::debug!(query = query.as_value());
 
         let mut conn = app_state.db_conn().await?;
@@ -84,7 +84,7 @@ mod handlers {
             })
             .await?;
 
-        Ok(ApiJson(items))
+        Ok(ValidJson(items))
     }
 
     pub async fn by_relationship<T, U>(
@@ -92,7 +92,7 @@ mod handlers {
         State(app_state): State<AppState2>,
         Path(id): Path<T>,
         Query(query): Query<U::Filter>,
-    ) -> api::Result<ApiJson<Vec<U>>>
+    ) -> api::Result<ValidJson<Vec<U>>>
     where
         T: db::ReadRelatives<U>,
         U: db::Read,
@@ -113,14 +113,14 @@ mod handlers {
             })
             .await?;
 
-        Ok(ApiJson(relatives))
+        Ok(ValidJson(relatives))
     }
 
-    pub async fn new<T: db::Create>(
+    pub async fn new<T>(
         user: User,
         State(app_state): State<AppState2>,
-        ApiJson(data): ApiJson<T>,
-    ) -> api::Result<ApiJson<T::Returns>>  where T: Valuable {
+        ValidJson(data): ValidJson<T>,
+    ) -> api::Result<ValidJson<T::Returns>>  where T: Valuable + db::Create + garde::Validate {
         tracing::debug!(data = data.as_value());
 
         let mut conn = app_state.db_conn().await?;
@@ -136,6 +136,6 @@ mod handlers {
             })
             .await?;
 
-        Ok(ApiJson(created))
+        Ok(ValidJson(created))
     }
 }
