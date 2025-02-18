@@ -86,16 +86,13 @@ impl Create for Vec<NewPerson> {
     async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use person::dsl::id;
 
-        let as_immut = &*self;
-
         // This can be improved by doing the join on the insertion rather than two
         // queries
         let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table)
-            .values(as_immut)
+            .values(self)
             .returning(id)
             .get_results(conn)
             .await?;
-        let n = inserted_people_ids.len() as i64;
 
         let filter = PersonFilter {
             ids: inserted_people_ids,
@@ -108,23 +105,26 @@ impl Create for Vec<NewPerson> {
 }
 
 // Do we like this struct name? Or is something like `PersonData` better
-#[derive(Queryable, Selectable, Serialize)]
+// #[derive(Queryable, Selectable, Serialize)]
+// #[diesel(table_name = person, check_for_backend(Pg))]
+// pub struct PersonRow {
+//     id: Uuid,
+//     #[diesel(column_name = full_name)]
+//     name: String,
+//     email: String,
+//     orcid: Option<String>,
+//     link: String,
+// }
+
+#[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub struct PersonRow {
+pub struct Person {
     id: Uuid,
     #[diesel(column_name = full_name)]
     name: String,
     email: String,
     orcid: Option<String>,
     link: String,
-}
-
-#[derive(Serialize, Queryable, Selectable)]
-#[diesel(table_name = schema::person, check_for_backend(Pg))]
-pub struct Person {
-    #[serde(flatten)]
-    #[diesel(embed)]
-    person: PersonRow,
     #[diesel(embed)]
     institution: Institution,
 }
@@ -191,4 +191,14 @@ impl Read for Person {
 
         Ok(base_query.load(conn).await?)
     }
+}
+
+// Lol ChatGPT suggested `PersonSummary`, `PersonBasic`, `PersonInfo`, and `PersonLite`
+#[derive(Queryable, Selectable, Serialize, Identifiable)]
+#[diesel(table_name = person, check_for_backend(Pg))]
+pub struct PersonLite {
+    id: Uuid,
+    #[diesel(column_name = full_name)]
+    name: String,
+    link: String
 }

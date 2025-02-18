@@ -3,11 +3,9 @@ use std::{collections::HashMap, hash::RandomState};
 use axum::{Json, Router, routing::get};
 
 use crate::{
-    AppState2,
     db::{
-        institution::{Institution, NewInstitution},
-        person::Person,
-    },
+        institution::{Institution, NewInstitution}, lab::Lab, person::Person
+    }, AppState2
 };
 
 pub(super) fn router() -> Router<AppState2> {
@@ -25,7 +23,8 @@ pub(super) fn router() -> Router<AppState2> {
         )
         .route("/institutions/{institution_id}", get(by_id::<Institution>))
         .route("/people", get(by_filter::<Person>))
-        .route("/people/{person_id}", get(by_id::<Person>));
+        .route("/people/{person_id}", get(by_id::<Person>))
+        .route("/labs/{lab_id}", get(by_id::<Lab>));
     router
 }
 
