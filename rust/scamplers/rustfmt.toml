@@ -7,3 +7,5 @@ format_macro_matchers = true
 format_strings = true
 reorder_impl_items = true
 use_field_init_shorthand = true
+comment_width = 120
+max_width = 120

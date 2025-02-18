@@ -9,24 +9,11 @@ use valuable::Valuable;
 
 pub mod index_sets;
 pub mod institution;
-pub mod person;
 pub mod lab;
+pub mod person;
+pub mod sample;
 
-
-// struct AsyncDbConnection(AsyncPgConnection);
-// impl AsyncDbConnection {
-//     async fn execute_as_user<F: AsyncFnMut(&mut AsyncPgConnection) ->
-// Result<R>, R: Send>(mut self, user_id: &Uuid, f: F) -> Result<R> {
-//         let result = self.0.transaction(|conn| async move {
-//             diesel::sql_query(format!(r#"set local role
-// "{user_id}""#)).execute(conn).await?;             f(conn).await
-//         }.scope_boxed()).await?;
-
-//         Ok(result)
-//     }
-// }
-
-// Do not implement this trait for a scalar T - just implement it for Vec<T>
+// Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once
 pub trait Create: Send {
     type Returns: Send;
@@ -131,7 +118,7 @@ pub enum Entity {
     SequencingRun,
     Dataset,
     #[default]
-    Unknown,
+    Other,
 }
 
 pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) -> Result<()> {
@@ -211,13 +198,14 @@ impl
 
         let entity = Entity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
 
-        let field = info.column_name().map(str::to_string);
-
-        let detail_regex = Regex::new(r"Key \(.*\)=(\(.*\)).*").unwrap();
+        let detail_regex = Regex::new(r"Key \((.+)\)=\((.+)\).+").unwrap(); // This isn't perfect
         let details = info.details().unwrap_or_default();
-        let value = detail_regex
+        let field_value: Vec<String> = detail_regex
             .captures(details)
-            .and_then(|cap| cap.get(1).map(|m| m.as_str().to_string()));
+            .and_then(|cap| cap.iter().take(3).map(|m| m.map(|s| s.as_str().to_string())).collect()).unwrap_or_default();
+
+        let field = field_value.get(1).cloned();
+        let value = field_value.get(2).cloned();
 
         match kind {
             UniqueViolation => Self::DuplicateRecord {

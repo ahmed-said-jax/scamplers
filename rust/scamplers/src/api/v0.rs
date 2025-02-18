@@ -4,7 +4,9 @@ use axum::{Json, Router, routing::get};
 
 use crate::{
     db::{
-        institution::{Institution, NewInstitution}, lab::Lab, person::Person
+        institution::{Institution, NewInstitution},
+        lab::{Lab, LabId, NewLab},
+        person::{Person, PersonFilter},
     }, AppState2
 };
 
@@ -24,7 +26,9 @@ pub(super) fn router() -> Router<AppState2> {
         .route("/institutions/{institution_id}", get(by_id::<Institution>))
         .route("/people", get(by_filter::<Person>))
         .route("/people/{person_id}", get(by_id::<Person>))
-        .route("/labs/{lab_id}", get(by_id::<Lab>));
+        .route("/labs", get(by_filter::<Lab>).post(new::<Vec<NewLab>>))
+        .route("/labs/{lab_id}", get(by_id::<Lab>))
+        .route("/labs/{lab_id}/members", get(by_relationship::<LabId, Person>));
     router
 }
 
@@ -36,7 +40,7 @@ mod handlers {
 
     use crate::{
         AppState2,
-        api::{self, ValidJson, User},
+        api::{self, User, ValidJson},
         db::{self, set_transaction_user},
     };
 
@@ -67,7 +71,10 @@ mod handlers {
         user: User,
         State(app_state): State<AppState2>,
         Query(query): Query<T::Filter>,
-    ) -> api::Result<ValidJson<Vec<T>>> where T::Filter: Valuable {
+    ) -> api::Result<ValidJson<Vec<T>>>
+    where
+        T::Filter: Valuable,
+    {
         tracing::debug!(query = query.as_value());
 
         let mut conn = app_state.db_conn().await?;
@@ -119,7 +126,10 @@ mod handlers {
         user: User,
         State(app_state): State<AppState2>,
         ValidJson(data): ValidJson<T>,
-    ) -> api::Result<ValidJson<T::Returns>>  where T: Valuable + db::Create + garde::Validate {
+    ) -> api::Result<ValidJson<T::Returns>>
+    where
+        T: Valuable + db::Create + garde::Validate,
+    {
         tracing::debug!(data = data.as_value());
 
         let mut conn = app_state.db_conn().await?;

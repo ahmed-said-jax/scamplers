@@ -1,8 +1,12 @@
 use argon2::{PasswordHasher, password_hash::SaltString};
 use axum::{
+    RequestPartsExt, Router,
     extract::{
-        rejection::{JsonRejection, PathRejection}, FromRequest, FromRequestParts, Query, Request
-    }, http::StatusCode, response::{IntoResponse, Redirect, Response}, RequestPartsExt, Router
+        FromRequest, FromRequestParts, Query, Request,
+        rejection::{JsonRejection, PathRejection},
+    },
+    http::StatusCode,
+    response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::{TypedHeader, extract::QueryRejection, headers};
 use diesel::prelude::*;
@@ -26,23 +30,22 @@ pub fn router() -> Router<AppState2> {
 }
 
 struct ValidJson<T>(T);
-impl <S, T> FromRequest<S> for ValidJson<T>
+impl<S, T> FromRequest<S> for ValidJson<T>
 where
     axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,
     S: Send + Sync,
     T: Validate,
-    <T as Validate>::Context: std::default::Default
+    <T as Validate>::Context: std::default::Default,
 {
     type Rejection = Error;
 
-    async  fn from_request(req: Request, state: &S) -> std::result::Result<Self,Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> std::result::Result<Self, Self::Rejection> {
         let axum::Json(data) = axum::Json::<T>::from_request(req, state).await?;
         data.validate()?;
 
         Ok(Self(data))
     }
 }
-
 
 impl<T: Serialize> IntoResponse for ValidJson<T> {
     fn into_response(self) -> Response {
@@ -222,7 +225,7 @@ pub enum Error {
     #[error("invalid API key")]
     InvalidApiKey,
     #[error("invalid data")]
-    InvalidData{reason: String},
+    InvalidData { reason: String },
     #[error("invalid session ID")]
     InvalidSessionId { auth_url: String },
     #[error("malformed request")]
@@ -237,15 +240,15 @@ pub enum Error {
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use Error::{
-            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId,
-            MalformedRequest, Permission, InvalidData
+            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidData,
+            InvalidSessionId, MalformedRequest, Permission,
         };
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
             ApiKeyGeneration(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiKeyNotFound | InvalidApiKey => StatusCode::UNAUTHORIZED,
-            InvalidData{..} => StatusCode::UNPROCESSABLE_ENTITY,
+            InvalidData { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             InvalidSessionId { .. } => StatusCode::TEMPORARY_REDIRECT,
             Permission { .. } => StatusCode::FORBIDDEN,
             Database(inner) => match inner {
@@ -315,7 +318,9 @@ impl From<deadpool::PoolError> for Error {
 
 impl From<garde::Report> for Error {
     fn from(err: garde::Report) -> Self {
-        Self::InvalidData { reason: format!("{err:#}") }
+        Self::InvalidData {
+            reason: format!("{err:#}"),
+        }
     }
 }
 

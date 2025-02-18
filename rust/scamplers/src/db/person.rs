@@ -1,13 +1,7 @@
 use std::str::FromStr;
 
 use diesel::{
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{self, SqlType},
+    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, helper_types::{AsSelect, InnerJoin, Select, IntoBoxed}, pg::Pg, prelude::*, query_builder::BoxedSelectStatement, serialize::ToSql, sql_types::{self, Bool, SqlType}
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
@@ -71,11 +65,13 @@ define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewPerson {
+    #[garde(length(min = 1))]
     first_name: String,
+    #[garde(length(min = 1))]
     last_name: String,
     #[garde(email)]
     email: String,
-    orcid: Option<String>,
+    orcid: Option<String>, // No need to validate this because the only way to insert a person is if you are an admin or inserting yourself, in which case this field won't be available until you link your orcid
     #[valuable(skip)]
     institution_id: Uuid,
 }
@@ -104,18 +100,6 @@ impl Create for Vec<NewPerson> {
     }
 }
 
-// Do we like this struct name? Or is something like `PersonData` better
-// #[derive(Queryable, Selectable, Serialize)]
-// #[diesel(table_name = person, check_for_backend(Pg))]
-// pub struct PersonRow {
-//     id: Uuid,
-//     #[diesel(column_name = full_name)]
-//     name: String,
-//     email: String,
-//     orcid: Option<String>,
-//     link: String,
-// }
-
 #[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct Person {
@@ -133,16 +117,34 @@ pub struct Person {
 pub struct PersonFilter {
     #[valuable(skip)]
     #[serde(default)]
-    ids: Vec<Uuid>,
-    name: Option<String>,
-    email: Option<String>,
+    pub ids: Vec<Uuid>,
+    pub name: Option<String>,
+    pub email: Option<String>,
 }
 impl Paginate for PersonFilter {}
+impl PersonFilter {
+    pub fn as_query(&self) -> IntoBoxed<Select<InnerJoin<person::table, institution::table>, AsSelect<Person, Pg>>, Pg> {
+        use person::dsl::{email as email_col, full_name as name_col, id as id_col};
 
-impl Person {
-    #[diesel::dsl::auto_type(no_type_alias)]
-    fn base_query() -> _ {
-        person::table.inner_join(institution::table)
+        let mut query = person::table.into_boxed();
+
+        let Self { ids, name, email } = self;
+
+        if !ids.is_empty() {
+            query = query.filter(id_col.eq_any(ids));
+        }
+
+        // The next two conditions are pretty much the same thing, there's probably some
+        // way to improve this
+        if let Some(name) = name {
+            query = query.filter(name_col.ilike(format!("%{name}%"))); // This allows searching by first name or last name (or any substring within each)
+        }
+
+        if let Some(email) = email {
+            query = query.filter(email_col.ilike(format!("{email}%")));
+        }
+
+        query.inner_join(institution::table).select(Person::as_select())
     }
 }
 
@@ -150,55 +152,29 @@ impl Read for Person {
     type Filter = PersonFilter;
     type Id = Uuid;
 
-    async fn fetch_by_id(person_id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
-        let base_query = Self::base_query().select(Self::as_select()); // I want to factor out this whole expression into `Self::base_query`, but it doesn't work
+    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
+        let filter = PersonFilter{ids: vec![id], ..Default::default()};
 
-        Ok(base_query
-            .filter(person::id.eq(person_id))
-            .first(conn)
-            .await?)
+        let query = filter.as_query();
+
+        Ok(query.first(conn).await?)
     }
 
     async fn fetch_many(
         filter: Self::Filter,
         conn: &mut AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
-        use person::dsl::{email as email_col, full_name as name_col, id};
-
-        let Pagination { limit, offset } = filter.paginate();
-
-        let mut base_query = Self::base_query()
-            .into_boxed()
-            .select(Self::as_select())
-            .limit(limit)
-            .offset(offset);
-
-        let PersonFilter { ids, name, email } = filter;
-
-        if !ids.is_empty() {
-            base_query = base_query.filter(id.eq_any(ids));
-        }
-
-        // The next two conditions are pretty much the same thing, there's probably some
-        // way to improve this
-        if let Some(name) = name {
-            base_query = base_query.filter(name_col.ilike(format!("%{name}%"))); // This allows searching by first name or last name (or any substring within each)
-        }
-
-        if let Some(email) = email {
-            base_query = base_query.filter(email_col.ilike(format!("{email}%")));
-        }
-
-        Ok(base_query.load(conn).await?)
+        Ok(filter.as_query().load(conn).await?)
     }
 }
 
-// Lol ChatGPT suggested `PersonSummary`, `PersonBasic`, `PersonInfo`, and `PersonLite`
+// Lol ChatGPT suggested `PersonSummary`, `PersonBasic`, `PersonInfo`, and
+// `PersonLite`, and I liked the last one the most
 #[derive(Queryable, Selectable, Serialize, Identifiable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct PersonLite {
     id: Uuid,
     #[diesel(column_name = full_name)]
     name: String,
-    link: String
+    link: String,
 }

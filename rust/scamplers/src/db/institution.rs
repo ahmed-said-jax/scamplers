@@ -13,6 +13,7 @@ use crate::{db::Paginate, schema};
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewInstitution {
+    #[garde(length(min = 1))]
     name: String,
     #[valuable(skip)]
     ms_tenant_id: Option<Uuid>,
@@ -26,10 +27,8 @@ impl Create for Vec<NewInstitution> {
     async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::*;
 
-        let as_immut = &*self;
-
         let inserted = diesel::insert_into(institution)
-            .values(as_immut)
+            .values(self)
             .returning(Institution::as_returning())
             .get_results(conn)
             .await?;
@@ -40,10 +39,12 @@ impl Create for Vec<NewInstitution> {
 
 // It's unlikely we'll need this, but it serves as a simple example for the
 // patterns I want to establish in this package
-#[derive(Identifiable, AsChangeset, Deserialize, JsonSchema)]
+#[derive(Identifiable, AsChangeset, Deserialize, JsonSchema, Validate)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
 pub struct UpdatedInstitution {
     id: Uuid,
+    #[garde(length(min = 1))]
     name: Option<String>,
     ms_tenant_id: Option<Uuid>,
 }
