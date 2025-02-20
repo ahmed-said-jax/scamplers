@@ -26,8 +26,8 @@ create table chip_loading (
     gem_id uuid references gems on delete restrict on update restrict not null,
     suspension_id uuid references suspension on delete restrict on update restrict,
     multiplexed_suspension_id uuid references multiplexed_suspension on delete restrict on update restrict,
-    suspension_volume_loaded measurement not null, -- validated on Rust side
-    buffer_volume_loaded measurement not null, -- validated on Rust side
+    suspension_volume_loaded jsonb not null, -- validated on Rust side
+    buffer_volume_loaded jsonb not null, -- validated on Rust side
     notes text [],
     primary key (gem_id, suspension_id, multiplexed_suspension_id),
 

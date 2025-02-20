@@ -49,8 +49,6 @@ mod handlers {
         State(app_state): State<AppState2>,
         Path(id): Path<T::Id>,
     ) -> api::Result<ValidJson<T>> {
-        tracing::debug!(id = id.to_string());
-
         let mut conn = app_state.db_conn().await?;
 
         let item = conn
@@ -75,7 +73,7 @@ mod handlers {
     where
         T::Filter: Valuable,
     {
-        tracing::debug!(query = query.as_value());
+        tracing::debug!(deserialized_query = query.as_value());
 
         let mut conn = app_state.db_conn().await?;
 
@@ -104,7 +102,7 @@ mod handlers {
         U: db::Read,
         U::Filter: Valuable
     {
-        tracing::debug!(id = id.to_string(), query = query.as_value());
+        tracing::debug!(parent_id = id.to_string(), deserialized_query = query.as_value());
 
         let mut conn = app_state.db_conn().await?;
 
@@ -130,7 +128,7 @@ mod handlers {
     where
         T: Valuable + db::Create + garde::Validate,
     {
-        tracing::debug!(data = data.as_value());
+        tracing::debug!(deserialized_data = data.as_value());
 
         let mut conn = app_state.db_conn().await?;
 

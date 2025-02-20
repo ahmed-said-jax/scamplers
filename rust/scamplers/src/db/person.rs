@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use diesel::{
-    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, helper_types::{AsSelect, InnerJoin, Select, IntoBoxed}, pg::Pg, prelude::*, query_builder::BoxedSelectStatement, serialize::ToSql, sql_types::{self, Bool, SqlType}
+    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, helper_types::{AsSelect, InnerJoin, IntoBoxed, Select}, pg::Pg, prelude::*, query_builder::BoxedSelectStatement, serialize::ToSql, sql_types::{self, Bool, SqlType}
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, Paginate, Read, institution::Institution};
+use super::{institution::Institution, Create, DbEnum, Paginate, Read};
 use crate::{
     db::Pagination,
     schema::{institution, person},
@@ -27,6 +27,7 @@ use crate::{
     PartialEq,
     Deserialize,
     Serialize,
+    Copy
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
@@ -34,13 +35,13 @@ use crate::{
 pub enum UserRole {
     AppAdmin,
     ComputationalStaff,
-    LabStaff,
+    LabStaff
 }
+impl DbEnum for UserRole {}
 
 impl FromSql<sql_types::Text, Pg> for UserRole {
     fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
-        Ok(Self::from_str(&raw).unwrap())
+        Self::from_sql_inner(bytes)
     }
 }
 
@@ -49,8 +50,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
         &'b self,
         out: &mut diesel::serialize::Output<'b, '_, Pg>,
     ) -> diesel::serialize::Result {
-        let as_str: &str = self.into();
-        ToSql::<sql_types::Text, Pg>::to_sql(as_str, out)
+        Self::to_sql_inner(self, out)
     }
 }
 
@@ -100,19 +100,6 @@ impl Create for Vec<NewPerson> {
     }
 }
 
-#[derive(Serialize, Queryable, Selectable)]
-#[diesel(table_name = person, check_for_backend(Pg))]
-pub struct Person {
-    id: Uuid,
-    #[diesel(column_name = full_name)]
-    name: String,
-    email: String,
-    orcid: Option<String>,
-    link: String,
-    #[diesel(embed)]
-    institution: Institution,
-}
-
 #[derive(Deserialize, Default, Valuable)]
 pub struct PersonFilter {
     #[valuable(skip)]
@@ -123,12 +110,12 @@ pub struct PersonFilter {
 }
 impl Paginate for PersonFilter {}
 impl PersonFilter {
-    pub fn as_query(&self) -> IntoBoxed<Select<InnerJoin<person::table, institution::table>, AsSelect<Person, Pg>>, Pg> {
+    pub fn as_sql(&self) -> person::BoxedQuery<'_, Pg> {
         use person::dsl::{email as email_col, full_name as name_col, id as id_col};
 
         let mut query = person::table.into_boxed();
 
-        let Self { ids, name, email } = self;
+        let Self { ids, name, email} = self;
 
         if !ids.is_empty() {
             query = query.filter(id_col.eq_any(ids));
@@ -137,14 +124,14 @@ impl PersonFilter {
         // The next two conditions are pretty much the same thing, there's probably some
         // way to improve this
         if let Some(name) = name {
-            query = query.filter(name_col.ilike(format!("%{name}%"))); // This allows searching by first name or last name (or any substring within each)
+            query = query.filter(name_col.ilike(format!("%{name}%"))); // This allows searching by first name or last name (or any substring within either)
         }
 
         if let Some(email) = email {
             query = query.filter(email_col.ilike(format!("{email}%")));
         }
 
-        query.inner_join(institution::table).select(Person::as_select())
+        query
     }
 }
 
@@ -153,28 +140,55 @@ impl Read for Person {
     type Id = Uuid;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
-        let filter = PersonFilter{ids: vec![id], ..Default::default()};
+        let info = person::table.find(id).inner_join(institution::table).select(PersonFull::as_select()).first(conn).await?;
 
-        let query = filter.as_query();
-
-        Ok(query.first(conn).await?)
+        Ok(Self::Full(info))
     }
 
     async fn fetch_many(
         filter: Self::Filter,
         conn: &mut AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
-        Ok(filter.as_query().load(conn).await?)
+        let query = filter.as_sql();
+
+        let people = query.select(PersonLite::as_select()).load(conn).await?;
+
+        Ok(people.into_iter().map(|p| Self::Lite(p)).collect())
     }
 }
 
-// Lol ChatGPT suggested `PersonSummary`, `PersonBasic`, `PersonInfo`, and
-// `PersonLite`, and I liked the last one the most
-#[derive(Queryable, Selectable, Serialize, Identifiable)]
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum Person {
+    Full(PersonFull),
+    Lite(PersonLite)
+}
+
+#[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub struct PersonLite {
-    id: Uuid,
+pub (super) struct PersonFull {
+    #[serde(flatten)]
+    #[diesel(embed)]
+    lite: PersonLite,
+    #[diesel(embed)]
+    institution: Institution,
+}
+
+#[derive(Serialize, Queryable, Selectable)]
+#[diesel(table_name = person, check_for_backend(Pg))]
+pub (super) struct PersonLite {
+    #[serde(flatten)]
+    #[diesel(embed)]
+    stub: PersonStub,
     #[diesel(column_name = full_name)]
     name: String,
+    email: String,
+    orcid: Option<String>
+}
+
+#[derive(Queryable, Selectable, Serialize, Identifiable)]
+#[diesel(table_name = person, check_for_backend(Pg))]
+pub (super) struct PersonStub {
+    id: Uuid,
     link: String,
 }

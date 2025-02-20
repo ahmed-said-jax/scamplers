@@ -9,7 +9,7 @@ use uuid::Uuid;
 use valuable::Valuable;
 use futures::{FutureExt, TryFutureExt};
 
-use super::{person::{Person, PersonLite}, Create, Paginate, Read, ReadRelatives};
+use super::{person::{Person, PersonLite, PersonStub}, Create, Paginate, Read, ReadRelatives};
 use crate::{db::person::PersonFilter, schema::{lab, lab_membership, person}};
 
 // This is the first instance where one API body might represent multiple
@@ -71,7 +71,7 @@ impl Create for Vec<NewLab> {
 // update a lab. However, UUIDs are 16 bytes - very cheap to copy by value, so
 // it's not worth it.
 #[derive(Deserialize, Validate, Insertable, Identifiable, Selectable, Queryable, Associations)]
-#[diesel(table_name = lab_membership, check_for_backend(Pg), belongs_to(LabRow, foreign_key = lab_id), belongs_to(PersonLite, foreign_key = member_id), primary_key(lab_id, member_id))]
+#[diesel(table_name = lab_membership, check_for_backend(Pg), belongs_to(LabLite, foreign_key = lab_id), belongs_to(PersonStub, foreign_key = member_id), primary_key(lab_id, member_id))]
 #[garde(allow_unvalidated)]
 struct LabMembership {
     lab_id: Uuid,
@@ -93,10 +93,26 @@ impl Create for Vec<LabMembership> {
     }
 }
 
-#[derive(Serialize, Queryable, Selectable, Identifiable)]
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum Lab {
+    Full(LabFull),
+    Lite(LabLite),
+}
+
+#[derive(Serialize)]
+struct LabFull {
+    #[serde(flatten)]
+    lite: LabLite,
+    members: Vec<PersonStub>,
+}
+
+#[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = lab, check_for_backend(Pg))]
-pub struct LabRow {
-    id: Uuid,
+struct LabLite {
+    #[serde(flatten)]
+    #[diesel(embed)]
+    stub: LabStub,
     name: String,
     delivery_dir: String,
     link: String,
@@ -104,11 +120,11 @@ pub struct LabRow {
     pi: PersonLite,
 }
 
-#[derive(Serialize)]
-pub struct Lab {
-    #[serde(flatten)]
-    lab: LabRow,
-    members: Vec<PersonLite>,
+#[derive(Serialize, Queryable, Selectable)]
+#[diesel(table_name = lab, check_for_backend(Pg))]
+struct LabStub {
+    id: Uuid,
+    link: String
 }
 
 #[derive(Deserialize, Default, Valuable)]
@@ -119,9 +135,9 @@ pub struct LabFilter {
 }
 impl Paginate for LabFilter {}
 impl LabFilter {
-    fn as_query(&self) -> IntoBoxed<Select<InnerJoin<lab::table, person::table>, AsSelect<LabRow, Pg>>, Pg> {
+    fn as_sql(&self) -> lab::BoxedQuery<'_, Pg> {
         use lab::dsl::id as id_col;
-        let Self { ids } = self;
+        let Self { ids, .. } = self;
 
         let mut query = lab::table.into_boxed();
 
@@ -129,7 +145,7 @@ impl LabFilter {
             query = query.filter(id_col.eq_any(ids));
         }
 
-        query.inner_join(person::table).select(LabRow::as_select())
+        query
     }
 }
 
@@ -143,36 +159,22 @@ impl Read for Lab {
         ) -> super::Result<Self> {
             use lab_membership::lab_id;
 
-            let filter = LabFilter{ids: vec![id]};
-            let query = filter.as_query();
-            let lab = query.first(conn).boxed();
+            let lite = lab::table.find(id).inner_join(person::table).select(LabLite::as_select()).first(conn).boxed();
 
-            let members = lab_membership::table.inner_join(person::table).filter(lab_id.eq(id)).select(PersonLite::as_select()).load(conn).boxed();
+            let members = lab_membership::table.inner_join(person::table).filter(lab_id.eq(id)).select(PersonStub::as_select()).load(conn).boxed();
 
-            let (lab, members) = tokio::try_join!(lab, members)?;
+            let (lite, members) = tokio::try_join!(lite, members)?;
 
-            Ok(Self {lab, members})
+            Ok(Self::Full(LabFull{lite, members}))
     }
 
     async fn fetch_many(
         filter: Self::Filter,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
-        let lab_rows = filter.as_query().load(conn).await?;
+        let labs = filter.as_sql().inner_join(person::table).select(LabLite::as_select()).load(conn).await?;
 
-        let members = LabMembership::belonging_to(&lab_rows).inner_join(person::table).select((LabMembership::as_select(), PersonLite::as_select())).load(conn).await?;
-
-        let labs = members
-        .grouped_by(&lab_rows)
-        .into_iter()
-        .zip(lab_rows)
-        .map(|(p, lab)| Lab {
-            lab,
-            members: p.into_iter().map(|(_, member)| member).collect(),
-        })
-        .collect();
-
-        Ok(labs)
+        Ok(labs.into_iter().map(|l| Self::Lite(l)).collect())
     }
 }
 
@@ -197,8 +199,8 @@ impl ReadRelatives<Person> for LabId {
             // Extract the lab_id
             let Self(lab_id) = self;
 
-            // This is our base - a filtered list of people with their institutions. I'm not entirely sure why we have to do `select <stuff> from person...inner join lab_membership` rather than `select <stuff> from lab_membership inner join person...`
-            let query = person_filter.as_query();
+            // This is our base - a `where` condition on person. I'm not entirely sure why we have to do `select <stuff> from person...inner join lab_membership` rather than `select <stuff> from lab_membership inner join person...`
+            let query = person_filter.as_sql();
 
             // Now we join the lab_membership table
             let query = query.inner_join(lab_membership::table);
@@ -206,7 +208,10 @@ impl ReadRelatives<Person> for LabId {
             // Filter to make sure we only get the lab we want
             let query = query.filter(lab_id_col.eq(lab_id));
 
-            // Load and return results
-            Ok(query.load(conn).await?)
+            // Select the columns we want and load
+            let members = query.select(PersonLite::as_select()).load(conn).await?;
+
+            // Map them into the `Person` enum. There is a reason for this complexity
+            Ok(members.into_iter().map(|p| Person::Lite(p)).collect())
     }
 }

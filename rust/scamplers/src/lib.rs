@@ -130,7 +130,7 @@ fn initialize_logging(
     use tracing_subscriber::{filter::Targets, prelude::*};
 
     let log_layer = tracing_subscriber::fmt::layer();
-    let dev_test_log_filter = Targets::new().with_target("scamplers", Level::DEBUG);
+    let dev_test_log_filter = Targets::new().with_target(env!("CARGO_PKG_NAME"), Level::DEBUG).with_target("tower_http", Level::DEBUG);
 
     match (app_config, log_dir) {
         (Dev | Test { .. }, None) => {

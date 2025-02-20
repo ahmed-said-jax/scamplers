@@ -53,10 +53,8 @@ impl Update for UpdatedInstitution {
     type Returns = Institution;
 
     async fn update(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        let as_immut = &*self;
-
-        Ok(diesel::update(as_immut)
-            .set(as_immut)
+        Ok(diesel::update(self)
+            .set(self)
             .returning(Self::Returns::as_returning())
             .get_result(conn)
             .await?)

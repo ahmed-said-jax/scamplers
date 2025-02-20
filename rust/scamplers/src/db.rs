@@ -1,9 +1,10 @@
-use std::{fmt::Display, str::FromStr};
+#![allow(private_interfaces)]
+use std::{fmt::{Debug, Display}, str::FromStr};
 
-use diesel::result::DatabaseErrorInformation;
+use diesel::{backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::ToSql, sql_types::{self, SqlType, Untyped}};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -12,6 +13,7 @@ pub mod institution;
 pub mod lab;
 pub mod person;
 pub mod sample;
+mod measurement;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once
@@ -26,6 +28,7 @@ pub trait Create: Send {
 
 pub trait Read: Serialize + Sized + Send {
     type Id: Send + Display;
+    #[allow(private_bounds)]
     type Filter: Sync + Send + Paginate;
 
     fn fetch_many(
@@ -67,23 +70,13 @@ pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
-pub trait Paginate {
+trait Paginate {
     fn paginate(&self) -> Pagination {
         Pagination::default()
     }
 }
-// If we don't really need pagination (for example, institutions and people),
-// you don't have to `impl` the trait for the corresponding filter
-impl<T: Paginate> Paginate for Option<T> {
-    fn paginate(&self) -> Pagination {
-        match self {
-            Some(item) => item.paginate(),
-            None => Pagination::default(),
-        }
-    }
-}
 
-pub struct Pagination {
+struct Pagination {
     limit: i64,
     offset: i64,
 }
@@ -93,6 +86,20 @@ impl Default for Pagination {
             limit: 500,
             offset: 0,
         }
+    }
+}
+
+trait DbEnum: FromStr + Into<&'static str> + FromSqlRow<sql_types::Text, Pg> + SqlType + AsExpression<sql_types::Text> + Copy where <Self as FromStr>::Err: Debug {
+    fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
+
+        Ok(Self::from_str(&raw).unwrap()) // `unwrap` is fine here because these values are entirely controlled and validated by us
+    }
+    fn to_sql_inner<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        let as_str = *self;
+        let as_str = as_str.into();
+    
+        ToSql::<sql_types::Text, Pg>::to_sql(as_str, out)
     }
 }
 

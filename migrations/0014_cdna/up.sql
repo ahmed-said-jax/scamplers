@@ -13,7 +13,7 @@ create table cdna (
 create table cdna_measurement (
     cdna_id uuid references cdna on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    measurement measurement not null,
+    measurement jsonb not null,
     primary key (cdna_id, measured_by, measurement)
 );
 

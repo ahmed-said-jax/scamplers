@@ -4,7 +4,7 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::schema;
-
+mod specimen;
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of API usage
 #[derive(Deserialize, Serialize)]
 pub enum Species {
@@ -42,29 +42,17 @@ pub struct ExistingSampleNewCommitteeApproval<A: AsRef<NewCommitteeApproval>> {
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 pub struct NewSampleMetadata {
     #[garde(length(min = 1))]
-    pub name: String,
-    pub submitted_by: Uuid,
-    pub lab_id: Uuid,
-    pub received_at: NaiveDateTime,
+    name: String,
+    submitted_by: Uuid,
+    lab_id: Uuid,
+    received_at: NaiveDateTime,
     #[garde(length(min = 1))]
-    pub species: Vec<Species>,
+    species: Vec<Species>,
     #[garde(length(min = 1))]
-    pub tissue: String,
+    tissue: String,
     #[diesel(skip_insertion)]
-    pub committee_approvals: Option<Vec<NewCommitteeApproval>>,
-    pub notes: Option<Vec<String>>,
-    pub returned_at: Option<NaiveDateTime>,
-    pub returned_by: Option<Uuid>,
-}
-
-
-struct Measurement {
-    quantity: uom::
-}
-
-pub enum NewSample {
-    Specimen {
-        metadata: NewSampleMetadata,
-        
-    }
+    committee_approvals: Option<Vec<NewCommitteeApproval>>,
+    notes: Option<Vec<String>>,
+    returned_at: Option<NaiveDateTime>,
+    returned_by: Option<Uuid>,
 }

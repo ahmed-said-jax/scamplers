@@ -14,6 +14,7 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use strum::VariantArray;
+use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 use crate::{
@@ -26,7 +27,7 @@ pub fn router() -> Router<AppState2> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
-    v0::router()
+    v0::router().layer(TraceLayer::new_for_http())
 }
 
 struct ValidJson<T>(T);

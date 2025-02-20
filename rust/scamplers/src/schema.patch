@@ -1,6 +1,6 @@
 --- src/schema.rs
 +++ src/schema.patch
-@@ -25,13 +25,13 @@
+@@ -21,13 +21,13 @@
          link -> Text,
          legacy_id -> Text,
          prepared_at -> Timestamp,
@@ -13,15 +13,15 @@
  }
  
  diesel::table! {
-     use diesel::sql_types::*;
-     use super::sql_types::Measurement;
-@@ -65,24 +65,24 @@
+     cdna_measurement (cdna_id, measured_by, measurement) {
+         cdna_id -> Uuid,
+@@ -55,24 +55,24 @@
      chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
          gem_id -> Uuid,
          suspension_id -> Uuid,
          multiplexed_suspension_id -> Uuid,
-         suspension_volume_loaded -> Measurement,
-         buffer_volume_loaded -> Measurement,
+         suspension_volume_loaded -> Jsonb,
+         buffer_volume_loaded -> Jsonb,
 -        notes -> Nullable<Array<Nullable<Text>>>,
 +        notes -> Nullable<Array<Text>>,
      }
@@ -42,7 +42,7 @@
  
  diesel::table! {
      chromium_library (id) {
-@@ -91,13 +91,13 @@
+@@ -81,13 +81,13 @@
          legacy_id -> Text,
          cdna_id -> Uuid,
          single_index_set_name -> Nullable<Text>,
@@ -55,9 +55,9 @@
  }
  
  diesel::table! {
-     use diesel::sql_types::*;
-     use super::sql_types::Measurement;
-@@ -121,13 +121,13 @@
+     chromium_library_measurement (library_id, measured_by, measurement) {
+         library_id -> Uuid,
+@@ -108,13 +108,13 @@
          id -> Uuid,
          link -> Text,
          legacy_id -> Text,
@@ -72,7 +72,7 @@
  diesel::table! {
      chromium_runners (run_id, run_by) {
          run_id -> Uuid,
-@@ -234,13 +234,13 @@
+@@ -218,13 +218,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
          link -> Text,
@@ -85,9 +85,9 @@
  }
  
  diesel::table! {
-     use diesel::sql_types::*;
-     use super::sql_types::Measurement;
-@@ -293,37 +293,37 @@
+     multiplexed_suspension_measurement (suspension_id, measured_by, measurement) {
+         suspension_id -> Uuid,
+@@ -274,37 +274,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -129,22 +129,24 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -333,13 +333,13 @@
+@@ -312,14 +312,14 @@
+         legacy_id -> Text,
+         metadata_id -> Uuid,
          #[sql_name = "type"]
          type_ -> Text,
-         derived_from -> Nullable<Uuid>,
-         derived_at -> Nullable<Timestamp>,
-         embedded_in -> Text,
-         preservation_method -> Text,
+         embedded_in -> Nullable<Text>,
+         preserved_with -> Nullable<Text>,
+-        measurements -> Nullable<Array<Nullable<Jsonb>>>,
 -        notes -> Nullable<Array<Nullable<Text>>>,
++        measurements -> Nullable<Array<Jsonb>>,
 +        notes -> Nullable<Array<Text>>,
      }
  }
  
  diesel::table! {
-     use diesel::sql_types::*;
-     use super::sql_types::Measurement;
-@@ -362,13 +362,13 @@
+     suspension (id) {
+         id -> Uuid,
+@@ -331,13 +331,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,
@@ -157,5 +159,5 @@
  }
  
  diesel::table! {
-     use diesel::sql_types::*;
-     use super::sql_types::Measurement;
+     suspension_measurement (suspension_id, measured_by, measurement) {
+         suspension_id -> Uuid,

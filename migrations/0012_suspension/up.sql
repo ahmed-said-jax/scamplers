@@ -38,9 +38,7 @@ create table suspension (
 create table suspension_measurement (
     suspension_id uuid references suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    measurement measurement not null,
-    post_hybridization boolean not null,
-    buffer text not null, -- constrained by Rust-side enum
+    measurement jsonb not null,
     primary key (suspension_id, measured_by, measurement)
 );
 

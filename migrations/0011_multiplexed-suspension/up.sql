@@ -11,7 +11,7 @@ create table multiplexed_suspension (
 create table multiplexed_suspension_measurement (
     suspension_id uuid references multiplexed_suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    measurement measurement not null,
+    measurement jsonb not null,
     primary key (suspension_id, measured_by, measurement)
 );
 

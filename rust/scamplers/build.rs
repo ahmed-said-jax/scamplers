@@ -71,6 +71,11 @@ fn generate_schema(connection_string: &str) {
     diesel_cmd.args(args);
 
     let output = diesel_cmd.output().unwrap();
+
+    if !output.stderr.is_empty() {
+        panic!("{}", String::from_utf8(output.stderr).unwrap());
+    }
+
     let stdout = String::from_utf8(output.stdout).unwrap();
     println!("{stdout}");
 }
