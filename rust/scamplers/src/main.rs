@@ -13,10 +13,7 @@ async fn main() -> anyhow::Result<()> {
     let Cli { command } = Cli::parse();
 
     match command {
-        Command::Serve {
-            config_path,
-            log_dir,
-        } => serve_app(config_path, log_dir).await,
+        Command::Serve { config_path, log_dir } => serve_app(config_path, log_dir).await,
         Command::Schema { output_dir } => {
             let schema = [
                 ("new_institution", schema_for!(NewInstitution)),

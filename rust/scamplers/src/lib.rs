@@ -32,13 +32,9 @@ mod web;
 const LOGIN_USER: &str = "login_user";
 const DOCKER_COMPOSE: &[u8] = include_bytes!("../../../compose.yaml");
 
-pub async fn serve_app(
-    config_path: Option<Utf8PathBuf>,
-    log_dir: Option<Utf8PathBuf>,
-) -> anyhow::Result<()> {
+pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
     let app_config = match config_path {
-        Some(path) => AppConfig2::from_path(&path)
-            .context("failed to parse and validate configuration file")?,
+        Some(path) => AppConfig2::from_path(&path).context("failed to parse and validate configuration file")?,
         None => AppConfig2::default(),
     };
 
@@ -121,16 +117,15 @@ pub struct AuthConfig {
     url: Url,
 }
 
-fn initialize_logging(
-    app_config: &AppConfig2,
-    log_dir: &Option<Utf8PathBuf>,
-) -> anyhow::Result<()> {
+fn initialize_logging(app_config: &AppConfig2, log_dir: &Option<Utf8PathBuf>) -> anyhow::Result<()> {
     use AppConfig2::*;
     use tracing::Level;
     use tracing_subscriber::{filter::Targets, prelude::*};
 
     let log_layer = tracing_subscriber::fmt::layer();
-    let dev_test_log_filter = Targets::new().with_target(env!("CARGO_PKG_NAME"), Level::DEBUG).with_target("tower_http", Level::DEBUG);
+    let dev_test_log_filter = Targets::new()
+        .with_target(env!("CARGO_PKG_NAME"), Level::DEBUG)
+        .with_target("tower_http", Level::DEBUG);
 
     match (app_config, log_dir) {
         (Dev | Test { .. }, None) => {
@@ -150,10 +145,7 @@ fn initialize_logging(
         (Prod { .. }, Some(path)) => {
             let log_writer = tracing_appender::rolling::daily(path, "scamplers.log");
             let prod_log_filter = Targets::new().with_target("scamplers", Level::INFO);
-            let log_layer = log_layer
-                .json()
-                .with_writer(log_writer)
-                .with_filter(prod_log_filter);
+            let log_layer = log_layer.json().with_writer(log_writer).with_filter(prod_log_filter);
 
             tracing_subscriber::registry().with(log_layer).init();
         }
@@ -253,17 +245,11 @@ impl AppState2 {
 
         match app_config {
             Dev => {
-                let pg_container: ContainerAsync<Postgres> = ContainerAsync::from_docker_compose()
-                    .await
-                    .context(container_err)?;
-                let db_root_user_url = format!(
-                    "postgres://postgres@{}/postgres",
-                    pg_container.host_spec().await?
-                );
+                let pg_container: ContainerAsync<Postgres> =
+                    ContainerAsync::from_docker_compose().await.context(container_err)?;
+                let db_root_user_url = format!("postgres://postgres@{}/postgres", pg_container.host_spec().await?);
 
-                run_migrations(&db_root_user_url)
-                    .await
-                    .context(migrations_err)?;
+                run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
                 // `run_migrations` takes ownership over the connection, so we have to make
                 // another so as to give the `superuser` to the dev user
@@ -274,8 +260,7 @@ impl AppState2 {
                     .await
                     .context("failed to create dev superuser")?;
 
-                let db_config =
-                    AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
+                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
                 let db_pool = Pool::builder(db_config).build()?;
 
                 Ok(Self::Dev {
@@ -285,15 +270,11 @@ impl AppState2 {
                 })
             }
             Test { auth, .. } => {
-                let pg_container = ContainerAsync::from_docker_compose()
-                    .await
-                    .context(container_err)?;
+                let pg_container = ContainerAsync::from_docker_compose().await.context(container_err)?;
                 let db_host_spec = pg_container.host_spec().await?;
                 let db_root_user_url = format!("postgres://postgres@{db_host_spec}/postgres");
 
-                run_migrations(&db_root_user_url)
-                    .await
-                    .context(migrations_err)?;
+                run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
                 // `run_migrations` takes ownership over the connection, so we have to make
                 // another so as to perform our slight hack of giving login_user `insert` on all
@@ -330,17 +311,12 @@ impl AppState2 {
                 let secrets = secrets?;
 
                 let (db_root_username, db_root_password) = (&secrets[0], &secrets[1]);
-                let db_root_user_url = format!(
-                    "postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/\
-                     {db_name}"
-                );
-                run_migrations(&db_root_user_url)
-                    .await
-                    .context(migrations_err)?;
+                let db_root_user_url =
+                    format!("postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/{db_name}");
+                run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://{LOGIN_USER}:{db_login_user_password}@{db_host}:{db_port}/\
-                     {db_name}"
+                    "postgres://{LOGIN_USER}:{db_login_user_password}@{db_host}:{db_port}/{db_name}"
                 ));
                 let db_pool = Pool::builder(db_config).build()?;
 
@@ -353,15 +329,11 @@ impl AppState2 {
         }
     }
 
-    async fn db_conn(
-        &self,
-    ) -> db::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> {
+    async fn db_conn(&self) -> db::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> {
         use AppState2::*;
 
         match self {
-            Dev { db_pool, .. } | Test { db_pool, .. } | Prod { db_pool, .. } => {
-                Ok(db_pool.get().await?)
-            }
+            Dev { db_pool, .. } | Test { db_pool, .. } | Prod { db_pool, .. } => Ok(db_pool.get().await?),
         }
     }
 }
@@ -371,8 +343,7 @@ async fn run_migrations(db_url: &str) -> anyhow::Result<()> {
 
     let db_conn = AsyncPgConnection::establish(db_url).await?;
 
-    let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
-        AsyncConnectionWrapper::from(db_conn);
+    let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = AsyncConnectionWrapper::from(db_conn);
 
     tokio::task::spawn_blocking(move || {
         wrapper.run_pending_migrations(MIGRATIONS).unwrap();
@@ -386,8 +357,7 @@ async fn run_migrations(db_url: &str) -> anyhow::Result<()> {
 async fn insert_seed_data(app_state: AppState2, app_config: &AppConfig2) -> anyhow::Result<()> {
     match app_config {
         AppConfig2::Prod {
-            index_set_file_urls,
-            ..
+            index_set_file_urls, ..
         } => download_and_insert_index_sets(app_state, index_set_file_urls).await,
         _ => insert_test_data(app_state)
             .await
@@ -396,17 +366,13 @@ async fn insert_seed_data(app_state: AppState2, app_config: &AppConfig2) -> anyh
 }
 
 fn app(app_state: AppState2) -> Router {
-    Router::new()
-        .nest("/api", api::router())
-        .with_state(app_state)
+    Router::new().nest("/api", api::router()).with_state(app_state)
 }
 
 // I don't entirely understand why I need to manually call `drop` here
 async fn shutdown_signal(app_state: AppState2) {
     let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
     };
 
     let terminate = async {

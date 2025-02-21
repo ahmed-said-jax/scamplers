@@ -74,10 +74,7 @@ impl Read for Institution {
     type Filter = ();
     type Id = Uuid;
 
-    async fn fetch_many(
-        filter: Self::Filter,
-        conn: &mut AsyncPgConnection,
-    ) -> super::Result<Vec<Self>> {
+    async fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
         // Calling this over and over again for all of our methods sucks, but it's the
@@ -97,11 +94,7 @@ impl Read for Institution {
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         use schema::institution::dsl::institution;
 
-        let found = institution
-            .find(id)
-            .select(Self::as_select())
-            .first(conn)
-            .await?;
+        let found = institution.find(id).select(Self::as_select()).first(conn).await?;
 
         Ok(found)
     }

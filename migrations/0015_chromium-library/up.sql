@@ -16,8 +16,9 @@ create table chromium_library (
 create table chromium_library_measurement (
     library_id uuid references chromium_library on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    measurement jsonb not null,
-    primary key (library_id, measured_by, measurement)
+    data jsonb not null,
+
+    primary key (library_id, measured_by, data)
 );
 
 create table chromium_library_preparers (

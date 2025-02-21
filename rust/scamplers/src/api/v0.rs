@@ -3,19 +3,19 @@ use std::{collections::HashMap, hash::RandomState};
 use axum::{Json, Router, routing::get};
 
 use crate::{
+    AppState2,
     db::{
         institution::{Institution, NewInstitution},
         lab::{Lab, LabId, NewLab},
         person::{Person, PersonFilter},
-    }, AppState2
+    },
 };
 
 pub(super) fn router() -> Router<AppState2> {
     use handlers::*;
 
     // TODO: get a list of routes from the database and then just put them here
-    let endpoints: HashMap<&str, [&str; 1], RandomState> =
-        HashMap::from_iter([("available_endpoints", [""])]);
+    let endpoints: HashMap<&str, [&str; 1], RandomState> = HashMap::from_iter([("available_endpoints", [""])]);
 
     let router = Router::new()
         .route("/", get(|| async { Json(endpoints) }))
@@ -100,7 +100,7 @@ mod handlers {
     where
         T: db::ReadRelatives<U>,
         U: db::Read,
-        U::Filter: Valuable
+        U::Filter: Valuable,
     {
         tracing::debug!(parent_id = id.to_string(), deserialized_query = query.as_value());
 

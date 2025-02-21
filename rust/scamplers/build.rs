@@ -62,12 +62,7 @@ fn postgres_container() -> Container<Postgres> {
 
 fn generate_schema(connection_string: &str) {
     let mut diesel_cmd = Command::new("diesel");
-    let args = [
-        "migration",
-        "run",
-        "--database-url",
-        &format!("{connection_string}"),
-    ];
+    let args = ["migration", "run", "--database-url", &format!("{connection_string}")];
     diesel_cmd.args(args);
 
     let output = diesel_cmd.output().unwrap();

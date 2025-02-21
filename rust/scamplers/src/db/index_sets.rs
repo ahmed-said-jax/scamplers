@@ -61,11 +61,9 @@ impl Create for IndexSets {
     }
 }
 
-static INDEX_SET_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap()
-});
-static DNA_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
+static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap());
+static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
 
 #[derive(Deserialize, Validate, Hash, PartialEq, Eq, Clone)]
 #[garde(transparent)]
@@ -125,10 +123,7 @@ impl Create for Vec<NewSingleIndexSet> {
     // We should technically validate the fact that this whole set has the same kit,
     // but it doesn't really matter because this won't be exposed as an API route -
     // we are downloading these files from 10X ourselves.
-    async fn create(
-        &self,
-        conn: &mut diesel_async::AsyncPgConnection,
-    ) -> super::Result<Self::Returns> {
+    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         // This one clone is necessary
         let Some(NewSingleIndexSet(index_set_name, ..)) = self.get(0).cloned() else {
             return Ok(());
@@ -140,15 +135,8 @@ impl Create for Vec<NewSingleIndexSet> {
         // Doing this all in a functional manner becomes cumbersome
         let mut insertables = Vec::with_capacity(self.len());
         for index_set in self {
-            let NewSingleIndexSet(
-                index_set_name,
-                [
-                    DnaSequence(s1),
-                    DnaSequence(s2),
-                    DnaSequence(s3),
-                    DnaSequence(s4),
-                ],
-            ) = index_set;
+            let NewSingleIndexSet(index_set_name, [DnaSequence(s1), DnaSequence(s2), DnaSequence(s3), DnaSequence(s4)]) =
+                index_set;
 
             let well_name = index_set_name.well_name()?;
 
@@ -217,10 +205,7 @@ where
 impl Create for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = ();
 
-    async fn create(
-        &self,
-        conn: &mut diesel_async::AsyncPgConnection,
-    ) -> super::Result<Self::Returns> {
+    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         let Some(index_set_name) = self.keys().next().cloned() else {
             return Ok(());
         };

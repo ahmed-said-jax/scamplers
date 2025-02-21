@@ -38,12 +38,14 @@ create table suspension (
 create table suspension_measurement (
     suspension_id uuid references suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    measurement jsonb not null,
-    primary key (suspension_id, measured_by, measurement)
+    data jsonb not null,
+
+    primary key (suspension_id, measured_by, data)
 );
 
 create table suspension_preparers (
     suspension_id uuid references suspension on delete restrict on update restrict not null,
     prepared_by uuid references person on delete restrict on update restrict not null,
+
     primary key (suspension_id, prepared_by)
 );

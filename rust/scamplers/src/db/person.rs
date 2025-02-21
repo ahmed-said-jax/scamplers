@@ -1,7 +1,15 @@
 use std::str::FromStr;
 
 use diesel::{
-    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, helper_types::{AsSelect, InnerJoin, IntoBoxed, Select}, pg::Pg, prelude::*, query_builder::BoxedSelectStatement, serialize::ToSql, sql_types::{self, Bool, SqlType}
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    helper_types::{AsSelect, InnerJoin, IntoBoxed, Select},
+    pg::Pg,
+    prelude::*,
+    query_builder::BoxedSelectStatement,
+    serialize::ToSql,
+    sql_types::{self, Bool, SqlType},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
@@ -9,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{institution::Institution, Create, DbEnum, Paginate, Read};
+use super::{Create, DbEnum, Paginate, Read, institution::Institution};
 use crate::{
     db::Pagination,
     schema::{institution, person},
@@ -17,7 +25,6 @@ use crate::{
 
 #[derive(
     Clone,
-    SqlType,
     FromSqlRow,
     strum::VariantArray,
     AsExpression,
@@ -27,7 +34,8 @@ use crate::{
     PartialEq,
     Deserialize,
     Serialize,
-    Copy
+    Copy,
+    Default,
 )]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
@@ -35,7 +43,9 @@ use crate::{
 pub enum UserRole {
     AppAdmin,
     ComputationalStaff,
-    LabStaff
+    LabStaff,
+    #[default]
+    Unknown,
 }
 impl DbEnum for UserRole {}
 
@@ -46,11 +56,8 @@ impl FromSql<sql_types::Text, Pg> for UserRole {
 }
 
 impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, Pg>,
-    ) -> diesel::serialize::Result {
-        Self::to_sql_inner(self, out)
+    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        self.to_sql_inner(out)
     }
 }
 
@@ -71,7 +78,9 @@ pub struct NewPerson {
     last_name: String,
     #[garde(email)]
     email: String,
-    orcid: Option<String>, // No need to validate this because the only way to insert a person is if you are an admin or inserting yourself, in which case this field won't be available until you link your orcid
+    orcid: Option<String>, /* No need to validate this because the only way to insert a person is if you are an
+                            * admin or inserting yourself, in which case this field won't be available until you
+                            * link your orcid */
     #[valuable(skip)]
     institution_id: Uuid,
 }
@@ -115,7 +124,7 @@ impl PersonFilter {
 
         let mut query = person::table.into_boxed();
 
-        let Self { ids, name, email} = self;
+        let Self { ids, name, email } = self;
 
         if !ids.is_empty() {
             query = query.filter(id_col.eq_any(ids));
@@ -140,15 +149,17 @@ impl Read for Person {
     type Id = Uuid;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
-        let info = person::table.find(id).inner_join(institution::table).select(PersonFull::as_select()).first(conn).await?;
+        let info = person::table
+            .find(id)
+            .inner_join(institution::table)
+            .select(PersonFull::as_select())
+            .first(conn)
+            .await?;
 
         Ok(Self::Full(info))
     }
 
-    async fn fetch_many(
-        filter: Self::Filter,
-        conn: &mut AsyncPgConnection,
-    ) -> super::Result<Vec<Self>> {
+    async fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
         let query = filter.as_sql();
 
         let people = query.select(PersonLite::as_select()).load(conn).await?;
@@ -161,12 +172,12 @@ impl Read for Person {
 #[serde(untagged)]
 pub enum Person {
     Full(PersonFull),
-    Lite(PersonLite)
+    Lite(PersonLite),
 }
 
 #[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub (super) struct PersonFull {
+pub(super) struct PersonFull {
     #[serde(flatten)]
     #[diesel(embed)]
     lite: PersonLite,
@@ -176,19 +187,19 @@ pub (super) struct PersonFull {
 
 #[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub (super) struct PersonLite {
+pub(super) struct PersonLite {
     #[serde(flatten)]
     #[diesel(embed)]
     stub: PersonStub,
-    #[diesel(column_name = full_name)]
-    name: String,
     email: String,
-    orcid: Option<String>
+    orcid: Option<String>,
 }
 
 #[derive(Queryable, Selectable, Serialize, Identifiable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub (super) struct PersonStub {
+pub(super) struct PersonStub {
     id: Uuid,
+    #[diesel(column_name = full_name)]
+    name: String,
     link: String,
 }

@@ -95,19 +95,12 @@ impl User {
 
         let hash = api_key.hash();
 
-        let user_id = person
-            .filter(api_key_hash.eq(hash))
-            .select(id)
-            .first(conn)
-            .await?;
+        let user_id = person.filter(api_key_hash.eq(hash)).select(id).first(conn).await?;
 
         Ok(Self::Api { user_id })
     }
 
-    async fn fetch_by_session_id(
-        session_id: &Uuid,
-        conn: &mut AsyncPgConnection,
-    ) -> db::Result<Self> {
+    async fn fetch_by_session_id(session_id: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
         use crate::schema::{
             cache::dsl::{cache, session_id_hash},
             person::dsl::{first_name as person_first_name, id as person_id, person},
@@ -158,11 +151,7 @@ impl FromRequestParts<AppState2> for User {
         let mut conn = app_state.db_conn().await?;
 
         if !web {
-            let raw_api_key = parts
-                .headers
-                .get("X-API-Key")
-                .ok_or(ApiKeyNotFound)?
-                .as_bytes();
+            let raw_api_key = parts.headers.get("X-API-Key").ok_or(ApiKeyNotFound)?.as_bytes();
 
             let api_key = Uuid::from_slice(raw_api_key).map_err(|_| InvalidApiKey)?;
             let result = User::fetch_by_api_key(&api_key, &mut conn).await;
@@ -180,8 +169,7 @@ impl FromRequestParts<AppState2> for User {
             return Ok(user);
         }
 
-        let (AppState2::Test { auth_url, .. } | AppState2::Prod { auth_url, .. }) = app_state
-        else {
+        let (AppState2::Test { auth_url, .. } | AppState2::Prod { auth_url, .. }) = app_state else {
             unreachable!("we already tested for the only other variant")
         };
 
@@ -241,8 +229,8 @@ pub enum Error {
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use Error::{
-            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidData,
-            InvalidSessionId, MalformedRequest, Permission,
+            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidData, InvalidSessionId, MalformedRequest,
+            Permission,
         };
         use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
@@ -264,9 +252,7 @@ impl Error {
 
     fn permission() -> Self {
         // initialize with empty message
-        let mut err = Self::Permission {
-            message: String::new(),
-        };
+        let mut err = Self::Permission { message: String::new() };
 
         // the `Display` implementation of this error is what we want the serialized
         // error to show in most cases, so just use that

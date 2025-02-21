@@ -8,10 +8,7 @@ use crate::{
 
 // We use anyhow::Result here because we just want to know what went wrong, we
 // don't care about serializing structured data to a client
-pub async fn download_and_insert_index_sets(
-    app_state: AppState2,
-    file_urls: &[IndexSetFileUrl],
-) -> anyhow::Result<()> {
+pub async fn download_and_insert_index_sets(app_state: AppState2, file_urls: &[IndexSetFileUrl]) -> anyhow::Result<()> {
     // Clone is fine here because everything in AppState is meant to be cloned
     // (cheaply clonable)
     let AppState2::Prod { http_client, .. } = app_state.clone() else {

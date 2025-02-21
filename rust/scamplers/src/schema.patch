@@ -13,7 +13,7 @@
  }
  
  diesel::table! {
-     cdna_measurement (cdna_id, measured_by, measurement) {
+     cdna_measurement (cdna_id, measured_by, data) {
          cdna_id -> Uuid,
 @@ -55,24 +55,24 @@
      chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
@@ -55,7 +55,7 @@
  }
  
  diesel::table! {
-     chromium_library_measurement (library_id, measured_by, measurement) {
+     chromium_library_measurement (library_id, measured_by, data) {
          library_id -> Uuid,
 @@ -108,13 +108,13 @@
          id -> Uuid,
@@ -85,7 +85,7 @@
  }
  
  diesel::table! {
-     multiplexed_suspension_measurement (suspension_id, measured_by, measurement) {
+     multiplexed_suspension_measurement (suspension_id, measured_by, data) {
          suspension_id -> Uuid,
 @@ -274,37 +274,37 @@
      sample_metadata (id) {
@@ -144,9 +144,9 @@
  }
  
  diesel::table! {
-     suspension (id) {
-         id -> Uuid,
-@@ -331,13 +331,13 @@
+     specimen_measurement (specimen_id, measured_by, data) {
+         specimen_id -> Uuid,
+@@ -339,13 +339,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,
@@ -159,5 +159,5 @@
  }
  
  diesel::table! {
-     suspension_measurement (suspension_id, measured_by, measurement) {
+     suspension_measurement (suspension_id, measured_by, data) {
          suspension_id -> Uuid,

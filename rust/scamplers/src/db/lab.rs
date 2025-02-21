@@ -1,16 +1,28 @@
 use std::fmt::Display;
 
 use camino::Utf8PathBuf;
-use diesel::{dsl::IntoBoxed, helper_types::{AsSelect, InnerJoin, Select}, pg::Pg, prelude::*, BelongingToDsl};
+use diesel::{
+    BelongingToDsl,
+    dsl::IntoBoxed,
+    helper_types::{AsSelect, InnerJoin, Select},
+    pg::Pg,
+    prelude::*,
+};
 use diesel_async::RunQueryDsl;
+use futures::{FutureExt, TryFutureExt};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
-use futures::{FutureExt, TryFutureExt};
 
-use super::{person::{Person, PersonLite, PersonStub}, Create, Paginate, Read, ReadRelatives};
-use crate::{db::person::PersonFilter, schema::{lab, lab_membership, person}};
+use super::{
+    Create, Paginate, Read, ReadRelatives,
+    person::{Person, PersonLite, PersonStub},
+};
+use crate::{
+    db::person::PersonFilter,
+    schema::{lab, lab_membership, person},
+};
 
 // This is the first instance where one API body might represent multiple
 // queries. You'll find a top-level struct that represents the whole API request
@@ -28,16 +40,13 @@ pub struct NewLab {
     delivery_dir: String,
     #[diesel(skip_insertion)]
     #[valuable(skip)]
-    member_ids: Vec<Uuid>
+    member_ids: Vec<Uuid>,
 }
 
 impl Create for Vec<NewLab> {
     type Returns = Vec<Lab>;
 
-    async fn create(
-        &self,
-        conn: &mut diesel_async::AsyncPgConnection,
-    ) -> super::Result<Self::Returns> {
+    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use lab::id;
 
         let new_lab_ids: Vec<Uuid> = diesel::insert_into(lab::table)
@@ -46,19 +55,26 @@ impl Create for Vec<NewLab> {
             .get_results(conn)
             .await?;
 
-        let n_members = self.iter().map(|NewLab{member_ids, ..}| member_ids.len() + 1).sum(); // Add 1 so we can add the PI
+        let n_members = self.iter().map(|NewLab { member_ids, .. }| member_ids.len() + 1).sum(); // Add 1 so we can add the PI
 
         let mut member_insertions = Vec::with_capacity(n_members);
-        for (lab_id, NewLab{member_ids, pi_id, ..}) in new_lab_ids.iter().zip(self) {
-            let this_lab_member_insertions = member_ids.iter().map(|member_id| LabMembership {lab_id: *lab_id, member_id: *member_id});
+        for (lab_id, NewLab { member_ids, pi_id, .. }) in new_lab_ids.iter().zip(self) {
+            let this_lab_member_insertions = member_ids.iter().map(|member_id| LabMembership {
+                lab_id: *lab_id,
+                member_id: *member_id,
+            });
 
             member_insertions.extend(this_lab_member_insertions);
 
             // Add the PI just in case
-            member_insertions.push(LabMembership { lab_id: *lab_id, member_id: *pi_id});
+            member_insertions.push(LabMembership {
+                lab_id: *lab_id,
+                member_id: *pi_id,
+            });
         }
 
-        // We take advantage of the fact that adding lab members returns the `Lab` because that is probably desirable for an API
+        // We take advantage of the fact that adding lab members returns the `Lab` because that is probably desirable
+        // for an API
         let labs = member_insertions.create(conn).await?;
 
         Ok(labs)
@@ -70,8 +86,8 @@ impl Create for Vec<NewLab> {
 // reuse this struct as part of creating a new lab, or as its own query to
 // update a lab. However, UUIDs are 16 bytes - very cheap to copy by value, so
 // it's not worth it.
-#[derive(Deserialize, Validate, Insertable, Identifiable, Selectable, Queryable, Associations)]
-#[diesel(table_name = lab_membership, check_for_backend(Pg), belongs_to(LabLite, foreign_key = lab_id), belongs_to(PersonStub, foreign_key = member_id), primary_key(lab_id, member_id))]
+#[derive(Deserialize, Validate, Insertable, Identifiable, Selectable, Queryable)]
+#[diesel(table_name = lab_membership, check_for_backend(Pg), primary_key(lab_id, member_id))]
 #[garde(allow_unvalidated)]
 struct LabMembership {
     lab_id: Uuid,
@@ -81,30 +97,32 @@ struct LabMembership {
 impl Create for Vec<LabMembership> {
     type Returns = Vec<Lab>;
 
-    async fn create(
-            &self,
-            conn: &mut diesel_async::AsyncPgConnection,
-        ) -> super::Result<Self::Returns> {
-            use lab_membership::lab_id;
+    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+        use lab_membership::lab_id;
 
-            let lab_ids = diesel::insert_into(lab_membership::table).values(self).on_conflict_do_nothing().returning(lab_id).get_results(conn).await?;
+        let lab_ids = diesel::insert_into(lab_membership::table)
+            .values(self)
+            .on_conflict_do_nothing()
+            .returning(lab_id)
+            .get_results(conn)
+            .await?;
 
-            Lab::fetch_many(LabFilter{ids: lab_ids}, conn).await
+        Lab::fetch_many(LabFilter { ids: lab_ids }, conn).await
     }
 }
 
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum Lab {
-    Full(LabFull),
     Lite(LabLite),
+    Full(LabFull),
 }
 
 #[derive(Serialize)]
 struct LabFull {
     #[serde(flatten)]
-    lite: LabLite,
-    members: Vec<PersonStub>,
+    inner: LabLite,
+    members: Vec<PersonLite>,
 }
 
 #[derive(Serialize, Queryable, Selectable)]
@@ -113,18 +131,17 @@ struct LabLite {
     #[serde(flatten)]
     #[diesel(embed)]
     stub: LabStub,
-    name: String,
     delivery_dir: String,
-    link: String,
     #[diesel(embed)]
     pi: PersonLite,
 }
 
 #[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = lab, check_for_backend(Pg))]
-struct LabStub {
+pub(super) struct LabStub {
     id: Uuid,
-    link: String
+    name: String,
+    link: String,
 }
 
 #[derive(Deserialize, Default, Valuable)]
@@ -153,26 +170,35 @@ impl Read for Lab {
     type Filter = LabFilter;
     type Id = Uuid;
 
-    async fn fetch_by_id(
-            id: Self::Id,
-            conn: &mut diesel_async::AsyncPgConnection,
-        ) -> super::Result<Self> {
-            use lab_membership::lab_id;
+    async fn fetch_by_id(id: Self::Id, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self> {
+        use lab_membership::lab_id;
 
-            let lite = lab::table.find(id).inner_join(person::table).select(LabLite::as_select()).first(conn).boxed();
+        let inner = lab::table
+            .find(id)
+            .inner_join(person::table)
+            .select(LabLite::as_select())
+            .first(conn)
+            .boxed();
 
-            let members = lab_membership::table.inner_join(person::table).filter(lab_id.eq(id)).select(PersonStub::as_select()).load(conn).boxed();
+        let members = lab_membership::table
+            .inner_join(person::table)
+            .filter(lab_id.eq(id))
+            .select(PersonLite::as_select())
+            .load(conn)
+            .boxed();
 
-            let (lite, members) = tokio::try_join!(lite, members)?;
+        let (inner, members) = tokio::try_join!(inner, members)?;
 
-            Ok(Self::Full(LabFull{lite, members}))
+        Ok(Self::Full(LabFull { inner, members }))
     }
 
-    async fn fetch_many(
-        filter: Self::Filter,
-        conn: &mut diesel_async::AsyncPgConnection,
-    ) -> super::Result<Vec<Self>> {
-        let labs = filter.as_sql().inner_join(person::table).select(LabLite::as_select()).load(conn).await?;
+    async fn fetch_many(filter: Self::Filter, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Vec<Self>> {
+        let labs = filter
+            .as_sql()
+            .inner_join(person::table)
+            .select(LabLite::as_select())
+            .load(conn)
+            .await?;
 
         Ok(labs.into_iter().map(|l| Self::Lite(l)).collect())
     }
@@ -190,28 +216,30 @@ impl Display for LabId {
 
 impl ReadRelatives<Person> for LabId {
     async fn fetch_relatives(
-            &self,
-            person_filter: <Person as super::Read>::Filter,
-            conn: &mut diesel_async::AsyncPgConnection,
-        ) -> super::Result<Vec<Person>> {
-            use lab_membership::dsl::lab_id as lab_id_col;
+        &self,
+        person_filter: <Person as super::Read>::Filter,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> super::Result<Vec<Person>> {
+        use lab_membership::dsl::lab_id as lab_id_col;
 
-            // Extract the lab_id
-            let Self(lab_id) = self;
+        // Extract the lab_id
+        let Self(lab_id) = self;
 
-            // This is our base - a `where` condition on person. I'm not entirely sure why we have to do `select <stuff> from person...inner join lab_membership` rather than `select <stuff> from lab_membership inner join person...`
-            let query = person_filter.as_sql();
+        // This is our base - a `where` condition on person. I'm not entirely sure why we have to do `select <stuff>
+        // from person...inner join lab_membership` rather than `select <stuff> from lab_membership inner join
+        // person...`
+        let query = person_filter.as_sql();
 
-            // Now we join the lab_membership table
-            let query = query.inner_join(lab_membership::table);
+        // Now we join the lab_membership table
+        let query = query.inner_join(lab_membership::table);
 
-            // Filter to make sure we only get the lab we want
-            let query = query.filter(lab_id_col.eq(lab_id));
+        // Filter to make sure we only get the lab we want
+        let query = query.filter(lab_id_col.eq(lab_id));
 
-            // Select the columns we want and load
-            let members = query.select(PersonLite::as_select()).load(conn).await?;
+        // Select the columns we want and load
+        let members = query.select(PersonLite::as_select()).load(conn).await?;
 
-            // Map them into the `Person` enum. There is a reason for this complexity
-            Ok(members.into_iter().map(|p| Person::Lite(p)).collect())
+        // Map them into the `Person` enum. There is a reason for this complexity
+        Ok(members.into_iter().map(|p| Person::Lite(p)).collect())
     }
 }

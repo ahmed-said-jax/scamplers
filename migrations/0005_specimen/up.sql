@@ -12,3 +12,11 @@ create table specimen (
     measurements jsonb[],
     notes text []
 );
+
+create table specimen_measurement (
+    specimen_id uuid not null references specimen on delete restrict on update restrict,
+    measured_by uuid not null references person on delete restrict on update restrict,
+    data jsonb not null,
+
+    primary key(specimen_id, measured_by, data)
+);

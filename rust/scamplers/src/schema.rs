@@ -29,10 +29,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    cdna_measurement (cdna_id, measured_by, measurement) {
+    cdna_measurement (cdna_id, measured_by, data) {
         cdna_id -> Uuid,
         measured_by -> Uuid,
-        measurement -> Jsonb,
+        data -> Jsonb,
     }
 }
 
@@ -89,10 +89,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    chromium_library_measurement (library_id, measured_by, measurement) {
+    chromium_library_measurement (library_id, measured_by, data) {
         library_id -> Uuid,
         measured_by -> Uuid,
-        measurement -> Jsonb,
+        data -> Jsonb,
     }
 }
 
@@ -226,10 +226,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    multiplexed_suspension_measurement (suspension_id, measured_by, measurement) {
+    multiplexed_suspension_measurement (suspension_id, measured_by, data) {
         suspension_id -> Uuid,
         measured_by -> Uuid,
-        measurement -> Jsonb,
+        data -> Jsonb,
     }
 }
 
@@ -321,6 +321,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    specimen_measurement (specimen_id, measured_by, data) {
+        specimen_id -> Uuid,
+        measured_by -> Uuid,
+        data -> Jsonb,
+    }
+}
+
+diesel::table! {
     suspension (id) {
         id -> Uuid,
         link -> Text,
@@ -339,10 +347,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    suspension_measurement (suspension_id, measured_by, measurement) {
+    suspension_measurement (suspension_id, measured_by, data) {
         suspension_id -> Uuid,
         measured_by -> Uuid,
-        measurement -> Jsonb,
+        data -> Jsonb,
     }
 }
 
@@ -395,6 +403,8 @@ diesel::joinable!(person -> institution (institution_id));
 diesel::joinable!(sample_metadata -> lab (lab_id));
 diesel::joinable!(single_index_set -> index_kit (kit));
 diesel::joinable!(specimen -> sample_metadata (metadata_id));
+diesel::joinable!(specimen_measurement -> person (measured_by));
+diesel::joinable!(specimen_measurement -> specimen (specimen_id));
 diesel::joinable!(suspension -> multiplexed_suspension (pooled_into_id));
 diesel::joinable!(suspension -> multiplexing_tag (multiplexing_tag_id));
 diesel::joinable!(suspension -> sample_metadata (metadata_id));
@@ -437,6 +447,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     sequencing_run,
     single_index_set,
     specimen,
+    specimen_measurement,
     suspension,
     suspension_measurement,
     suspension_preparers,

@@ -1,10 +1,21 @@
 #![allow(private_interfaces)]
-use std::{fmt::{Debug, Display}, str::FromStr};
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 
-use diesel::{backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::ToSql, sql_types::{self, SqlType, Untyped}};
+use diesel::{
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    result::DatabaseErrorInformation,
+    serialize::ToSql,
+    sql_types::{self, SqlType, Untyped},
+};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -13,17 +24,13 @@ pub mod institution;
 pub mod lab;
 pub mod person;
 pub mod sample;
-mod measurement;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once
 pub trait Create: Send {
     type Returns: Send;
 
-    fn create(
-        &self,
-        conn: &mut AsyncPgConnection,
-    ) -> impl Future<Output = Result<Self::Returns>> + Send;
+    fn create(&self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
 pub trait Read: Serialize + Sized + Send {
@@ -31,15 +38,10 @@ pub trait Read: Serialize + Sized + Send {
     #[allow(private_bounds)]
     type Filter: Sync + Send + Paginate;
 
-    fn fetch_many(
-        filter: Self::Filter,
-        conn: &mut AsyncPgConnection,
-    ) -> impl Future<Output = Result<Vec<Self>>> + Send;
+    fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection)
+    -> impl Future<Output = Result<Vec<Self>>> + Send;
 
-    fn fetch_by_id(
-        id: Self::Id,
-        conn: &mut AsyncPgConnection,
-    ) -> impl Future<Output = Result<Self>> + Send;
+    fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
 }
 
 pub trait Update {
@@ -82,24 +84,39 @@ struct Pagination {
 }
 impl Default for Pagination {
     fn default() -> Self {
-        Pagination {
-            limit: 500,
-            offset: 0,
-        }
+        Pagination { limit: 500, offset: 0 }
     }
 }
 
-trait DbEnum: FromStr + Into<&'static str> + FromSqlRow<sql_types::Text, Pg> + SqlType + AsExpression<sql_types::Text> + Copy where <Self as FromStr>::Err: Debug {
+trait DbEnum:
+    FromStr + Into<&'static str> + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
+{
     fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
 
-        Ok(Self::from_str(&raw).unwrap()) // `unwrap` is fine here because these values are entirely controlled and validated by us
+        Ok(Self::from_str(&raw).unwrap_or_default())
     }
-    fn to_sql_inner<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let as_str = *self;
-        let as_str = as_str.into();
-    
+
+    fn to_sql_inner<'b>(self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        let as_str = self.into();
+
         ToSql::<sql_types::Text, Pg>::to_sql(as_str, out)
+    }
+}
+
+trait DbJson:
+    DeserializeOwned + Serialize + Default + FromSqlRow<sql_types::Jsonb, Pg> + AsExpression<sql_types::Jsonb>
+{
+    fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let data: serde_json::Value = FromSql::<sql_types::Jsonb, Pg>::from_sql(bytes)?;
+
+        Ok(serde_json::from_value(data).unwrap_or_default())
+    }
+
+    fn to_sql_inner<'b>(&self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        let as_json = serde_json::to_value(self).unwrap();
+
+        ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
     }
 }
 
@@ -209,23 +226,16 @@ impl
         let details = info.details().unwrap_or_default();
         let field_value: Vec<String> = detail_regex
             .captures(details)
-            .and_then(|cap| cap.iter().take(3).map(|m| m.map(|s| s.as_str().to_string())).collect()).unwrap_or_default();
+            .and_then(|cap| cap.iter().take(3).map(|m| m.map(|s| s.as_str().to_string())).collect())
+            .unwrap_or_default();
 
         let field = field_value.get(1).cloned();
         let value = field_value.get(2).cloned();
 
         match kind {
-            UniqueViolation => Self::DuplicateRecord {
-                entity,
-                field,
-                value,
-            },
+            UniqueViolation => Self::DuplicateRecord { entity, field, value },
             ForeignKeyViolation => {
-                let referenced_entity = details
-                    .split_whitespace()
-                    .last()
-                    .unwrap_or_default()
-                    .replace('"', "");
+                let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace('"', "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
                 let referenced_entity = Entity::from_str(referenced_entity).unwrap_or_default();
 
