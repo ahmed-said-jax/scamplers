@@ -11,11 +11,11 @@ use diesel::{
     pg::Pg,
     result::DatabaseErrorInformation,
     serialize::ToSql,
-    sql_types::{self, SqlType, Untyped},
+    sql_types::{self},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 

@@ -1,15 +1,11 @@
 use std::fmt::Display;
 
-use camino::Utf8PathBuf;
 use diesel::{
-    BelongingToDsl,
-    dsl::IntoBoxed,
-    helper_types::{AsSelect, InnerJoin, Select},
     pg::Pg,
     prelude::*,
 };
 use diesel_async::RunQueryDsl;
-use futures::{FutureExt, TryFutureExt};
+use futures::FutureExt;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -17,12 +13,9 @@ use valuable::Valuable;
 
 use super::{
     Create, Paginate, Read, ReadRelatives,
-    person::{Person, PersonLite, PersonStub},
+    person::{Person, PersonLite},
 };
-use crate::{
-    db::person::PersonFilter,
-    schema::{lab, lab_membership, person},
-};
+use crate::schema::{lab, lab_membership, person};
 
 // This is the first instance where one API body might represent multiple
 // queries. You'll find a top-level struct that represents the whole API request

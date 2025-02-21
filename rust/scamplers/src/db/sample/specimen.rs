@@ -17,7 +17,7 @@ use uuid::Uuid;
 use super::{NewSampleMetadata, SampleMetadata};
 use crate::{
     db::{self, Create, DbEnum, DbJson, person::PersonStub},
-    schema::{self, sample_metadata, specimen, specimen_measurement},
+    schema::{self, specimen, specimen_measurement},
 };
 
 #[derive(

@@ -7,7 +7,7 @@ use crate::{
     db::{
         institution::{Institution, NewInstitution},
         lab::{Lab, LabId, NewLab},
-        person::{Person, PersonFilter},
+        person::Person,
     },
 };
 

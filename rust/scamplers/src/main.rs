@@ -1,4 +1,4 @@
-use std::{fs, str::FromStr};
+use std::fs;
 
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};

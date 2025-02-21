@@ -1,15 +1,12 @@
-use std::str::FromStr;
 
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
-    helper_types::{AsSelect, InnerJoin, IntoBoxed, Select},
     pg::Pg,
     prelude::*,
-    query_builder::BoxedSelectStatement,
     serialize::ToSql,
-    sql_types::{self, Bool, SqlType},
+    sql_types::{self},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
@@ -18,10 +15,7 @@ use uuid::Uuid;
 use valuable::Valuable;
 
 use super::{Create, DbEnum, Paginate, Read, institution::Institution};
-use crate::{
-    db::Pagination,
-    schema::{institution, person},
-};
+use crate::schema::{institution, person};
 
 #[derive(
     Clone,

@@ -1,6 +1,5 @@
-use std::ops::Deref;
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDateTime;
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
@@ -17,7 +16,7 @@ use uuid::Uuid;
 use super::{
     Create, DbEnum,
     lab::LabStub,
-    person::{PersonLite, PersonStub},
+    person::PersonStub,
 };
 use crate::schema::{self, sample_metadata};
 mod specimen;
