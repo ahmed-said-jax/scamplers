@@ -6,6 +6,7 @@ use diesel::{
     prelude::*,
     serialize::ToSql,
     sql_types::{self, Bool},
+    helper_types::InnerJoin
 };
 use diesel_async::RunQueryDsl;
 use garde::Validate;
@@ -13,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use tracing_subscriber::layer::Filter;
 use uuid::Uuid;
 
-use super::{lab::LabStub, person::PersonStub, AsDieselExpression, Create, DbEnum, BoxedDieselExpression};
-use crate::{db::ILike, schema::{self, sample_metadata::{self, id as id_col, received_at, species as species_col, tissue as tissue_col, name as name_col}}};
+use super::{lab::LabStub, person::PersonStub, AsDieselExpression, Create, DbEnum, BoxedDieselExpression, Order};
+use crate::{db::ILike, schema::{self, lab, sample_metadata::{self, id as id_col, name as name_col, received_at, species as species_col, tissue as tissue_col}}};
 mod specimen;
 
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of
@@ -189,6 +190,14 @@ struct SampleMetadata {
 }
 
 #[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum OrdinalColumns {
+    #[default]
+    DateReceived,
+    Name,
+}
+
+#[derive(Deserialize)]
 struct SampleMetadataQuery {
     name: Option<String>,
     tissue: Option<String>,
@@ -196,6 +205,12 @@ struct SampleMetadataQuery {
     received_after: Option<NaiveDateTime>,
     #[serde(default)]
     species: Vec<Species>,
+}
+
+impl SampleMetadata {
+    fn base_query() -> InnerJoin<sample_metadata::table, lab::table> {
+        sample_metadata::table.inner_join(lab::table)
+    }
 }
 
 impl<T> AsDieselExpression<T> for SampleMetadataQuery where name_col: SelectableExpression<T>, tissue_col: SelectableExpression<T>, received_at: SelectableExpression<T>, species_col: SelectableExpression<T> {

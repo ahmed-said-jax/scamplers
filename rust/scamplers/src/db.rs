@@ -86,6 +86,12 @@ impl Default for Pagination {
     }
 }
 
+#[derive(Deserialize, Default)]
+struct Order<T> {
+    order_by: T,
+    descending: bool
+}
+
 trait DbEnum:
     FromStr + Into<&'static str> + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
 {
