@@ -274,7 +274,7 @@ diesel::table! {
     sample_metadata (id) {
         id -> Uuid,
         name -> Text,
-        submitted_by -> Nullable<Uuid>,
+        submitted_by -> Uuid,
         lab_id -> Uuid,
         received_at -> Timestamp,
         species -> Array<Text>,

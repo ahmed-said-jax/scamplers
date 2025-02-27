@@ -5,17 +5,18 @@ use std::{
 };
 
 use diesel::{
+    BoxableExpression,
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
     result::DatabaseErrorInformation,
     serialize::ToSql,
-    sql_types::{self},
+    sql_types::{self, Bool},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -33,10 +34,19 @@ pub trait Create: Send {
     fn create(&self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
+type FilterExpression<'a, T> = Box<dyn BoxableExpression<T, Pg, SqlType = Bool> + 'a>;
+
+trait AsDieselExpression {
+    fn as_diesel_expression<'a, T>(&'a self) -> Option<FilterExpression<'a, T>> {
+        None
+    }
+}
+// For types where we don't need a filter, we can just use `()`
+impl AsDieselExpression for () {}
+
 pub trait Read: Serialize + Sized + Send {
     type Id: Send + Display;
-    #[allow(private_bounds)]
-    type Filter: Sync + Send + Paginate;
+    type Filter: Sync + Send + AsDieselExpression;
 
     fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection)
     -> impl Future<Output = Result<Vec<Self>>> + Send;
@@ -72,12 +82,7 @@ pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
-trait Paginate {
-    fn paginate(&self) -> Pagination {
-        Pagination::default()
-    }
-}
-
+#[derive(Deserialize, Clone, Copy)]
 struct Pagination {
     limit: i64,
     offset: i64,

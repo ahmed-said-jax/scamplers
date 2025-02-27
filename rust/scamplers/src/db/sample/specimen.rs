@@ -1,23 +1,24 @@
 use chrono::NaiveDateTime;
 use diesel::{
+    alias,
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
     prelude::*,
     serialize::ToSql,
-    sql_types,
-    sql_types::SqlType,
+    sql_types::{self, SqlType},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use futures::FutureExt;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{NewSampleMetadata, SampleMetadata};
+use super::{NewSampleMetadata, SampleMetadata, SampleMetadataFilter, Species};
 use crate::{
-    db::{self, Create, DbEnum, DbJson, person::PersonStub},
-    schema::{self, specimen, specimen_measurement},
+    db::{self, Create, DbEnum, DbJson, Pagination, Read, person::PersonStub},
+    schema::{self, lab, person, sample_metadata, specimen, specimen_measurement},
 };
 
 #[derive(
@@ -34,6 +35,7 @@ use crate::{
     Default,
 )]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 enum EmbeddingMatrix {
     CarboxymethylCellulose,
@@ -71,6 +73,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
 )]
 #[serde(rename_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
+#[strum(serialize_all = "snake_case")]
 enum PreservationMethod {
     Cryopreservation,
     DspFixation,
@@ -177,6 +180,15 @@ enum NewSpecimen {
         core: SpecimenCore,
         preserved_with: Option<PreservationMethod>,
     },
+    Fluid {
+        #[serde(flatten)]
+        #[garde(dive)]
+        metadata: NewSampleMetadata,
+        #[serde(flatten)]
+        #[garde(dive)]
+        core: SpecimenCore,
+        preserved_with: Option<PreservationMethod>,
+    },
 }
 
 #[derive(Insertable)]
@@ -218,6 +230,7 @@ impl Create for Vec<NewSpecimen> {
                     ..
                 } => (Some(embedded_in), Some(preserved_with), "block"),
                 NewSpecimen::Tissue { preserved_with, .. } => (None, preserved_with.as_ref(), "tissue"),
+                NewSpecimen::Fluid { preserved_with, .. } => (None, preserved_with.as_ref(), "fluid"),
             };
 
             let (NewSpecimen::Block {
@@ -231,6 +244,16 @@ impl Create for Vec<NewSpecimen> {
                 ..
             }
             | NewSpecimen::Tissue {
+                metadata,
+                core:
+                    SpecimenCore {
+                        legacy_id,
+                        measurements,
+                        notes,
+                    },
+                ..
+            }
+            | NewSpecimen::Fluid {
                 metadata,
                 core:
                     SpecimenCore {
@@ -282,9 +305,109 @@ impl Create for Vec<NewSpecimen> {
     }
 }
 
+#[derive(Serialize)]
 pub enum Specimen {
     Lite(SpecimenLite),
     Full(SpecimenFull),
+}
+
+#[derive(Deserialize, strum::IntoStaticStr)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+enum SpecimenType {
+    Block,
+    Tissue,
+    Fluid,
+}
+
+#[derive(Deserialize)]
+pub struct SpecimenFilter {
+    #[serde(default)]
+    ids: Vec<Uuid>,
+    #[serde(flatten, default)]
+    metadata_filter: SampleMetadataFilter,
+    embedded_in: Option<EmbeddingMatrix>,
+    preserved_with: Option<PreservationMethod>,
+    type_: Option<SpecimenType>,
+    #[serde(default, flatten)]
+    pagination: Pagination,
+}
+
+impl SpecimenFilter {
+    fn as_sql(&self) {
+        let Self {
+            ids,
+            metadata_filter,
+            embedded_in,
+            preserved_with,
+            type_,
+            pagination: Pagination { limit, offset },
+        } = self;
+
+        let mut query = specimen::table
+            .into_boxed()
+            .inner_join(sample_metadata::table)
+            .limit(*limit)
+            .offset(*offset);
+
+        // if let Some(SampleMetadataFilter{tissue, rec})
+
+        if !ids.is_empty() {
+            query = query.filter(specimen::id.eq_any(ids));
+        }
+
+        if let Some(embedding_matrix) = embedded_in {
+            query = query.filter(specimen::embedded_in.eq(embedding_matrix));
+        }
+
+        if let Some(preservation_method) = preserved_with {
+            query = query.filter(specimen::preserved_with.eq(preservation_method))
+        }
+
+        if let Some(type_) = type_ {
+            let type_: &str = type_.into();
+            query = query.filter(specimen::type_.eq(type_));
+        }
+
+        (query, metadata_filter.as_sql())
+    }
+}
+
+impl Read for Specimen {
+    type Filter = SpecimenFilter;
+    type Id = Uuid;
+
+    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+        let inner = specimen::table
+            .find(id)
+            .inner_join(sample_metadata::table.inner_join(lab::table))
+            .select(SpecimenLite::as_select())
+            .first(conn)
+            .boxed();
+
+        let measurements = specimen_measurement::table
+            .filter(specimen_measurement::specimen_id.eq(id))
+            .inner_join(person::table)
+            .select(SpecimenMeasurement::as_select())
+            .load(conn)
+            .boxed();
+
+        let (inner, measurements) = tokio::try_join!(inner, measurements)?;
+
+        Ok(Self::Full(SpecimenFull { inner, measurements }))
+    }
+
+    async fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
+        let (specimen_query, metadata_query) = filter.as_sql();
+
+        let statement = specimen_query
+            .inner_join(sample_metadata::table.inner_join(lab::table))
+            .filter();
+
+        let specimens = statement.select(SpecimenLite::as_select()).load(conn).await?;
+
+        Ok(specimens.into_iter().map(|s| Self::Lite(s)).collect())
+    }
 }
 
 #[derive(Serialize, Selectable, Queryable)]
@@ -300,7 +423,7 @@ struct SpecimenMeasurement {
 struct SpecimenFull {
     #[serde(flatten)]
     inner: SpecimenLite,
-    measurements: Vec<String>,
+    measurements: Vec<SpecimenMeasurement>,
 }
 
 #[derive(Serialize, Selectable, Queryable)]

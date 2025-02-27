@@ -2,7 +2,7 @@
 create table sample_metadata (
     id uuid primary key,
     name text not null,
-    submitted_by uuid references person on delete restrict on update restrict,
+    submitted_by uuid references person on delete restrict on update restrict not null,
     lab_id uuid references lab on delete restrict on update restrict not null,
     received_at timestamp not null,
     species text [] not null, -- constrained by Rust enum

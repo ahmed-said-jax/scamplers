@@ -1,4 +1,3 @@
-
 use chrono::NaiveDateTime;
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
@@ -6,18 +5,14 @@ use diesel::{
     pg::Pg,
     prelude::*,
     serialize::ToSql,
-    sql_types,
+    sql_types::{self, Bool},
 };
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{
-    Create, DbEnum,
-    lab::LabStub,
-    person::PersonStub,
-};
+use super::{Create, DbEnum, lab::LabStub, person::PersonStub};
 use crate::schema::{self, sample_metadata};
 mod specimen;
 
@@ -185,13 +180,69 @@ impl Create for Vec<&NewSampleMetadata> {
 struct SampleMetadata {
     name: String,
     #[diesel(embed)]
-    submitted_by: PersonStub,
-    #[diesel(embed)]
     lab: LabStub,
     received_at: NaiveDateTime,
     species: Vec<Species>,
     tissue: String,
     returned_at: Option<NaiveDateTime>,
-    #[diesel(embed)]
-    returned_by: Option<PersonStub>,
+}
+
+#[derive(Deserialize, Default)]
+struct SampleMetadataFilter {
+    tissue: Option<String>,
+    received_after: Option<NaiveDateTime>,
+    received_before: Option<NaiveDateTime>,
+    #[serde(default)]
+    species: Vec<Species>,
+}
+
+impl SampleMetadataFilter {
+    fn as_sql(&self) -> sample_metadata::BoxedQuery<'_, Pg> {
+        let Self {
+            tissue,
+            received_before,
+            received_after,
+            species,
+        } = self;
+
+        let mut query = sample_metadata::table.into_boxed();
+
+        if let Some(tissue) = tissue {
+            query = query.filter(sample_metadata::tissue.ilike(format!("{tissue}%")));
+        }
+
+        // It would be nice if we could just statically map the parameter (received_after/received_before) to the filter
+        // function and then just fetch the correct filter based on the quantity or something like that
+        if let Some(received_after) = received_after {
+            query = query.filter(sample_metadata::received_at.gt(received_after));
+        }
+
+        if let Some(received_before) = received_before {
+            query = query.filter(sample_metadata::received_at.lt(received_before));
+        }
+
+        if !species.is_empty() {
+            query = query.filter(sample_metadata::species.overlaps_with(species));
+        }
+
+        query
+    }
+
+    fn as_sql2(&self) -> Box<dyn BoxableExpression<sample_metadata::table, Pg, SqlType = Bool>> {
+        let Self {
+            tissue,
+            received_before,
+            received_after,
+            species,
+        } = self;
+
+        let mut base = Box::new(sample_metadata::id.is_not_null());
+
+        if let Some(tissue) = tissue {
+            let as_mut = base.as_mut();
+            base = base.and(sample_metadata::tissue.ilike(format!("%{tissue}%")));
+        }
+
+        base
+    }
 }
