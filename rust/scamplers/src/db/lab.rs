@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, Create, FilterExpression, Read, ReadRelatives, person::Person};
+use super::{AsDieselExpression, Create, BoxedDieselExpression, Read, ReadRelatives, person::Person};
 use crate::schema::{institution, lab, lab_membership, person};
 
 // This is the first instance where one API body might represent multiple
@@ -94,12 +94,12 @@ impl Create for Vec<LabMembership> {
             .get_results(conn)
             .await?;
 
-        Lab::fetch_many(LabFilter { ids: lab_ids }, conn).await
+        Lab::fetch_many(LabQuery { ids: lab_ids }, conn).await
     }
 }
 
 #[derive(Serialize)]
-struct Lab {
+pub struct Lab {
     #[serde(flatten)]
     inner: LabInner,
     members: Vec<Person>,
@@ -127,29 +127,29 @@ pub(super) struct LabStub {
 }
 
 #[derive(Deserialize, Default, Valuable)]
-pub struct LabFilter {
+pub struct LabQuery {
     #[valuable(skip)]
     #[serde(default)]
     ids: Vec<Uuid>,
 }
 
-impl AsDieselExpression for LabFilter {
-    fn as_diesel_expression<'a, T>(&'a self) -> Option<FilterExpression<'a, T>> {
+impl <T> AsDieselExpression<T> for LabQuery where lab::id: SelectableExpression<T> {
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>> where T: 'a {
         use lab::dsl::id as id_col;
 
         let Self { ids } = self;
 
-        if matches!((ids.is_empty(),), (None,)) {
+        if matches!((ids.is_empty(),), (true,)) {
             return None;
         }
 
-        let mut query = Vec::with_capacity(1);
+        let mut query: BoxedDieselExpression<T> = Box::new(id_col.is_not_null());
 
         if !ids.is_empty() {
-            query.push(Box::new(id_col.eq_any(ids)));
+            query = Box::new(query.and(id_col.eq_any(ids)));
         }
 
-        query.iter().reduce(|q1, q2| Box::new(q1.and(q2)))
+        Some(query)
     }
 }
 
@@ -160,7 +160,7 @@ impl Lab {
 }
 
 impl Read for Lab {
-    type Filter = LabFilter;
+    type QueryParams = LabQuery;
     type Id = Uuid;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self> {
@@ -187,7 +187,7 @@ impl Read for Lab {
         Ok(Self { inner, members })
     }
 
-    async fn fetch_many(filter: Self::Filter, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Vec<Self>> {
+    async fn fetch_many(filter: Self::QueryParams, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Vec<Self>> {
         use lab::name as name_col;
 
         let filter = filter.as_diesel_expression();
@@ -232,7 +232,7 @@ impl Display for LabId {
 impl ReadRelatives<Person> for LabId {
     async fn fetch_relatives(
         &self,
-        person_filter: <Person as super::Read>::Filter,
+        person_filter: <Person as super::Read>::QueryParams,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Vec<Person>> {
         use lab_membership::dsl::lab_id as lab_id_col;

@@ -10,10 +10,11 @@ use diesel::{
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::layer::Filter;
 use uuid::Uuid;
 
-use super::{Create, DbEnum, lab::LabStub, person::PersonStub};
-use crate::schema::{self, sample_metadata};
+use super::{lab::LabStub, person::PersonStub, AsDieselExpression, Create, DbEnum, BoxedDieselExpression};
+use crate::{db::ILike, schema::{self, sample_metadata::{self, id as id_col, received_at, species as species_col, tissue as tissue_col, name as name_col}}};
 mod specimen;
 
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of
@@ -188,61 +189,45 @@ struct SampleMetadata {
 }
 
 #[derive(Deserialize, Default)]
-struct SampleMetadataFilter {
+struct SampleMetadataQuery {
+    name: Option<String>,
     tissue: Option<String>,
-    received_after: Option<NaiveDateTime>,
     received_before: Option<NaiveDateTime>,
+    received_after: Option<NaiveDateTime>,
     #[serde(default)]
     species: Vec<Species>,
 }
 
-impl SampleMetadataFilter {
-    fn as_sql(&self) -> sample_metadata::BoxedQuery<'_, Pg> {
-        let Self {
-            tissue,
-            received_before,
-            received_after,
-            species,
-        } = self;
+impl<T> AsDieselExpression<T> for SampleMetadataQuery where name_col: SelectableExpression<T>, tissue_col: SelectableExpression<T>, received_at: SelectableExpression<T>, species_col: SelectableExpression<T> {
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>> where T: 'a {
+        let Self { name, tissue, received_before, received_after, species } = self;
 
-        let mut query = sample_metadata::table.into_boxed();
-
-        if let Some(tissue) = tissue {
-            query = query.filter(sample_metadata::tissue.ilike(format!("{tissue}%")));
+        if matches!((name, tissue, received_before, received_after, species.is_empty()), (None, None, None, None, true)) {
+            return None;
         }
 
-        // It would be nice if we could just statically map the parameter (received_after/received_before) to the filter
-        // function and then just fetch the correct filter based on the quantity or something like that
-        if let Some(received_after) = received_after {
-            query = query.filter(sample_metadata::received_at.gt(received_after));
+        // This is a hack but not sure what else I can do
+        let mut query: BoxedDieselExpression<T> = match name {
+            None => Box::new(name_col.is_not_null()),
+            Some(n) => Box::new(name_col.ilike(n.for_ilike()))
+        };
+
+        if let Some(tissue) = tissue {
+            query = Box::new(query.and(tissue_col.ilike(tissue.for_ilike())));
         }
 
         if let Some(received_before) = received_before {
-            query = query.filter(sample_metadata::received_at.lt(received_before));
+            query = Box::new(query.and(received_at.lt(received_before)));
+        }
+
+        if let Some(received_after) = received_after {
+            query = Box::new(query.and(received_at.gt(received_after)));
         }
 
         if !species.is_empty() {
-            query = query.filter(sample_metadata::species.overlaps_with(species));
+            query = Box::new(query.and(species_col.overlaps_with(species)));
         }
 
-        query
-    }
-
-    fn as_sql2(&self) -> Box<dyn BoxableExpression<sample_metadata::table, Pg, SqlType = Bool>> {
-        let Self {
-            tissue,
-            received_before,
-            received_after,
-            species,
-        } = self;
-
-        let mut base = Box::new(sample_metadata::id.is_not_null());
-
-        if let Some(tissue) = tissue {
-            let as_mut = base.as_mut();
-            base = base.and(sample_metadata::tissue.ilike(format!("%{tissue}%")));
-        }
-
-        base
+        Some(query)
     }
 }

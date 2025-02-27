@@ -70,7 +70,7 @@ pub struct Institution {
 }
 
 impl Read for Institution {
-    type Filter = ();
+    type QueryParams = ();
     type Id = Uuid;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
@@ -81,7 +81,7 @@ impl Read for Institution {
         Ok(found)
     }
 
-    async fn fetch_many(_filter: Self::Filter, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
+    async fn fetch_many(_filter: Self::QueryParams, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
         let institutions = institution.select(Self::as_select()).load(conn).await?;

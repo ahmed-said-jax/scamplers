@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
@@ -6,16 +8,17 @@ use diesel::{
     pg::Pg,
     prelude::*,
     serialize::ToSql,
-    sql_types::{self, Bool},
+    sql_types::{self, Bool, Nullable},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
+use crate::schema::person::{self, dsl::{email as email_col, full_name as name_col, id as id_col}};
 
-use super::{AsDieselExpression, Create, DbEnum, FilterExpression, Read, institution::Institution};
-use crate::schema::{institution, person};
+use super::{AsDieselExpression, Create, DbEnum, BoxedDieselExpression, Read, institution::Institution};
+use crate::{db::ILike, schema::{institution}};
 
 #[derive(
     Clone,
@@ -108,31 +111,26 @@ pub struct PersonQuery {
     pub email: Option<String>,
 }
 
-impl AsDieselExpression for PersonQuery {
-    fn as_diesel_expression<'a, T>(&'a self) -> Option<FilterExpression<'a, T>> {
-        use person::dsl::{email as email_col, full_name as name_col, id as id_col};
-
-        let Self { ids, name, email } = self;
+impl <T> AsDieselExpression<T> for PersonQuery where id_col: SelectableExpression<T>, name_col: SelectableExpression<T>, email_col: SelectableExpression<T> {
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>> where T: 'a {
+        let Self { ids, name, email , ..} = self;
 
         if matches!((ids.is_empty(), name, email), (true, None, None)) {
             return None;
         }
 
-        let query = Vec::with_capacity(3);
-
-        if !ids.is_empty() {
-            query.push(Box::new(id_col.eq_any(ids)));
-        }
+        // In theory, we could initialize this with `let mut query = None;`, but that results in a lot of boilerplate
+        let mut query: BoxedDieselExpression<T> = if ids.is_empty() {Box::new(id_col.is_not_null())} else {Box::new(id_col.eq_any(ids))};
 
         if let Some(name) = name {
-            query.push(Box::new(name_col.ilike(format!("%{name}%"))));
+            query = Box::new(query.and(name_col.ilike(name.for_ilike())));
         }
 
         if let Some(email) = email {
-            query.push(Box::new(email_col.ilike(format!("{email}%"))));
+            query = Box::new(query.and(email_col.ilike(email.for_ilike())));
         }
 
-        query.into_iter().reduce(|q1, q2| Box::new(q1.and(q2)))
+        Some(query)
     }
 }
 
@@ -143,15 +141,10 @@ impl Person {
 }
 
 impl Read for Person {
-    type Filter = PersonQuery;
+    type QueryParams = PersonQuery;
     type Id = Uuid;
 
-    // I'd like to factor out the `person::table.inner_join(institution::table).select(Person::as_select())` but there
-    // doesn't seem to be a nice way to do that without boxing
-
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
-        use person::id as id_col;
-
         Ok(Self::base_query()
             .filter(id_col.eq(id))
             .select(Person::as_select())
@@ -159,10 +152,8 @@ impl Read for Person {
             .await?)
     }
 
-    async fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
-        use person::full_name;
-
-        let query = Self::base_query().order_by(full_name).select(Person::as_select());
+    async fn fetch_many(filter: Self::QueryParams, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
+        let query = Self::base_query().order_by(name_col).select(Person::as_select());
         let filter = filter.as_diesel_expression();
 
         let people = match filter {
@@ -176,7 +167,7 @@ impl Read for Person {
 
 #[derive(Serialize, Queryable, Selectable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub(super) struct Person {
+pub struct Person {
     #[serde(flatten)]
     #[diesel(embed)]
     stub: PersonStub,

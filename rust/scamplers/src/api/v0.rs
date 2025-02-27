@@ -68,10 +68,10 @@ mod handlers {
     pub async fn by_filter<T: db::Read>(
         user: User,
         State(app_state): State<AppState2>,
-        Query(query): Query<T::Filter>,
+        Query(query): Query<T::QueryParams>,
     ) -> api::Result<ValidJson<Vec<T>>>
     where
-        T::Filter: Valuable,
+        T::QueryParams: Valuable,
     {
         tracing::debug!(deserialized_query = query.as_value());
 
@@ -95,12 +95,12 @@ mod handlers {
         user: User,
         State(app_state): State<AppState2>,
         Path(id): Path<T>,
-        Query(query): Query<U::Filter>,
+        Query(query): Query<U::QueryParams>,
     ) -> api::Result<ValidJson<Vec<U>>>
     where
         T: db::ReadRelatives<U>,
         U: db::Read,
-        U::Filter: Valuable,
+        U::QueryParams: Valuable,
     {
         tracing::debug!(parent_id = id.to_string(), deserialized_query = query.as_value());
 

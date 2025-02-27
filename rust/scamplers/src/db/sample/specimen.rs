@@ -15,10 +15,10 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{NewSampleMetadata, SampleMetadata, SampleMetadataFilter, Species};
+use super::{NewSampleMetadata, SampleMetadata, SampleMetadataQuery, Species};
 use crate::{
-    db::{self, Create, DbEnum, DbJson, Pagination, Read, person::PersonStub},
-    schema::{self, lab, person, sample_metadata, specimen, specimen_measurement},
+    db::{self, person::PersonStub, AsDieselExpression, Create, DbEnum, DbJson, BoxedDieselExpression, Pagination, Read},
+    schema::{self, lab, person, sample_metadata::{name as name_col, tissue as tissue_col, received_at, species as species_col}, specimen::{self, id as id_col, embedded_in as embedding_col, preserved_with as preservation_col, type_ as type_col}, specimen_measurement},
 };
 
 #[derive(
@@ -146,16 +146,7 @@ struct NewSpecimenMeasurement {
     data: MeasurementData,
 }
 
-#[derive(Deserialize, Validate)]
-struct SpecimenCore {
-    #[garde(length(min = 1))]
-    legacy_id: String,
-    #[garde(dive)]
-    measurements: Vec<NewSpecimenMeasurement>,
-    #[garde(skip)]
-    notes: Option<Vec<String>>,
-}
-
+// Common fields could be factored out of these enum variants, but it becomes a bit confusing
 #[derive(Deserialize, Validate)]
 #[serde(tag = "type")]
 #[garde(allow_unvalidated)]
@@ -164,9 +155,12 @@ enum NewSpecimen {
         #[serde(flatten)]
         #[garde(dive)]
         metadata: NewSampleMetadata,
-        #[serde(flatten)]
+        #[garde(length(min = 1))]
+        legacy_id: String,
         #[garde(dive)]
-        core: SpecimenCore,
+        measurements: Vec<NewSpecimenMeasurement>,
+        #[garde(skip)]
+        notes: Option<Vec<String>>,
         embedded_in: EmbeddingMatrix,
         #[garde(custom(is_block_preservation_method))]
         preserved_with: PreservationMethod,
@@ -175,18 +169,24 @@ enum NewSpecimen {
         #[serde(flatten)]
         #[garde(dive)]
         metadata: NewSampleMetadata,
-        #[serde(flatten)]
+        #[garde(length(min = 1))]
+        legacy_id: String,
         #[garde(dive)]
-        core: SpecimenCore,
+        measurements: Vec<NewSpecimenMeasurement>,
+        #[garde(skip)]
+        notes: Option<Vec<String>>,
         preserved_with: Option<PreservationMethod>,
     },
     Fluid {
         #[serde(flatten)]
         #[garde(dive)]
         metadata: NewSampleMetadata,
-        #[serde(flatten)]
+        #[garde(length(min = 1))]
+        legacy_id: String,
         #[garde(dive)]
-        core: SpecimenCore,
+        measurements: Vec<NewSpecimenMeasurement>,
+        #[garde(skip)]
+        notes: Option<Vec<String>>,
         preserved_with: Option<PreservationMethod>,
     },
 }
@@ -235,32 +235,23 @@ impl Create for Vec<NewSpecimen> {
 
             let (NewSpecimen::Block {
                 metadata,
-                core:
-                    SpecimenCore {
-                        legacy_id,
-                        measurements,
-                        notes,
-                    },
+                legacy_id,
+                measurements,
+                notes,
                 ..
             }
             | NewSpecimen::Tissue {
                 metadata,
-                core:
-                    SpecimenCore {
-                        legacy_id,
-                        measurements,
-                        notes,
-                    },
+                legacy_id,
+                measurements,
+                notes,
                 ..
             }
             | NewSpecimen::Fluid {
                 metadata,
-                core:
-                    SpecimenCore {
-                        legacy_id,
-                        measurements,
-                        notes,
-                    },
+                legacy_id,
+                measurements,
+                notes,
                 ..
             }) = specimen;
 
@@ -288,7 +279,7 @@ impl Create for Vec<NewSpecimen> {
 
         let specimen_ids = diesel::insert_into(specimen::table)
             .values(specimen_insertions)
-            .returning(specimen::id)
+            .returning(id_col)
             .get_results(conn)
             .await?;
 
@@ -321,61 +312,60 @@ enum SpecimenType {
 }
 
 #[derive(Deserialize)]
-pub struct SpecimenFilter {
+pub struct SpecimenQuery {
     #[serde(default)]
     ids: Vec<Uuid>,
-    #[serde(flatten, default)]
-    metadata_filter: SampleMetadataFilter,
+    #[serde(flatten)]
+    metadata_query: Option<SampleMetadataQuery>,
     embedded_in: Option<EmbeddingMatrix>,
     preserved_with: Option<PreservationMethod>,
     type_: Option<SpecimenType>,
     #[serde(default, flatten)]
     pagination: Pagination,
+    #[serde(default)]
+    with_measurements: bool
 }
-
-impl SpecimenFilter {
-    fn as_sql(&self) {
+impl<T> AsDieselExpression<T> for SpecimenQuery  where name_col: SelectableExpression<T>, tissue_col: SelectableExpression<T>, received_at: SelectableExpression<T>, species_col: SelectableExpression<T>, id_col: SelectableExpression<T>, embedding_col: SelectableExpression<T>, preservation_col: SelectableExpression<T>, type_col: SelectableExpression<T> {
+    fn as_diesel_expression<'a>(&'a self) -> Option<db::BoxedDieselExpression<'a, T>> where T: 'a {
         let Self {
             ids,
-            metadata_filter,
+            metadata_query,
             embedded_in,
             preserved_with,
             type_,
-            pagination: Pagination { limit, offset },
+            ..
         } = self;
 
-        let mut query = specimen::table
-            .into_boxed()
-            .inner_join(sample_metadata::table)
-            .limit(*limit)
-            .offset(*offset);
+        if matches!((ids.is_empty(), metadata_query, embedded_in, preserved_with, type_), (true, None, None, None, None)) {
+            return None;
+        }
 
-        // if let Some(SampleMetadataFilter{tissue, rec})
+        let mut query: BoxedDieselExpression<T> = if ids.is_empty() {Box::new(id_col.is_not_null())} else {Box::new(id_col.eq_any(ids))};
 
-        if !ids.is_empty() {
-            query = query.filter(specimen::id.eq_any(ids));
+        if let Some(metadata_query) = metadata_query.as_ref().map(|q| q.as_diesel_expression()).flatten() {
+            query = Box::new(query.and(metadata_query));
         }
 
         if let Some(embedding_matrix) = embedded_in {
-            query = query.filter(specimen::embedded_in.eq(embedding_matrix));
+            query = Box::new(query.and(embedding_col.is_distinct_from(embedding_matrix)));
         }
 
         if let Some(preservation_method) = preserved_with {
-            query = query.filter(specimen::preserved_with.eq(preservation_method))
+            query = Box::new(query.and(preservation_col.is_distinct_from(preservation_method)));
         }
 
         if let Some(type_) = type_ {
             let type_: &str = type_.into();
-            query = query.filter(specimen::type_.eq(type_));
+            query = Box::new(query.and(type_col.eq(type_)));
         }
 
-        (query, metadata_filter.as_sql())
+        Some(query)
     }
 }
 
 impl Read for Specimen {
-    type Filter = SpecimenFilter;
     type Id = Uuid;
+    type QueryParams = SpecimenQuery;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> db::Result<Self> {
         let inner = specimen::table
@@ -397,7 +387,7 @@ impl Read for Specimen {
         Ok(Self::Full(SpecimenFull { inner, measurements }))
     }
 
-    async fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
+    async fn fetch_many(filter: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
         let (specimen_query, metadata_query) = filter.as_sql();
 
         let statement = specimen_query

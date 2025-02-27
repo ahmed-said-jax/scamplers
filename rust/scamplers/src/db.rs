@@ -5,14 +5,7 @@ use std::{
 };
 
 use diesel::{
-    BoxableExpression,
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    result::DatabaseErrorInformation,
-    serialize::ToSql,
-    sql_types::{self, Bool},
+    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::ToSql, sql_types::{self, Bool, BoolOrNullableBool, Nullable}, BoxableExpression
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
@@ -34,10 +27,10 @@ pub trait Create: Send {
     fn create(&self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
-type FilterExpression<'a, T> = Box<dyn BoxableExpression<T, Pg, SqlType = Bool> + 'a>;
+type BoxedDieselExpression<'a, T> = Box<dyn BoxableExpression<T, Pg, SqlType = Bool> + 'a>;
 
-trait AsDieselExpression {
-    fn as_diesel_expression<'a, T>(&'a self) -> Option<FilterExpression<'a, T>> {
+trait AsDieselExpression<Tab = ()> {
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Tab>> where Tab: 'a {
         None
     }
 }
@@ -46,9 +39,9 @@ impl AsDieselExpression for () {}
 
 pub trait Read: Serialize + Sized + Send {
     type Id: Send + Display;
-    type Filter: Sync + Send + AsDieselExpression;
+    type QueryParams: Sync + Send;
 
-    fn fetch_many(filter: Self::Filter, conn: &mut AsyncPgConnection)
+    fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection)
     -> impl Future<Output = Result<Vec<Self>>> + Send;
 
     fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
@@ -77,7 +70,7 @@ impl<T: Update> Update for Vec<T> {
 pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     fn fetch_relatives(
         &self,
-        filter: T::Filter,
+        query: T::QueryParams,
         conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
@@ -122,6 +115,16 @@ trait DbJson:
         let as_json = serde_json::to_value(self).unwrap();
 
         ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
+    }
+}
+
+// I don't like this trait name
+trait ILike {
+    fn for_ilike(&self) -> String;
+}
+impl ILike for String {
+    fn for_ilike(&self) -> String {
+        format!("%{self}%")
     }
 }
 
