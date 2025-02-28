@@ -15,10 +15,18 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
-use crate::schema::person::{self, dsl::{email as email_col, full_name as name_col, id as id_col}};
 
-use super::{AsDieselExpression, Create, DbEnum, BoxedDieselExpression, Read, institution::Institution};
-use crate::{db::ILike, schema::{institution}};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, Read, institution::Institution};
+use crate::{
+    db::ILike,
+    schema::{
+        institution,
+        person::{
+            self,
+            dsl::{email as email_col, full_name as name_col, id as id_col},
+        },
+    },
+};
 
 #[derive(
     Clone,
@@ -111,16 +119,28 @@ pub struct PersonQuery {
     pub email: Option<String>,
 }
 
-impl <T> AsDieselExpression<T> for PersonQuery where id_col: SelectableExpression<T>, name_col: SelectableExpression<T>, email_col: SelectableExpression<T> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>> where T: 'a {
-        let Self { ids, name, email , ..} = self;
+impl<T> AsDieselExpression<T> for PersonQuery
+where
+    id_col: SelectableExpression<T>,
+    name_col: SelectableExpression<T>,
+    email_col: SelectableExpression<T>,
+{
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>>
+    where
+        T: 'a,
+    {
+        let Self { ids, name, email, .. } = self;
 
         if matches!((ids.is_empty(), name, email), (true, None, None)) {
             return None;
         }
 
         // In theory, we could initialize this with `let mut query = None;`, but that results in a lot of boilerplate
-        let mut query: BoxedDieselExpression<T> = if ids.is_empty() {Box::new(id_col.is_not_null())} else {Box::new(id_col.eq_any(ids))};
+        let mut query: BoxedDieselExpression<T> = if ids.is_empty() {
+            Box::new(id_col.is_not_null())
+        } else {
+            Box::new(id_col.eq_any(ids))
+        };
 
         if let Some(name) = name {
             query = Box::new(query.and(name_col.ilike(name.for_ilike())));
@@ -141,8 +161,8 @@ impl Person {
 }
 
 impl Read for Person {
-    type QueryParams = PersonQuery;
     type Id = Uuid;
+    type QueryParams = PersonQuery;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         Ok(Self::base_query()

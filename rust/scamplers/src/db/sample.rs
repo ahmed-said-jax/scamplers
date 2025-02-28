@@ -2,11 +2,11 @@ use chrono::NaiveDateTime;
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
+    helper_types::InnerJoin,
     pg::Pg,
     prelude::*,
     serialize::ToSql,
     sql_types::{self, Bool},
-    helper_types::InnerJoin
 };
 use diesel_async::RunQueryDsl;
 use garde::Validate;
@@ -14,8 +14,16 @@ use serde::{Deserialize, Serialize};
 use tracing_subscriber::layer::Filter;
 use uuid::Uuid;
 
-use super::{lab::LabStub, person::PersonStub, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, Order};
-use crate::{db::ILike, schema::{self, lab, sample_metadata::{self, id as id_col, name as name_col, received_at, species as species_col, tissue as tissue_col}}};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, Order, lab::LabStub, person::PersonStub};
+use crate::{
+    db::ILike,
+    schema::{
+        self, lab,
+        sample_metadata::{
+            self, id as id_col, name as name_col, received_at, species as species_col, tissue as tissue_col,
+        },
+    },
+};
 mod specimen;
 
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of
@@ -216,18 +224,36 @@ impl SampleMetadata {
     }
 }
 
-impl<T> AsDieselExpression<T> for SampleMetadataQuery where name_col: SelectableExpression<T>, tissue_col: SelectableExpression<T>, received_at: SelectableExpression<T>, species_col: SelectableExpression<T> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>> where T: 'a {
-        let Self { name, tissue, received_before, received_after, species } = self;
+impl<T> AsDieselExpression<T> for SampleMetadataQuery
+where
+    name_col: SelectableExpression<T>,
+    tissue_col: SelectableExpression<T>,
+    received_at: SelectableExpression<T>,
+    species_col: SelectableExpression<T>,
+{
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>>
+    where
+        T: 'a,
+    {
+        let Self {
+            name,
+            tissue,
+            received_before,
+            received_after,
+            species,
+        } = self;
 
-        if matches!((name, tissue, received_before, received_after, species.is_empty()), (None, None, None, None, true)) {
+        if matches!(
+            (name, tissue, received_before, received_after, species.is_empty()),
+            (None, None, None, None, true)
+        ) {
             return None;
         }
 
         // This is a hack but not sure what else I can do
         let mut query: BoxedDieselExpression<T> = match name {
             None => Box::new(name_col.is_not_null()),
-            Some(n) => Box::new(name_col.ilike(n.for_ilike()))
+            Some(n) => Box::new(name_col.ilike(n.for_ilike())),
         };
 
         if let Some(tissue) = tissue {

@@ -72,8 +72,8 @@ pub struct Institution {
 }
 
 impl Read for Institution {
-    type QueryParams = ();
     type Id = Uuid;
+    type QueryParams = ();
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         use schema::institution::dsl::institution;

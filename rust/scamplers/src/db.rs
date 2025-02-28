@@ -6,7 +6,14 @@ use std::{
 
 use chrono::NaiveDateTime;
 use diesel::{
-    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::ToSql, sql_types::{self, Bool, BoolOrNullableBool, Nullable}, BoxableExpression
+    BoxableExpression,
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    result::DatabaseErrorInformation,
+    serialize::ToSql,
+    sql_types::{self, Bool, BoolOrNullableBool, Nullable},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
@@ -31,7 +38,10 @@ pub trait Create: Send {
 type BoxedDieselExpression<'a, T> = Box<dyn BoxableExpression<T, Pg, SqlType = Bool> + 'a>;
 
 trait AsDieselExpression<Tab = ()> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Tab>> where Tab: 'a {
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Tab>>
+    where
+        Tab: 'a,
+    {
         None
     }
 }
@@ -42,8 +52,10 @@ pub trait Read: Serialize + Sized + Send {
     type Id: Send + Display;
     type QueryParams: Sync + Send;
 
-    fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection)
-    -> impl Future<Output = Result<Vec<Self>>> + Send;
+    fn fetch_many(
+        query: Self::QueryParams,
+        conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = Result<Vec<Self>>> + Send;
 
     fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
 }
@@ -90,7 +102,7 @@ impl Default for Pagination {
 #[derive(Deserialize, Default)]
 struct Order<T> {
     order_by: T,
-    descending: bool
+    descending: bool,
 }
 
 trait DbEnum:

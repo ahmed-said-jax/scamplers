@@ -4,11 +4,11 @@ use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
+    helper_types::InnerJoin,
     pg::Pg,
     prelude::*,
     serialize::ToSql,
     sql_types::{self, SqlType},
-    helper_types::InnerJoin,
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
@@ -16,10 +16,20 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{NewSampleMetadata, SampleMetadata, SampleMetadataQuery, OrdinalColumns as MetadataOrdinalColumns};
+use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
-    db::{self, person::PersonStub, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Order, Pagination, Read},
-    schema::{self, lab, person, sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col}, specimen::{self, embedded_in as embedding_col, id as id_col, preserved_with as preservation_col, type_ as type_col}, specimen_measurement},
+    db::{
+        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Order, Pagination, Read,
+        person::PersonStub,
+    },
+    schema::{
+        self, lab, person,
+        sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
+        specimen::{
+            self, embedded_in as embedding_col, id as id_col, preserved_with as preservation_col, type_ as type_col,
+        },
+        specimen_measurement,
+    },
 };
 
 #[derive(
@@ -109,7 +119,7 @@ fn is_block_preservation_method(preservation_method: &PreservationMethod, _: &()
 #[diesel(sql_type = sql_types::Jsonb)]
 #[serde(rename_all = "snake_case", tag = "quantity")]
 #[garde(allow_unvalidated)]
-enum MeasurementData { 
+enum MeasurementData {
     Rin {
         measured_at: NaiveDateTime,
         instrument_name: String, // This should be an enum
@@ -300,12 +310,11 @@ impl Create for Vec<NewSpecimen> {
 #[serde(untagged)]
 pub enum Specimen {
     Basic(SpecimenCore),
-    Detailed{
+    Detailed {
         #[serde(flatten)]
         core: SpecimenCore,
-        measurements: Vec<SpecimenMeasurement>
-    }
-
+        measurements: Vec<SpecimenMeasurement>,
+    },
 }
 
 #[derive(Deserialize, strum::IntoStaticStr)]
@@ -331,10 +340,23 @@ pub struct SpecimenQuery {
     #[serde(default)]
     with_measurements: bool,
     #[serde(default, flatten)]
-    order: Order<MetadataOrdinalColumns>
+    order: Order<MetadataOrdinalColumns>,
 }
-impl<T> AsDieselExpression<T> for SpecimenQuery  where name_col: SelectableExpression<T>, tissue_col: SelectableExpression<T>, received_at: SelectableExpression<T>, species_col: SelectableExpression<T>, id_col: SelectableExpression<T>, embedding_col: SelectableExpression<T>, preservation_col: SelectableExpression<T>, type_col: SelectableExpression<T> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<db::BoxedDieselExpression<'a, T>> where T: 'a {
+impl<T> AsDieselExpression<T> for SpecimenQuery
+where
+    name_col: SelectableExpression<T>,
+    tissue_col: SelectableExpression<T>,
+    received_at: SelectableExpression<T>,
+    species_col: SelectableExpression<T>,
+    id_col: SelectableExpression<T>,
+    embedding_col: SelectableExpression<T>,
+    preservation_col: SelectableExpression<T>,
+    type_col: SelectableExpression<T>,
+{
+    fn as_diesel_expression<'a>(&'a self) -> Option<db::BoxedDieselExpression<'a, T>>
+    where
+        T: 'a,
+    {
         let Self {
             ids,
             metadata_query,
@@ -344,11 +366,18 @@ impl<T> AsDieselExpression<T> for SpecimenQuery  where name_col: SelectableExpre
             ..
         } = self;
 
-        if matches!((ids.is_empty(), metadata_query, embedded_in, preserved_with, type_), (true, None, None, None, None)) {
+        if matches!(
+            (ids.is_empty(), metadata_query, embedded_in, preserved_with, type_),
+            (true, None, None, None, None)
+        ) {
             return None;
         }
 
-        let mut query: BoxedDieselExpression<T> = if ids.is_empty() {Box::new(id_col.is_not_null())} else {Box::new(id_col.eq_any(ids))};
+        let mut query: BoxedDieselExpression<T> = if ids.is_empty() {
+            Box::new(id_col.is_not_null())
+        } else {
+            Box::new(id_col.eq_any(ids))
+        };
 
         if let Some(metadata_query) = metadata_query.as_ref().map(|q| q.as_diesel_expression()).flatten() {
             query = Box::new(query.and(metadata_query));
@@ -382,23 +411,47 @@ impl Read for Specimen {
     type QueryParams = SpecimenQuery;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> db::Result<Self> {
-        let core = Self::base_query().filter(id_col.eq(id)).select(SpecimenCore::as_select()).first(conn).boxed();
+        let core = Self::base_query()
+            .filter(id_col.eq(id))
+            .select(SpecimenCore::as_select())
+            .first(conn)
+            .boxed();
 
-        let measurements = SpecimenMeasurement::base_query().filter(specimen_measurement::specimen_id.eq(id)).select(SpecimenMeasurement::as_select()).load(conn).boxed();
+        let measurements = SpecimenMeasurement::base_query()
+            .filter(specimen_measurement::specimen_id.eq(id))
+            .select(SpecimenMeasurement::as_select())
+            .load(conn)
+            .boxed();
 
         let (core, measurements) = tokio::try_join!(core, measurements)?;
 
-        Ok(Self::Detailed{ core, measurements })
+        Ok(Self::Detailed { core, measurements })
     }
 
     async fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
         let mut specimens_statement = Self::base_query().select(SpecimenCore::as_select()).into_boxed();
 
-        let Self::QueryParams{order: Order{order_by, descending}, with_measurements, ..} = &query;
+        let Self::QueryParams {
+            order: Order { order_by, descending },
+            with_measurements,
+            ..
+        } = &query;
 
         specimens_statement = match order_by {
-            MetadataOrdinalColumns::DateReceived => if *descending {specimens_statement.order(received_at.desc())} else {specimens_statement.order(received_at)},
-            MetadataOrdinalColumns::Name => if *descending {specimens_statement.order(name_col.desc())} else {specimens_statement.order(name_col)},
+            MetadataOrdinalColumns::DateReceived => {
+                if *descending {
+                    specimens_statement.order(received_at.desc())
+                } else {
+                    specimens_statement.order(received_at)
+                }
+            }
+            MetadataOrdinalColumns::Name => {
+                if *descending {
+                    specimens_statement.order(name_col.desc())
+                } else {
+                    specimens_statement.order(name_col)
+                }
+            }
         };
 
         if let Some(query) = query.as_diesel_expression() {
@@ -411,9 +464,19 @@ impl Read for Specimen {
             return Ok(specimens.into_iter().map(|s| Self::Basic(s)).collect());
         }
 
-        let measurements: Vec<Vec<SpecimenMeasurement>> = SpecimenMeasurement::belonging_to(&specimens).inner_join(specimen::table).inner_join(person::table).select(SpecimenMeasurement::as_select()).load(conn).await?.grouped_by(&specimens);
+        let measurements: Vec<Vec<SpecimenMeasurement>> = SpecimenMeasurement::belonging_to(&specimens)
+            .inner_join(specimen::table)
+            .inner_join(person::table)
+            .select(SpecimenMeasurement::as_select())
+            .load(conn)
+            .await?
+            .grouped_by(&specimens);
 
-        let specimens = specimens.into_iter().zip(measurements).map(|(core, measurements)| Self::Detailed{core, measurements}).collect();
+        let specimens = specimens
+            .into_iter()
+            .zip(measurements)
+            .map(|(core, measurements)| Self::Detailed { core, measurements })
+            .collect();
 
         Ok(specimens)
     }
@@ -433,7 +496,9 @@ struct SpecimenMeasurement {
 }
 impl SpecimenMeasurement {
     fn base_query() -> InnerJoin<InnerJoin<specimen_measurement::table, specimen::table>, person::table> {
-        specimen_measurement::table.inner_join(specimen::table).inner_join(person::table)
+        specimen_measurement::table
+            .inner_join(specimen::table)
+            .inner_join(person::table)
     }
 }
 

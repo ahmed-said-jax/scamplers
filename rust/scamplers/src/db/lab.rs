@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, Create, BoxedDieselExpression, Read, ReadRelatives, person::Person};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, Read, ReadRelatives, person::Person};
 use crate::schema::{institution, lab, lab_membership, person};
 
 // This is the first instance where one API body might represent multiple
@@ -133,8 +133,14 @@ pub struct LabQuery {
     ids: Vec<Uuid>,
 }
 
-impl <T> AsDieselExpression<T> for LabQuery where lab::id: SelectableExpression<T> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>> where T: 'a {
+impl<T> AsDieselExpression<T> for LabQuery
+where
+    lab::id: SelectableExpression<T>,
+{
+    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>>
+    where
+        T: 'a,
+    {
         use lab::dsl::id as id_col;
 
         let Self { ids } = self;
@@ -160,8 +166,8 @@ impl Lab {
 }
 
 impl Read for Lab {
-    type QueryParams = LabQuery;
     type Id = Uuid;
+    type QueryParams = LabQuery;
 
     async fn fetch_by_id(id: Self::Id, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self> {
         use lab::id as id_col;
@@ -187,7 +193,10 @@ impl Read for Lab {
         Ok(Self { inner, members })
     }
 
-    async fn fetch_many(filter: Self::QueryParams, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Vec<Self>> {
+    async fn fetch_many(
+        filter: Self::QueryParams,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> super::Result<Vec<Self>> {
         use lab::name as name_col;
 
         let filter = filter.as_diesel_expression();
