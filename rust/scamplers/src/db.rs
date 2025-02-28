@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, result::DatabaseErrorInformation, serialize::ToSql, sql_types::{self, Bool, BoolOrNullableBool, Nullable}, BoxableExpression
 };

@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table cdna (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/cdna/' || id) stored not null,
     legacy_id text unique not null,
     prepared_at timestamp not null,
@@ -11,11 +11,10 @@ create table cdna (
 );
 
 create table cdna_measurement (
+    id uuid primary key default gen_random_uuid(),
     cdna_id uuid references cdna on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    data jsonb not null,
-
-    primary key (cdna_id, measured_by, data)
+    data jsonb not null
 );
 
 create table cdna_preparers (

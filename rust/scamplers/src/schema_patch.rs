@@ -29,7 +29,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    cdna_measurement (cdna_id, measured_by, data) {
+    cdna_measurement (id) {
+        id -> Uuid,
         cdna_id -> Uuid,
         measured_by -> Uuid,
         data -> Jsonb,
@@ -89,7 +90,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    chromium_library_measurement (library_id, measured_by, data) {
+    chromium_library_measurement (id) {
+        id -> Uuid,
         library_id -> Uuid,
         measured_by -> Uuid,
         data -> Jsonb,
@@ -226,7 +228,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    multiplexed_suspension_measurement (suspension_id, measured_by, data) {
+    multiplexed_suspension_measurement (id) {
+        id -> Uuid,
         suspension_id -> Uuid,
         measured_by -> Uuid,
         data -> Jsonb,
@@ -321,7 +324,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    specimen_measurement (specimen_id, measured_by, data) {
+    specimen_measurement (id) {
+        id -> Uuid,
         specimen_id -> Uuid,
         measured_by -> Uuid,
         data -> Jsonb,
@@ -347,7 +351,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    suspension_measurement (suspension_id, measured_by, data) {
+    suspension_measurement (id) {
+        id -> Uuid,
         suspension_id -> Uuid,
         measured_by -> Uuid,
         data -> Jsonb,

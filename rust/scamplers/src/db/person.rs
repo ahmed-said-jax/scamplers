@@ -179,7 +179,7 @@ pub struct Person {
 
 #[derive(Queryable, Selectable, Serialize, Identifiable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-pub(super) struct PersonStub {
+pub struct PersonStub {
     id: Uuid,
     #[diesel(column_name = full_name)]
     name: String,

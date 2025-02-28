@@ -9,7 +9,6 @@ use diesel::{
     serialize::ToSql,
     sql_types::{self, SqlType},
     helper_types::InnerJoin,
-    BelongingToDsl
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
@@ -212,8 +211,7 @@ impl Create for Vec<NewSpecimen> {
         #[diesel(table_name = schema::specimen)]
         struct InsertSpecimen<'a> {
             legacy_id: &'a str,
-            metadata_id: Option<&'a Uuid>, /* This is optional because we want to create this struct before we know
-                                            * the metadata ID, so we set it later */
+            metadata_id: Option<&'a Uuid>,
             type_: &'a str,
             embedded_in: Option<&'a EmbeddingMatrix>,
             preserved_with: Option<&'a PreservationMethod>,
@@ -413,17 +411,19 @@ impl Read for Specimen {
             return Ok(specimens.into_iter().map(|s| Self::Basic(s)).collect());
         }
 
-        let measurements = SpecimenMeasurement::belonging_to(&specimens).inner_join(specimen::table).select((SpecimenMeasurement::as_select(), specimen::id)).load(conn).await?;
+        let measurements: Vec<Vec<SpecimenMeasurement>> = SpecimenMeasurement::belonging_to(&specimens).inner_join(specimen::table).inner_join(person::table).select(SpecimenMeasurement::as_select()).load(conn).await?.grouped_by(&specimens);
 
-        let specimens = measurements.grouped_by(&specimens).into_iter().zip(specimens).map(|(m, core)| Self::Detailed{core, measurements: m.iter().map(|(_, measurement)| measurement).collect()}).collect();
+        let specimens = specimens.into_iter().zip(measurements).map(|(core, measurements)| Self::Detailed{core, measurements}).collect();
 
         Ok(specimens)
     }
 }
 
-#[derive(Serialize, Selectable, Queryable, Associations)]
+#[derive(Serialize, Selectable, Queryable, Associations, Identifiable)]
 #[diesel(table_name = schema::specimen_measurement, check_for_backend(Pg), belongs_to(SpecimenCore, foreign_key = specimen_id))]
 struct SpecimenMeasurement {
+    #[serde(skip)]
+    id: Uuid,
     #[serde(skip)]
     specimen_id: Uuid,
     #[diesel(embed)]
@@ -432,8 +432,8 @@ struct SpecimenMeasurement {
     data: MeasurementData,
 }
 impl SpecimenMeasurement {
-    fn base_query() -> InnerJoin<specimen_measurement::table, person::table> {
-        specimen_measurement::table.inner_join(person::table)
+    fn base_query() -> InnerJoin<InnerJoin<specimen_measurement::table, specimen::table>, person::table> {
+        specimen_measurement::table.inner_join(specimen::table).inner_join(person::table)
     }
 }
 

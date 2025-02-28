@@ -2,7 +2,7 @@
 -- `type`, `embedding_matrix`, and `preservation_method` are constrained by Rust enums and will be validated to make
 -- sense together
 create table specimen (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/samples/' || id) stored not null,
     legacy_id text unique not null,
     metadata_id uuid not null references sample_metadata on delete restrict on update restrict,
@@ -14,9 +14,8 @@ create table specimen (
 );
 
 create table specimen_measurement (
+    id uuid primary key default gen_random_uuid(),
     specimen_id uuid not null references specimen on delete restrict on update restrict,
     measured_by uuid not null references person on delete restrict on update restrict,
-    data jsonb not null,
-
-    primary key(specimen_id, measured_by, data)
+    data jsonb not null
 );

@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table sample_metadata (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     name text not null,
     submitted_by uuid references person on delete restrict on update restrict not null,
     lab_id uuid references lab on delete restrict on update restrict not null,

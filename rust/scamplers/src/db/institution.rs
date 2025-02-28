@@ -27,8 +27,10 @@ impl Create for Vec<NewInstitution> {
     async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::*;
 
+        let as_immut = &*self;
+
         let inserted = diesel::insert_into(institution)
-            .values(self)
+            .values(as_immut)
             .returning(Institution::as_returning())
             .get_results(conn)
             .await?;

@@ -14,11 +14,10 @@ create table chromium_library (
 );
 
 create table chromium_library_measurement (
+    id uuid primary key default gen_random_uuid(),
     library_id uuid references chromium_library on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    data jsonb not null,
-
-    primary key (library_id, measured_by, data)
+    data jsonb not null
 );
 
 create table chromium_library_preparers (

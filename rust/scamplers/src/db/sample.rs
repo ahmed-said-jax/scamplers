@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use tracing_subscriber::layer::Filter;
 use uuid::Uuid;
 
-use super::{lab::LabStub, person::PersonStub, AsDieselExpression, Create, DbEnum, BoxedDieselExpression, Order};
+use super::{lab::LabStub, person::PersonStub, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, Order};
 use crate::{db::ILike, schema::{self, lab, sample_metadata::{self, id as id_col, name as name_col, received_at, species as species_col, tissue as tissue_col}}};
 mod specimen;
 
@@ -123,6 +123,8 @@ where
 #[garde(allow_unvalidated)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 pub struct NewSampleMetadata {
+    #[serde(skip)]
+    id: Uuid,
     #[garde(length(min = 1))]
     name: String,
     submitted_by: Uuid,
@@ -149,6 +151,7 @@ impl Create for Vec<&NewSampleMetadata> {
 
     async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         let owned_refs = self.clone();
+
         let ids = diesel::insert_into(sample_metadata::table)
             .values(owned_refs)
             .returning(sample_metadata::id)

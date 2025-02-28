@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table multiplexed_suspension (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/samples/' || id) stored not null,
     legacy_id text unique not null,
     date_pooled date not null,
@@ -9,11 +9,10 @@ create table multiplexed_suspension (
 );
 
 create table multiplexed_suspension_measurement (
+    id uuid primary key default gen_random_uuid(),
     suspension_id uuid references multiplexed_suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
-    data jsonb not null,
-
-    primary key (suspension_id, measured_by, data)
+    data jsonb not null
 );
 
 create table multiplexed_suspension_preparers (

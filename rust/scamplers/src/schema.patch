@@ -13,9 +13,9 @@
  }
  
  diesel::table! {
-     cdna_measurement (cdna_id, measured_by, data) {
-         cdna_id -> Uuid,
-@@ -55,24 +55,24 @@
+     cdna_measurement (id) {
+         id -> Uuid,
+@@ -56,24 +56,24 @@
      chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
          gem_id -> Uuid,
          suspension_id -> Uuid,
@@ -42,7 +42,7 @@
  
  diesel::table! {
      chromium_library (id) {
-@@ -81,13 +81,13 @@
+@@ -82,13 +82,13 @@
          legacy_id -> Text,
          cdna_id -> Uuid,
          single_index_set_name -> Nullable<Text>,
@@ -55,9 +55,9 @@
  }
  
  diesel::table! {
-     chromium_library_measurement (library_id, measured_by, data) {
-         library_id -> Uuid,
-@@ -108,13 +108,13 @@
+     chromium_library_measurement (id) {
+         id -> Uuid,
+@@ -110,13 +110,13 @@
          id -> Uuid,
          link -> Text,
          legacy_id -> Text,
@@ -72,7 +72,7 @@
  diesel::table! {
      chromium_runners (run_id, run_by) {
          run_id -> Uuid,
-@@ -218,13 +218,13 @@
+@@ -220,13 +220,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
          link -> Text,
@@ -85,9 +85,9 @@
  }
  
  diesel::table! {
-     multiplexed_suspension_measurement (suspension_id, measured_by, data) {
-         suspension_id -> Uuid,
-@@ -274,37 +274,37 @@
+     multiplexed_suspension_measurement (id) {
+         id -> Uuid,
+@@ -277,37 +277,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -129,7 +129,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -312,14 +312,14 @@
+@@ -315,14 +315,14 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
@@ -144,9 +144,9 @@
  }
  
  diesel::table! {
-     specimen_measurement (specimen_id, measured_by, data) {
-         specimen_id -> Uuid,
-@@ -339,13 +339,13 @@
+     specimen_measurement (id) {
+         id -> Uuid,
+@@ -343,13 +343,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,
@@ -159,5 +159,5 @@
  }
  
  diesel::table! {
-     suspension_measurement (suspension_id, measured_by, data) {
-         suspension_id -> Uuid,
+     suspension_measurement (id) {
+         id -> Uuid,
