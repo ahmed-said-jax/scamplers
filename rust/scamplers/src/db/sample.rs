@@ -10,6 +10,7 @@ use diesel::{
 };
 use diesel_async::RunQueryDsl;
 use garde::Validate;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
@@ -37,7 +38,8 @@ pub mod specimen;
     strum::IntoStaticStr,
     Clone,
     Copy,
-    Valuable
+    Valuable,
+    JsonSchema
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
@@ -187,7 +189,7 @@ impl Create for Vec<&NewSampleMetadata> {
     }
 }
 
-#[derive(Selectable, Queryable, Serialize)]
+#[derive(Selectable, Queryable, Serialize, JsonSchema)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 struct SampleMetadata {
     name: String,

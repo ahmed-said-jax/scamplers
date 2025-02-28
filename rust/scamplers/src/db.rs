@@ -17,7 +17,6 @@ use diesel::{
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use serde_with::serde_as;
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -88,26 +87,22 @@ pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
-#[serde_as]
+// #[serde_as]
 #[derive(Deserialize, Clone, Copy, Valuable)]
-struct Pagination {
-    #[serde_as(as = "serde_with::DisplayFromStr")]
+struct _Pagination {
     #[serde(default = "default_limit")]
     limit: i64,
-    #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(default)]
-    offset: i64,
+    offset: i32,
 }
 fn default_limit() -> i64 {
     500
 }
 
-#[serde_as]
 #[derive(Deserialize, Valuable)]
-struct Order<T: Valuable> {
+struct _Order<T: Valuable> {
     #[serde(default)]
     order_by: T,
-    #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(default)]
     descending: bool,
 }

@@ -1,0 +1,296 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Specimen",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/SpecimenCore"
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "lab",
+        "measurements",
+        "name",
+        "received_at",
+        "species",
+        "tissue",
+        "type"
+      ],
+      "properties": {
+        "embedded_in": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "lab": {
+          "$ref": "#/definitions/LabStub"
+        },
+        "measurements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SpecimenMeasurement"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "preserved_with": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "type": "string",
+          "format": "partial-date-time"
+        },
+        "returned_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "partial-date-time"
+        },
+        "species": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Species"
+          }
+        },
+        "tissue": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "LabStub": {
+      "type": "object",
+      "required": [
+        "id",
+        "link",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "link": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "PersonStub": {
+      "type": "object",
+      "required": [
+        "id",
+        "link",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "link": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "Species": {
+      "type": "string",
+      "enum": [
+        "ambystoma_mexicanum",
+        "canis_familiaris",
+        "drosophila_melanogaster",
+        "gasterosteus_aculeatus",
+        "homo_sapiens",
+        "mus_musculus",
+        "rattus_norvegicus",
+        "sminthopsis_crassicaudata",
+        "unknown"
+      ]
+    },
+    "SpecimenCore": {
+      "type": "object",
+      "required": [
+        "id",
+        "lab",
+        "name",
+        "received_at",
+        "species",
+        "tissue",
+        "type"
+      ],
+      "properties": {
+        "embedded_in": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "lab": {
+          "$ref": "#/definitions/LabStub"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "preserved_with": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "type": "string",
+          "format": "partial-date-time"
+        },
+        "returned_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "partial-date-time"
+        },
+        "species": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Species"
+          }
+        },
+        "tissue": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "SpecimenMeasurement": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "instrument_name",
+            "measured_at",
+            "quantity",
+            "value"
+          ],
+          "properties": {
+            "instrument_name": {
+              "type": "string"
+            },
+            "measured_at": {
+              "type": "string",
+              "format": "partial-date-time"
+            },
+            "quantity": {
+              "type": "string",
+              "enum": [
+                "rin"
+              ]
+            },
+            "value": {
+              "type": "number",
+              "format": "float"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "instrument_name",
+            "measured_at",
+            "quantity",
+            "value"
+          ],
+          "properties": {
+            "instrument_name": {
+              "type": "string"
+            },
+            "measured_at": {
+              "type": "string",
+              "format": "partial-date-time"
+            },
+            "quantity": {
+              "type": "string",
+              "enum": [
+                "dv200"
+              ]
+            },
+            "value": {
+              "type": "number",
+              "format": "float"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "quantity"
+          ],
+          "properties": {
+            "quantity": {
+              "type": "string",
+              "enum": [
+                "unknown"
+              ]
+            }
+          }
+        }
+      ],
+      "required": [
+        "id",
+        "measured_by"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "measured_by": {
+          "$ref": "#/definitions/PersonStub"
+        }
+      }
+    }
+  }
+}

@@ -12,15 +12,15 @@ use diesel::{
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
 use garde::Validate;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use uuid::Uuid;
 use valuable::Valuable;
 
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
     db::{
-        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Order, Pagination, Read,
+        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, _Order, _Pagination, Read,
         person::PersonStub,
     },
     schema::{
@@ -118,7 +118,7 @@ fn is_block_preservation_method(preservation_method: &PreservationMethod, _: &()
     }
 }
 
-#[derive(Deserialize, Serialize, Validate, FromSqlRow, Default, Debug, AsExpression)]
+#[derive(Deserialize, Serialize, Validate, FromSqlRow, Default, Debug, AsExpression, JsonSchema)]
 #[diesel(sql_type = sql_types::Jsonb)]
 #[serde(rename_all = "snake_case", tag = "quantity")]
 #[garde(allow_unvalidated)]
@@ -309,7 +309,7 @@ impl Create for Vec<NewSpecimen> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Specimen {
     Basic(SpecimenCore),
@@ -329,7 +329,6 @@ enum SpecimenType {
     Fluid,
 }
 
-#[serde_as]
 #[derive(Deserialize, Valuable)]
 pub struct SpecimenQuery {
     #[serde(default)]
@@ -340,13 +339,16 @@ pub struct SpecimenQuery {
     embedded_in: Option<EmbeddingMatrix>,
     preserved_with: Option<PreservationMethod>,
     type_: Option<SpecimenType>,
-    #[serde(default, flatten)]
-    pagination: Pagination,
-    #[serde_as(as = "serde_with::DisplayFromStr")]
+    #[serde(default = "super::super::default_limit")]
+    limit: i64,
+    #[serde(default)]
+    offset: i64,
     #[serde(default)]
     with_measurements: bool,
-    #[serde(default, flatten)]
-    order: Order<MetadataOrdinalColumns>,
+    #[serde(default)]
+    order: MetadataOrdinalColumns,
+    #[serde(default)]
+    descending: bool
 }
 impl<T> AsDieselExpression<T> for SpecimenQuery
 where
@@ -438,15 +440,18 @@ impl Read for Specimen {
 
     async fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
         let Self::QueryParams {
-            order: Order { order_by, descending },
+            order,
+            descending,
             with_measurements,
-            pagination: Pagination {limit, offset},
+            limit,
+            offset,
+            // pagination: Pagination {limit, offset},
             ..
         } = &query;
 
         let mut specimens_statement = Self::base_query().select(SpecimenCore::as_select()).limit(*limit).offset(*offset).into_boxed();
 
-        specimens_statement = match order_by {
+        specimens_statement = match order {
             MetadataOrdinalColumns::ReceivedAt => {
                 if *descending {
                     specimens_statement.order(received_at.desc())
@@ -491,10 +496,9 @@ impl Read for Specimen {
     }
 }
 
-#[derive(Serialize, Selectable, Queryable, Associations, Identifiable)]
+#[derive(Serialize, Selectable, Queryable, Associations, Identifiable, JsonSchema)]
 #[diesel(table_name = schema::specimen_measurement, check_for_backend(Pg), belongs_to(SpecimenCore, foreign_key = specimen_id))]
 struct SpecimenMeasurement {
-    #[serde(skip)]
     id: Uuid,
     #[serde(skip)]
     specimen_id: Uuid,
@@ -511,15 +515,15 @@ impl SpecimenMeasurement {
     }
 }
 
-#[derive(Serialize, Selectable, Queryable, Identifiable)]
+#[derive(Serialize, Selectable, Queryable, Identifiable, JsonSchema)]
 #[diesel(table_name = schema::specimen, check_for_backend(Pg))]
 struct SpecimenCore {
     id: Uuid,
     #[serde(flatten)]
     #[diesel(embed)]
     metadata: SampleMetadata,
-    embedded_in: Option<EmbeddingMatrix>,
-    preserved_with: Option<PreservationMethod>,
+    embedded_in: Option<String>,
+    preserved_with: Option<String>,
     #[serde(rename = "type")]
     type_: String,
     notes: Option<Vec<String>>,

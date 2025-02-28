@@ -10,6 +10,7 @@ use diesel::{
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
@@ -195,7 +196,7 @@ pub struct Person {
     institution: Institution,
 }
 
-#[derive(Queryable, Selectable, Serialize, Identifiable)]
+#[derive(Queryable, Selectable, Serialize, Identifiable, JsonSchema)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct PersonStub {
     id: Uuid,

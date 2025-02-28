@@ -3,7 +3,7 @@ use std::fs;
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 use scamplers::{
-    db::institution::{Institution, NewInstitution, UpdatedInstitution},
+    db::{institution::{Institution, NewInstitution, UpdatedInstitution}, sample::specimen::Specimen},
     serve_app,
 };
 use schemars::schema_for;
@@ -19,6 +19,7 @@ async fn main() -> anyhow::Result<()> {
                 ("new_institution", schema_for!(NewInstitution)),
                 ("updated_institution", schema_for!(UpdatedInstitution)),
                 ("institution", schema_for!(Institution)),
+                ("specimen", schema_for!(Specimen))
             ];
             for (filename, s) in schema {
                 let s = serde_json::to_string_pretty(&s)?;

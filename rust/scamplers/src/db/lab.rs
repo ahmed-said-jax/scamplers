@@ -4,6 +4,7 @@ use diesel::{BelongingToDsl, dsl::InnerJoin, pg::Pg, prelude::*};
 use diesel_async::RunQueryDsl;
 use futures::FutureExt;
 use garde::Validate;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
@@ -118,7 +119,7 @@ struct LabInner {
     pi: Person,
 }
 
-#[derive(Serialize, Queryable, Selectable, Identifiable)]
+#[derive(Serialize, Queryable, Selectable, Identifiable, JsonSchema)]
 #[diesel(table_name = lab, check_for_backend(Pg))]
 pub(super) struct LabStub {
     id: Uuid,
