@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, Pagination, Read, Update};
+use super::{Create, Read, Update};
 use crate::schema;
 
 #[derive(Insertable, Deserialize, Clone, Valuable, JsonSchema, Validate)]

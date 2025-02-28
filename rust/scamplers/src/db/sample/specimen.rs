@@ -1,6 +1,5 @@
 use chrono::NaiveDateTime;
 use diesel::{
-    alias,
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
@@ -417,6 +416,7 @@ impl Read for Specimen {
             .first(conn)
             .boxed();
 
+        // We use this instead of the `belonging_to` function because it's technically slightly faster and looks basically the same
         let measurements = SpecimenMeasurement::base_query()
             .filter(specimen_measurement::specimen_id.eq(id))
             .select(SpecimenMeasurement::as_select())

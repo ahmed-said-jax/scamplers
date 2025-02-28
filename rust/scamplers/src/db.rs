@@ -4,7 +4,6 @@ use std::{
     str::FromStr,
 };
 
-use chrono::NaiveDateTime;
 use diesel::{
     BoxableExpression,
     backend::Backend,
@@ -13,7 +12,7 @@ use diesel::{
     pg::Pg,
     result::DatabaseErrorInformation,
     serialize::ToSql,
-    sql_types::{self, Bool, BoolOrNullableBool, Nullable},
+    sql_types::{self, Bool},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;

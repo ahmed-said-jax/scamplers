@@ -6,21 +6,20 @@ use diesel::{
     pg::Pg,
     prelude::*,
     serialize::ToSql,
-    sql_types::{self, Bool},
+    sql_types::{self},
 };
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::layer::Filter;
 use uuid::Uuid;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, Order, lab::LabStub, person::PersonStub};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, lab::LabStub};
 use crate::{
     db::ILike,
     schema::{
         self, lab,
         sample_metadata::{
-            self, id as id_col, name as name_col, received_at, species as species_col, tissue as tissue_col,
+            self, name as name_col, received_at, species as species_col, tissue as tissue_col,
         },
     },
 };

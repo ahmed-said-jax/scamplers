@@ -1,14 +1,13 @@
-use std::marker::PhantomData;
 
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
-    helper_types::{InnerJoin, Select},
+    helper_types::InnerJoin,
     pg::Pg,
     prelude::*,
     serialize::ToSql,
-    sql_types::{self, Bool, Nullable},
+    sql_types::{self},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
