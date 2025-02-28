@@ -44,6 +44,7 @@ toml = { version = "0.8.20", default-features = false, features = ["parse"] }
 testcontainers-modules = { version = "0.11.5", features = ["postgres"]}
 schemars = { version = "0.8.21", features = ["chrono", "uuid1"] }
 tower-http = { version = "0.6.2", features = ["trace"] }
+serde_with = "3.12.0"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

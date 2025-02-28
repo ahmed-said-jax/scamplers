@@ -12,6 +12,7 @@ use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use valuable::Valuable;
 
 use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, lab::LabStub};
 use crate::{
@@ -21,7 +22,7 @@ use crate::{
         sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
     },
 };
-mod specimen;
+pub mod specimen;
 
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of
 // API usage
@@ -36,6 +37,7 @@ mod specimen;
     strum::IntoStaticStr,
     Clone,
     Copy,
+    Valuable
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
@@ -197,19 +199,21 @@ struct SampleMetadata {
     returned_at: Option<NaiveDateTime>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Valuable)]
 #[serde(rename_all = "snake_case")]
 enum OrdinalColumns {
     #[default]
-    DateReceived,
+    ReceivedAt,
     Name,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Valuable)]
 struct SampleMetadataQuery {
     name: Option<String>,
     tissue: Option<String>,
+    #[valuable(skip)]
     received_before: Option<NaiveDateTime>,
+    #[valuable(skip)]
     received_after: Option<NaiveDateTime>,
     #[serde(default)]
     species: Vec<Species>,

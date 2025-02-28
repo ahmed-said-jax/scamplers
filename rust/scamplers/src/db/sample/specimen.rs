@@ -13,7 +13,9 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use uuid::Uuid;
+use valuable::Valuable;
 
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
@@ -43,6 +45,7 @@ use crate::{
     AsExpression,
     Debug,
     Default,
+    Valuable
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -80,6 +83,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
     AsExpression,
     Debug,
     Default,
+    Valuable
 )]
 #[serde(rename_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
@@ -316,7 +320,7 @@ pub enum Specimen {
     },
 }
 
-#[derive(Deserialize, strum::IntoStaticStr)]
+#[derive(Deserialize, strum::IntoStaticStr, Valuable)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 enum SpecimenType {
@@ -325,9 +329,11 @@ enum SpecimenType {
     Fluid,
 }
 
-#[derive(Deserialize)]
+#[serde_as]
+#[derive(Deserialize, Valuable)]
 pub struct SpecimenQuery {
     #[serde(default)]
+    #[valuable(skip)]
     ids: Vec<Uuid>,
     #[serde(flatten)]
     metadata_query: Option<SampleMetadataQuery>,
@@ -336,6 +342,7 @@ pub struct SpecimenQuery {
     type_: Option<SpecimenType>,
     #[serde(default, flatten)]
     pagination: Pagination,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(default)]
     with_measurements: bool,
     #[serde(default, flatten)]
@@ -383,11 +390,11 @@ where
         }
 
         if let Some(embedding_matrix) = embedded_in {
-            query = Box::new(query.and(embedding_col.is_distinct_from(embedding_matrix)));
+            query = Box::new(query.and(embedding_col.is_not_distinct_from(embedding_matrix)));
         }
 
         if let Some(preservation_method) = preserved_with {
-            query = Box::new(query.and(preservation_col.is_distinct_from(preservation_method)));
+            query = Box::new(query.and(preservation_col.is_not_distinct_from(preservation_method)));
         }
 
         if let Some(type_) = type_ {
@@ -430,16 +437,17 @@ impl Read for Specimen {
     }
 
     async fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
-        let mut specimens_statement = Self::base_query().select(SpecimenCore::as_select()).into_boxed();
-
         let Self::QueryParams {
             order: Order { order_by, descending },
             with_measurements,
+            pagination: Pagination {limit, offset},
             ..
         } = &query;
 
+        let mut specimens_statement = Self::base_query().select(SpecimenCore::as_select()).limit(*limit).offset(*offset).into_boxed();
+
         specimens_statement = match order_by {
-            MetadataOrdinalColumns::DateReceived => {
+            MetadataOrdinalColumns::ReceivedAt => {
                 if *descending {
                     specimens_statement.order(received_at.desc())
                 } else {

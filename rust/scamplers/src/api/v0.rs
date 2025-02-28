@@ -8,6 +8,7 @@ use crate::{
         institution::{Institution, NewInstitution},
         lab::{Lab, LabId, NewLab},
         person::Person,
+        sample::specimen::Specimen
     },
 };
 
@@ -28,7 +29,8 @@ pub(super) fn router() -> Router<AppState2> {
         .route("/people/{person_id}", get(by_id::<Person>))
         .route("/labs", get(by_filter::<Lab>).post(new::<Vec<NewLab>>))
         .route("/labs/{lab_id}", get(by_id::<Lab>))
-        .route("/labs/{lab_id}/members", get(by_relationship::<LabId, Person>));
+        .route("/labs/{lab_id}/members", get(by_relationship::<LabId, Person>))
+        .route("/samples", get(by_filter::<Specimen>));
     router
 }
 
