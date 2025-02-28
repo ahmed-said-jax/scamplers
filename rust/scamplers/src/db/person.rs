@@ -1,4 +1,3 @@
-
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},

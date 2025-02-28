@@ -18,9 +18,7 @@ use crate::{
     db::ILike,
     schema::{
         self, lab,
-        sample_metadata::{
-            self, name as name_col, received_at, species as species_col, tissue as tissue_col,
-        },
+        sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
     },
 };
 mod specimen;
