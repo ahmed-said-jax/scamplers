@@ -5,7 +5,6 @@ use rand::{
     distr::uniform::SampleRange,
     seq::{IndexedRandom, IteratorRandom},
 };
-use strum::IntoEnumIterator;
 
 use crate::{
     AppState2,
