@@ -22,13 +22,13 @@ use crate::schema::{institution, lab, lab_membership, person};
 #[diesel(table_name = lab, check_for_backend(Pg))]
 pub struct NewLab {
     #[garde(length(min = 1))]
-    name: String,
+    pub name: String,
     #[valuable(skip)]
-    pi_id: Uuid,
-    delivery_dir: String,
+    pub pi_id: Uuid,
+    pub delivery_dir: String,
     #[diesel(skip_insertion)]
     #[valuable(skip)]
-    member_ids: Vec<Uuid>,
+    pub member_ids: Vec<Uuid>,
 }
 
 impl Create for Vec<NewLab> {
@@ -102,15 +102,15 @@ impl Create for Vec<LabMembership> {
 #[derive(Serialize)]
 pub struct Lab {
     #[serde(flatten)]
-    inner: LabInner,
+    pub inner: LabInner,
     members: Vec<Person>,
 }
 
 #[derive(Serialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = lab, check_for_backend(Pg))]
-struct LabInner {
+pub struct LabInner {
     #[serde(skip)]
-    id: Uuid,
+    pub id: Uuid,
     #[serde(flatten)]
     #[diesel(embed)]
     stub: LabStub,
@@ -121,7 +121,7 @@ struct LabInner {
 
 #[derive(Serialize, Queryable, Selectable, Identifiable, JsonSchema)]
 #[diesel(table_name = lab, check_for_backend(Pg))]
-pub(super) struct LabStub {
+pub struct LabStub {
     id: Uuid,
     name: String,
     link: String,

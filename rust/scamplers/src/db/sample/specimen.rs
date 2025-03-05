@@ -20,7 +20,7 @@ use valuable::Valuable;
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
     db::{
-        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, _Order, _Pagination, Read,
+        self, _Order, _Pagination, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read,
         person::PersonStub,
     },
     schema::{
@@ -39,20 +39,21 @@ use crate::{
     FromSqlRow,
     strum::IntoStaticStr,
     strum::EnumString,
+    strum::EnumIter,
     Clone,
     Copy,
     SqlType,
     AsExpression,
     Debug,
     Default,
-    Valuable
+    Valuable,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
-enum EmbeddingMatrix {
+pub enum EmbeddingMatrix {
     CarboxymethylCellulose,
-    OptimalCuttingTemperature,
+    OptimalCuttingTemperatureCompound,
     Paraffin,
     #[default]
     Unknown,
@@ -77,18 +78,19 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
     FromSqlRow,
     strum::IntoStaticStr,
     strum::EnumString,
+    strum::EnumIter,
     Clone,
     Copy,
     SqlType,
     AsExpression,
     Debug,
     Default,
-    Valuable
+    Valuable,
 )]
 #[serde(rename_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 #[strum(serialize_all = "snake_case")]
-enum PreservationMethod {
+pub enum PreservationMethod {
     Cryopreservation,
     DspFixation,
     FormaldehydeDerivativeFixation,
@@ -120,9 +122,9 @@ fn is_block_preservation_method(preservation_method: &PreservationMethod, _: &()
 
 #[derive(Deserialize, Serialize, Validate, FromSqlRow, Default, Debug, AsExpression, JsonSchema)]
 #[diesel(sql_type = sql_types::Jsonb)]
-#[serde(rename_all = "snake_case", tag = "quantity")]
+#[serde(rename_all = "UPPERCASE", tag = "quantity")]
 #[garde(allow_unvalidated)]
-enum MeasurementData {
+pub enum MeasurementData {
     Rin {
         measured_at: NaiveDateTime,
         instrument_name: String, // This should be an enum
@@ -154,17 +156,17 @@ impl ToSql<sql_types::Jsonb, Pg> for MeasurementData {
 
 #[derive(Deserialize, Validate)]
 #[garde(allow_unvalidated)]
-struct NewSpecimenMeasurement {
-    measured_by: Uuid,
+pub struct NewSpecimenMeasurement {
+    pub measured_by: Uuid,
     #[serde(flatten)]
-    data: MeasurementData,
+    pub data: MeasurementData,
 }
 
 // Common fields could be factored out of these enum variants, but it becomes a bit confusing
 #[derive(Deserialize, Validate)]
 #[serde(tag = "type")]
 #[garde(allow_unvalidated)]
-enum NewSpecimen {
+pub enum NewSpecimen {
     Block {
         #[serde(flatten)]
         #[garde(dive)]
@@ -348,7 +350,7 @@ pub struct SpecimenQuery {
     #[serde(default)]
     order: MetadataOrdinalColumns,
     #[serde(default)]
-    descending: bool
+    descending: bool,
 }
 impl<T> AsDieselExpression<T> for SpecimenQuery
 where
@@ -449,7 +451,11 @@ impl Read for Specimen {
             ..
         } = &query;
 
-        let mut specimens_statement = Self::base_query().select(SpecimenCore::as_select()).limit(*limit).offset(*offset).into_boxed();
+        let mut specimens_statement = Self::base_query()
+            .select(SpecimenCore::as_select())
+            .limit(*limit)
+            .offset(*offset)
+            .into_boxed();
 
         specimens_statement = match order {
             MetadataOrdinalColumns::ReceivedAt => {
@@ -499,6 +505,7 @@ impl Read for Specimen {
 #[derive(Serialize, Selectable, Queryable, Associations, Identifiable, JsonSchema)]
 #[diesel(table_name = schema::specimen_measurement, check_for_backend(Pg), belongs_to(SpecimenCore, foreign_key = specimen_id))]
 struct SpecimenMeasurement {
+    #[serde(skip)]
     id: Uuid,
     #[serde(skip)]
     specimen_id: Uuid,

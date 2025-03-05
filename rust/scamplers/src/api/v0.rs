@@ -8,7 +8,7 @@ use crate::{
         institution::{Institution, NewInstitution},
         lab::{Lab, LabId, NewLab},
         person::Person,
-        sample::specimen::Specimen
+        sample::specimen::Specimen,
     },
 };
 

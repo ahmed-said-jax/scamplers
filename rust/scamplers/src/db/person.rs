@@ -75,14 +75,14 @@ define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -
 #[garde(allow_unvalidated)]
 pub struct NewPerson {
     #[garde(length(min = 1))]
-    first_name: String,
+    pub first_name: String,
     #[garde(length(min = 1))]
-    last_name: String,
+    pub last_name: String,
     #[garde(email)]
-    email: String,
-    orcid: Option<String>,
+    pub email: String,
+    pub orcid: Option<String>,
     #[valuable(skip)]
-    institution_id: Uuid,
+    pub institution_id: Uuid,
 }
 
 impl Create for Vec<NewPerson> {
@@ -189,7 +189,7 @@ impl Read for Person {
 pub struct Person {
     #[serde(flatten)]
     #[diesel(embed)]
-    stub: PersonStub,
+    pub stub: PersonStub,
     email: String,
     orcid: Option<String>,
     #[diesel(embed)]
@@ -199,7 +199,7 @@ pub struct Person {
 #[derive(Queryable, Selectable, Serialize, Identifiable, JsonSchema)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct PersonStub {
-    id: Uuid,
+    pub id: Uuid,
     #[diesel(column_name = full_name)]
     name: String,
     link: String,

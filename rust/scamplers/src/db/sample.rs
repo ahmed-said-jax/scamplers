@@ -36,10 +36,11 @@ pub mod specimen;
     Debug,
     strum::EnumString,
     strum::IntoStaticStr,
+    strum::EnumIter,
     Clone,
     Copy,
     Valuable,
-    JsonSchema
+    JsonSchema,
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
@@ -132,23 +133,21 @@ where
 #[garde(allow_unvalidated)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 pub struct NewSampleMetadata {
-    #[serde(skip)]
-    id: Uuid,
     #[garde(length(min = 1))]
-    name: String,
-    submitted_by: Uuid,
-    lab_id: Uuid,
-    received_at: NaiveDateTime,
+    pub name: String,
+    pub submitted_by: Uuid,
+    pub lab_id: Uuid,
+    pub received_at: NaiveDateTime,
     #[garde(length(min = 1))]
-    species: Vec<Species>,
+    pub species: Vec<Species>,
     #[garde(length(min = 1))]
-    tissue: String,
+    pub tissue: String,
     #[diesel(skip_insertion)]
     #[serde(default)]
-    committee_approvals: Vec<NewCommitteeApproval>,
-    notes: Option<Vec<String>>,
-    returned_at: Option<NaiveDateTime>,
-    returned_by: Option<Uuid>,
+    pub committee_approvals: Vec<NewCommitteeApproval>,
+    pub notes: Option<Vec<String>>,
+    pub returned_at: Option<NaiveDateTime>,
+    pub returned_by: Option<Uuid>,
 }
 
 // We don't need to `impl Create for Vec<NewSampleMetadata>` - we actually only use this as part of other structs, so

@@ -14,9 +14,9 @@ use crate::schema;
 #[garde(allow_unvalidated)]
 pub struct NewInstitution {
     #[garde(length(min = 1))]
-    name: String,
+    pub name: String,
     #[valuable(skip)]
-    ms_tenant_id: Option<Uuid>,
+    pub ms_tenant_id: Option<Uuid>,
 }
 
 // We don't need to `impl Create` for an individual `Institution` because it's
@@ -66,7 +66,7 @@ impl Update for UpdatedInstitution {
 #[derive(Queryable, Selectable, Serialize, JsonSchema)]
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 pub struct Institution {
-    id: Uuid,
+    pub id: Uuid,
     name: String,
     link: String,
 }

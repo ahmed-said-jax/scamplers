@@ -1,5 +1,6 @@
 from pathlib import Path
 import random
+from typing import Any, Sequence
 import uuid
 import datetime
 # This file should be fixed so as to generate the entire dev-test_db.sql file and be a little more robust and modular.
@@ -12,6 +13,13 @@ def random_datetime(min_year: int, max_year: int) -> datetime.datetime:
 
     return start + ((end - start) * random.random())
 
+def generate_insert_statement(base: str, *values: Sequence[Any]):
+    
+
+def insert_institutions():
+    insert_institution = "insert into institution (id, name) values"
+    values = f"'{uuid.uuid4()}'"
+insert_person = "insert into person (id, first_name, last_name, email, institution_id)"
 
 insert_sample_metadata = "insert into sample_metadata (id, name, submitted_by, lab_id, received_at, species, tissue) values"
 insert_specimen = "insert into specimen (id, legacy_id, metadata_id, type, embedded_in, preserved_with) values"
