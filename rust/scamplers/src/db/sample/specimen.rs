@@ -20,7 +20,7 @@ use valuable::Valuable;
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
     db::{
-        self, _Order, _Pagination, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read,
+        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read,
         person::PersonStub,
     },
     schema::{

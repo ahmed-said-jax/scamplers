@@ -1,13 +1,11 @@
 use anyhow::Context;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use diesel_async::SimpleAsyncConnection;
 use rand::{
     Rng,
-    distr::{StandardUniform, uniform::SampleRange},
+    distr::uniform::SampleRange,
     seq::{IndexedRandom, IteratorRandom},
 };
 use strum::IntoEnumIterator;
-use uuid::Uuid;
 
 use crate::{
     AppState2,
@@ -18,14 +16,14 @@ use crate::{
         lab::NewLab,
         person::NewPerson,
         sample::{
-            NewSampleMetadata, Species,
-            specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, PreservationMethod},
+            NewSampleMetadata,
+            specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement},
         },
     },
 };
 
 // We use anyhow::Result here because we just want to know what went wrong, we
-// don't care about serializing structured data to a client
+// don't care about serializing structured errors to a client
 pub async fn download_and_insert_index_sets(app_state: AppState2, file_urls: &[IndexSetFileUrl]) -> anyhow::Result<()> {
     // Clone is fine here because everything in AppState is meant to be cloned
     // (cheaply clonable)
