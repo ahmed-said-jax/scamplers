@@ -5,21 +5,27 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type Specimen =
-  | SpecimenCore
+export type SpecimenMeasurement = {
+  measured_by: PersonStub;
+  [k: string]: unknown;
+} & SpecimenMeasurement1;
+export type SpecimenMeasurement1 =
   | {
-      embedded_in?: string | null;
-      id: string;
-      lab: LabStub;
-      measurements: SpecimenMeasurement[];
-      name: string;
-      notes?: string[] | null;
-      preserved_with?: string | null;
-      received_at: string;
-      returned_at?: string | null;
-      species: Species[];
-      tissue: string;
-      type: string;
+      instrument_name: string;
+      measured_at: string;
+      quantity: "RIN";
+      value: number;
+      [k: string]: unknown;
+    }
+  | {
+      instrument_name: string;
+      measured_at: string;
+      quantity: "DV200";
+      value: number;
+      [k: string]: unknown;
+    }
+  | {
+      quantity: "UNKNOWN";
       [k: string]: unknown;
     };
 export type Species =
@@ -32,35 +38,12 @@ export type Species =
   | "rattus_norvegicus"
   | "sminthopsis_crassicaudata"
   | "unknown";
-export type SpecimenMeasurement = {
-  id: string;
-  measured_by: PersonStub;
-  [k: string]: unknown;
-} & SpecimenMeasurement1;
-export type SpecimenMeasurement1 =
-  | {
-      instrument_name: string;
-      measured_at: string;
-      quantity: "rin";
-      value: number;
-      [k: string]: unknown;
-    }
-  | {
-      instrument_name: string;
-      measured_at: string;
-      quantity: "dv200";
-      value: number;
-      [k: string]: unknown;
-    }
-  | {
-      quantity: "unknown";
-      [k: string]: unknown;
-    };
 
-export interface SpecimenCore {
+export interface Specimen {
   embedded_in?: string | null;
   id: string;
   lab: LabStub;
+  measurements?: SpecimenMeasurement[] | null;
   name: string;
   notes?: string[] | null;
   preserved_with?: string | null;

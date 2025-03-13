@@ -31,7 +31,7 @@ fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
 // `anyhow::Result` is fine here because this isn't user-facing code
 impl IndexSetFileUrl {
     pub async fn download(self, http_client: reqwest::Client) -> anyhow::Result<IndexSets> {
-        let url = self.0;
+        let Self(url) = self;
 
         let index_set: IndexSets = http_client.get(url.clone()).send().await?.json().await?;
 
@@ -117,8 +117,6 @@ pub struct NewSingleIndexSet(#[garde(dive)] IndexSetName, #[garde(dive)] [DnaSeq
 // bake in some validation and do a bunch of things at once
 impl Create for Vec<NewSingleIndexSet> {
     type Returns = ();
-
-    // return an owned type
 
     // We should technically validate the fact that this whole set has the same kit,
     // but it doesn't really matter because this won't be exposed as an API route -

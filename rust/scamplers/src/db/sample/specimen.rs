@@ -233,7 +233,7 @@ impl Create for Vec<NewSpecimen> {
             notes: Option<&'a [String]>,
         }
 
-        let mut new_metadata = Vec::with_capacity(self.len());
+        let mut new_metadatas = Vec::with_capacity(self.len());
         let mut specimen_insertions = Vec::with_capacity(self.len());
         let mut new_measurements = Vec::with_capacity(self.len() * 2); // We expect that each specimen has just two measurements, but it's not a big deal if there are more or less
 
@@ -270,7 +270,7 @@ impl Create for Vec<NewSpecimen> {
                 ..
             }) = specimen;
 
-            new_metadata.push(metadata);
+            new_metadatas.push(metadata);
             specimen_insertions.push(InsertSpecimen {
                 legacy_id,
                 metadata_id: None,
@@ -286,7 +286,7 @@ impl Create for Vec<NewSpecimen> {
             }));
         }
 
-        let metadata_ids = new_metadata.create(conn).await?;
+        let metadata_ids = new_metadatas.create(conn).await?;
 
         for (specimen, metadata_id) in specimen_insertions.iter_mut().zip(&metadata_ids) {
             specimen.metadata_id = Some(metadata_id);
@@ -312,14 +312,10 @@ impl Create for Vec<NewSpecimen> {
 }
 
 #[derive(Serialize, JsonSchema)]
-#[serde(untagged)]
-pub enum Specimen {
-    Basic(SpecimenCore),
-    Detailed {
-        #[serde(flatten)]
-        core: SpecimenCore,
-        measurements: Vec<SpecimenMeasurement>,
-    },
+pub struct Specimen {
+    #[serde(flatten)]
+    core: SpecimenCore,
+    measurements: Option<Vec<SpecimenMeasurement>>
 }
 
 #[derive(Deserialize, strum::IntoStaticStr, Valuable)]
@@ -340,6 +336,7 @@ pub struct SpecimenQuery {
     metadata_query: Option<SampleMetadataQuery>,
     embedded_in: Option<EmbeddingMatrix>,
     preserved_with: Option<PreservationMethod>,
+    #[serde(alias = "type")]
     type_: Option<SpecimenType>,
     #[serde(default = "super::super::default_limit")]
     limit: i64,
@@ -437,7 +434,7 @@ impl Read for Specimen {
 
         let (core, measurements) = tokio::try_join!(core, measurements)?;
 
-        Ok(Self::Detailed { core, measurements })
+        Ok(Self { core, measurements: Some(measurements) })
     }
 
     async fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
@@ -481,7 +478,7 @@ impl Read for Specimen {
         let specimens = specimens_statement.load(conn).await?;
 
         if !with_measurements {
-            return Ok(specimens.into_iter().map(|s| Self::Basic(s)).collect());
+            return Ok(specimens.into_iter().map(|core| Self {core, measurements: None}).collect());
         }
 
         let measurements: Vec<Vec<SpecimenMeasurement>> = SpecimenMeasurement::belonging_to(&specimens)
@@ -495,7 +492,7 @@ impl Read for Specimen {
         let specimens = specimens
             .into_iter()
             .zip(measurements)
-            .map(|(core, measurements)| Self::Detailed { core, measurements })
+            .map(|(core, measurements)| Self { core, measurements: Some(measurements) })
             .collect();
 
         Ok(specimens)

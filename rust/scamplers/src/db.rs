@@ -25,6 +25,10 @@ pub mod institution;
 pub mod lab;
 pub mod person;
 pub mod sample;
+mod dataset;
+mod chemistry;
+mod library_type_specification;
+mod sequencing_run;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once

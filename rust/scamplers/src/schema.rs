@@ -1,11 +1,5 @@
 // @generated automatically by Diesel CLI.
 
-pub mod sql_types {
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "parsed_metrics_file"))]
-    pub struct ParsedMetricsFile;
-}
-
 diesel::table! {
     cache (session_id_hash) {
         session_id_hash -> Text,
@@ -19,10 +13,10 @@ diesel::table! {
     cdna (id) {
         id -> Uuid,
         link -> Text,
+        library_type -> Text,
         legacy_id -> Text,
         prepared_at -> Timestamp,
         gems_id -> Uuid,
-        specification_id -> Uuid,
         storage_location -> Nullable<Text>,
         notes -> Nullable<Array<Text>>,
     }
@@ -64,13 +58,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::ParsedMetricsFile;
-
     chromium_dataset (id) {
         id -> Uuid,
         gems_id -> Uuid,
-        metrics_files -> Nullable<Array<ParsedMetricsFile>>,
+        metrics -> Nullable<Array<Jsonb>>,
         cellranger_web_summary -> Nullable<Text>,
     }
 }
@@ -148,7 +139,7 @@ diesel::table! {
         link -> Text,
         name -> Text,
         lab_id -> Uuid,
-        data_path -> Nullable<Text>,
+        data_path -> Text,
         delivered_at -> Nullable<Timestamp>,
     }
 }
@@ -206,13 +197,14 @@ diesel::table! {
 }
 
 diesel::table! {
-    library_type_specification (id) {
-        id -> Uuid,
-        library_type -> Text,
+    library_type_specification (chemistry_name, library_type) {
         chemistry_name -> Text,
+        library_type -> Text,
         index_kit -> Text,
-        cdna_volume -> Jsonb,
-        library_volume -> Jsonb,
+        #[sql_name = "cdna_volume_µl"]
+        cdna_volume_l -> Float4,
+        #[sql_name = "library_volume_µl"]
+        library_volume_l -> Float4,
     }
 }
 
@@ -368,7 +360,6 @@ diesel::table! {
 
 diesel::joinable!(cache -> person (user_id));
 diesel::joinable!(cdna -> gems (gems_id));
-diesel::joinable!(cdna -> library_type_specification (specification_id));
 diesel::joinable!(cdna_measurement -> cdna (cdna_id));
 diesel::joinable!(cdna_measurement -> person (measured_by));
 diesel::joinable!(cdna_preparers -> cdna (cdna_id));
