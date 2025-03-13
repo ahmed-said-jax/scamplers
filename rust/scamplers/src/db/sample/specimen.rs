@@ -19,10 +19,7 @@ use valuable::Valuable;
 
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
-    db::{
-        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read,
-        person::PersonStub,
-    },
+    db::{self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read, person::PersonStub},
     schema::{
         self, lab, person,
         sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
@@ -315,7 +312,7 @@ impl Create for Vec<NewSpecimen> {
 pub struct Specimen {
     #[serde(flatten)]
     core: SpecimenCore,
-    measurements: Option<Vec<SpecimenMeasurement>>
+    measurements: Option<Vec<SpecimenMeasurement>>,
 }
 
 #[derive(Deserialize, strum::IntoStaticStr, Valuable)]
@@ -434,7 +431,10 @@ impl Read for Specimen {
 
         let (core, measurements) = tokio::try_join!(core, measurements)?;
 
-        Ok(Self { core, measurements: Some(measurements) })
+        Ok(Self {
+            core,
+            measurements: Some(measurements),
+        })
     }
 
     async fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
@@ -478,7 +478,13 @@ impl Read for Specimen {
         let specimens = specimens_statement.load(conn).await?;
 
         if !with_measurements {
-            return Ok(specimens.into_iter().map(|core| Self {core, measurements: None}).collect());
+            return Ok(specimens
+                .into_iter()
+                .map(|core| Self {
+                    core,
+                    measurements: None,
+                })
+                .collect());
         }
 
         let measurements: Vec<Vec<SpecimenMeasurement>> = SpecimenMeasurement::belonging_to(&specimens)
@@ -492,7 +498,10 @@ impl Read for Specimen {
         let specimens = specimens
             .into_iter()
             .zip(measurements)
-            .map(|(core, measurements)| Self { core, measurements: Some(measurements) })
+            .map(|(core, measurements)| Self {
+                core,
+                measurements: Some(measurements),
+            })
             .collect();
 
         Ok(specimens)

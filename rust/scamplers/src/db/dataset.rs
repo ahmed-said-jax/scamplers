@@ -1,15 +1,22 @@
-use camino::{Utf8Path, Utf8PathBuf};
 use chrono::NaiveDateTime;
+use diesel::{
+    dsl::{AssumeNotNull, InnerJoin},
+    pg::Pg,
+    prelude::*,
+};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use diesel::{dsl::{AssumeNotNull, InnerJoin}, pg::Pg, prelude::*};
 use valuable::Valuable;
-use crate::schema::{self, dataset_metadata::{self, delivered_at, name as name_col}, lab};
 
-use super::{lab::{Lab, LabStub}, AsDieselExpression, BoxedDieselExpression, Create, ILike};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, ILike, lab::LabStub};
+use crate::schema::{
+    self,
+    dataset_metadata::{self, delivered_at, name as name_col},
+    lab,
+};
 
 #[derive(Insertable, Deserialize, Validate)]
 #[diesel(table_name = schema::dataset_metadata, check_for_backend(Pg))]
@@ -18,7 +25,7 @@ struct NewDatasetMetadata {
     name: String,
     lab_id: Uuid,
     data_path: String, // There should be some nice validation for this
-    delivered_at: Option<NaiveDateTime>
+    delivered_at: Option<NaiveDateTime>,
 }
 
 impl Create for Vec<&NewDatasetMetadata> {
@@ -29,7 +36,11 @@ impl Create for Vec<&NewDatasetMetadata> {
 
         let owned_refs = self.clone(); // We are just cloning references here
 
-        let ids = diesel::insert_into(dataset_metadata).values(owned_refs).returning(id).get_results(conn).await?;
+        let ids = diesel::insert_into(dataset_metadata)
+            .values(owned_refs)
+            .returning(id)
+            .get_results(conn)
+            .await?;
 
         Ok(ids)
     }
@@ -43,7 +54,7 @@ struct DatasetMetadata {
     #[diesel(embed)]
     lab: LabStub,
     data_path: String,
-    delivered_at: Option<NaiveDateTime>
+    delivered_at: Option<NaiveDateTime>,
 }
 
 impl DatasetMetadata {
@@ -57,7 +68,7 @@ impl DatasetMetadata {
 enum OrdinalColumns {
     #[default]
     DeliveredAt,
-    Name
+    Name,
 }
 
 #[derive(Deserialize, Valuable)]
@@ -66,16 +77,22 @@ struct DatasetMetadataQuery {
     #[valuable(skip)]
     delivered_before: Option<NaiveDateTime>,
     #[valuable(skip)]
-    delivered_after: Option<NaiveDateTime>
+    delivered_after: Option<NaiveDateTime>,
 }
-impl<T> AsDieselExpression<T> for DatasetMetadataQuery where delivered_at: SelectableExpression<T>, name_col: SelectableExpression<T>, AssumeNotNull<dataset_metadata::delivered_at>: SelectableExpression<T> {
+impl<T> AsDieselExpression<T> for DatasetMetadataQuery
+where
+    delivered_at: SelectableExpression<T>,
+    name_col: SelectableExpression<T>,
+    AssumeNotNull<dataset_metadata::delivered_at>: SelectableExpression<T>,
+{
     fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, T>>
-        where
-            T: 'a, {
+    where
+        T: 'a,
+    {
         let Self {
             name,
             delivered_before,
-            delivered_after
+            delivered_after,
         } = self;
 
         if matches!((name, delivered_before, delivered_after), (None, None, None)) {
@@ -84,7 +101,7 @@ impl<T> AsDieselExpression<T> for DatasetMetadataQuery where delivered_at: Selec
 
         let mut query: BoxedDieselExpression<T> = match name {
             None => Box::new(name_col.is_not_null()),
-            Some(n) => Box::new(name_col.ilike(n.for_ilike()))
+            Some(n) => Box::new(name_col.ilike(n.for_ilike())),
         };
 
         // This is necessary so that we can safely call `assume_not_null` in the next set of checks

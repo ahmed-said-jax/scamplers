@@ -1,10 +1,18 @@
-use diesel::{backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types};
+use diesel::{
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    prelude::*,
+    serialize::ToSql,
+    sql_types,
+};
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use crate::schema;
 
 use super::{Create, DbEnum};
+use crate::schema;
 
 #[derive(
     Clone,
@@ -65,7 +73,7 @@ pub enum LibraryType {
     VdjTGd,
 
     #[default]
-    Unknown
+    Unknown,
 }
 
 impl DbEnum for LibraryType {}
@@ -93,7 +101,7 @@ struct LibraryTypeSpecification {
     cdna_volume_µl: f32,
     #[garde(range(min = 0.0))]
     #[diesel(column_name = library_volume_l)]
-    library_volume_µl: f32
+    library_volume_µl: f32,
 }
 
 // We don't need to return anything, as users don't insert into this table
@@ -103,7 +111,11 @@ impl Create for Vec<LibraryTypeSpecification> {
     async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::library_type_specification::dsl::library_type_specification;
 
-        diesel::insert_into(library_type_specification).values(self).on_conflict_do_nothing().execute(conn).await?;
+        diesel::insert_into(library_type_specification)
+            .values(self)
+            .on_conflict_do_nothing()
+            .execute(conn)
+            .await?;
 
         Ok(())
     }

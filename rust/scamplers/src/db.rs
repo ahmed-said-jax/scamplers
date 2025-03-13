@@ -20,14 +20,14 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 
+mod chemistry;
+mod dataset;
 pub mod index_sets;
 pub mod institution;
 pub mod lab;
+mod library_type_specification;
 pub mod person;
 pub mod sample;
-mod dataset;
-mod chemistry;
-mod library_type_specification;
 mod sequencing_run;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
