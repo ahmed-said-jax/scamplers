@@ -212,6 +212,7 @@ diesel::table! {
     multiplexed_suspension (id) {
         id -> Uuid,
         link -> Text,
+        name -> Text,
         legacy_id -> Text,
         pooled_at -> Timestamp,
         notes -> Nullable<Array<Text>>,

@@ -1,8 +1,11 @@
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 use diesel::{prelude::*, pg::Pg};
+use uuid::Uuid;
 
 use crate::schema;
+
+use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -15,10 +18,25 @@ enum MultiplexingTagType {
     OCM
 }
 
+#[derive(Deserialize)]
+struct MultiplexedSuspensionMeasurement {
+    
+    #[serde(flatten)]
+    data: MeasurementData
+}
+
 #[derive(Deserialize, Insertable)]
 #[diesel(table_name = schema::multiplexed_suspension, check_for_backend(Pg))]
 struct NewMultiplexedSuspension {
     legacy_id: String,
     pooled_at: NaiveDateTime,
     notes: Option<Vec<String>>,
+    #[diesel(skip_insertion)]
+    tag_type: MultiplexingTagType,
+    #[diesel(skip_insertion)]
+    suspensions: Vec<NewSuspension>,
+    #[diesel(skip_insertion)]
+    preparer_ids: Vec<Uuid>,
+    #[diesel(skip_insertion)]
+    measurements: Vec<MeasurementData>
 }

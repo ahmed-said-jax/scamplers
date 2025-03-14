@@ -1,4 +1,3 @@
-#![allow(private_interfaces)]
 use std::{
     fmt::{Debug, Display},
     str::FromStr,
@@ -29,7 +28,6 @@ mod library_type_specification;
 pub mod person;
 pub mod sample;
 mod sequencing_run;
-mod multiplexed_suspension;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once
@@ -112,19 +110,18 @@ struct _Order<T: Valuable> {
     descending: bool,
 }
 
-trait DbEnum:
-    FromStr + Into<&'static str> + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
+trait DbEnum: DeserializeOwned + Serialize + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
 {
     fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
 
-        Ok(Self::from_str(&raw).unwrap_or_default())
+        Ok(serde_json::from_str(&raw).unwrap_or_default())
     }
 
     fn to_sql_inner<'b>(self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let as_str = self.into();
+        let as_str = serde_json::to_string(&self).unwrap_or_default();
 
-        ToSql::<sql_types::Text, Pg>::to_sql(as_str, out)
+        ToSql::<sql_types::Text, Pg>::to_sql(&as_str, &mut out.reborrow())
     }
 }
 
@@ -154,19 +151,23 @@ impl ILike for String {
     }
 }
 
+trait ToJsonString: Display {
+    fn to_json_string(&self) -> String {
+        format!("\"{self}\"")
+    }
+}
+impl ToJsonString for &str {}
+impl ToJsonString for String {}
+
 #[derive(
+    Deserialize,
     Debug,
     Serialize,
-    strum::EnumString,
     Default,
-    strum::Display,
-    strum::VariantNames,
-    strum::VariantArray,
     Valuable,
     Clone,
 )]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 pub enum Entity {
     Institution,
     Person,
@@ -254,7 +255,7 @@ impl
     ) -> Self {
         use diesel::result::DatabaseErrorKind::{ForeignKeyViolation, UniqueViolation};
 
-        let entity = Entity::from_str(info.table_name().unwrap_or_default()).unwrap_or_default();
+        let entity = serde_json::from_str(&info.table_name().unwrap_or_default().to_json_string()).unwrap_or_default();
 
         let detail_regex = Regex::new(r"Key \((.+)\)=\((.+)\).+").unwrap(); // This isn't perfect
         let details = info.details().unwrap_or_default();
@@ -271,7 +272,7 @@ impl
             ForeignKeyViolation => {
                 let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace('"', "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
-                let referenced_entity = Entity::from_str(referenced_entity).unwrap_or_default();
+                let referenced_entity = serde_json::from_str(&referenced_entity.to_json_string()).unwrap_or_default();
 
                 Self::ReferenceNotFound {
                     entity,

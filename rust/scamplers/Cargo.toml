@@ -35,7 +35,6 @@ diesel-async = { version = "0.5.2", features = ["postgres", "deadpool", "async-c
 tracing-appender = "0.2.3"
 tracing = { version = "0.1.41", features = ["valuable"]}
 tower = { version = "0.5.2", default-features = false }
-strum = {version = "0.26.3", default-features = false, features = ["derive"]}
 tracing-subscriber = {version = "0.3.19", features = ["json"]}
 valuable = { version = "0.1.1", features = ["derive"] }
 argon2 = "0.5.3"
@@ -45,6 +44,7 @@ testcontainers-modules = { version = "0.11.5", features = ["postgres"]}
 schemars = { version = "0.8.21", features = ["chrono", "uuid1"] }
 tower-http = { version = "0.6.2", features = ["trace"] }
 rand = "0.9.0"
+strum = { version = "0.27.1", features = ["derive"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

@@ -33,15 +33,12 @@ use crate::{
     strum::VariantArray,
     AsExpression,
     Debug,
-    strum::IntoStaticStr,
-    strum::EnumString,
     PartialEq,
     Deserialize,
     Serialize,
     Copy,
     Default,
 )]
-#[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
 pub enum UserRole {

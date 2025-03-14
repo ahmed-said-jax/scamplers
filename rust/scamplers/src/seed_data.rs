@@ -56,8 +56,8 @@ pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
     let conn = &mut app_state.db_conn().await?;
     let rng = rand::rng();
 
-    fn random_enum_choice<T: strum::IntoEnumIterator>(mut rng: impl Rng) -> T {
-        T::iter().choose(&mut rng).unwrap()
+    fn random_enum_choice<T: strum::VariantArray + Copy>(mut rng: impl Rng) -> T {
+        *T::VARIANTS.choose(&mut rng).unwrap()
     }
 
     fn random_datetime(mut rng: impl Rng) -> NaiveDateTime {

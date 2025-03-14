@@ -69,11 +69,11 @@
  diesel::table! {
      chromium_runners (run_id, run_by) {
          run_id -> Uuid,
-@@ -211,13 +211,13 @@
- diesel::table! {
+@@ -212,13 +212,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
          link -> Text,
+         name -> Text,
          legacy_id -> Text,
          pooled_at -> Timestamp,
 -        notes -> Nullable<Array<Nullable<Text>>>,
@@ -84,7 +84,7 @@
  diesel::table! {
      multiplexed_suspension_measurement (id) {
          id -> Uuid,
-@@ -268,37 +268,37 @@
+@@ -269,37 +269,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -126,7 +126,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -306,14 +306,14 @@
+@@ -307,14 +307,14 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
@@ -143,7 +143,7 @@
  diesel::table! {
      specimen_measurement (id) {
          id -> Uuid,
-@@ -334,13 +334,13 @@
+@@ -335,13 +335,13 @@
          biological_material -> Text,
          created_at -> Nullable<Timestamp>,
          pooled_into_id -> Nullable<Uuid>,

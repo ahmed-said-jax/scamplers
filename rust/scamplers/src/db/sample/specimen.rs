@@ -34,9 +34,7 @@ use crate::{
     Deserialize,
     Serialize,
     FromSqlRow,
-    strum::IntoStaticStr,
-    strum::EnumString,
-    strum::EnumIter,
+    strum::VariantArray,
     Clone,
     Copy,
     SqlType,
@@ -46,7 +44,6 @@ use crate::{
     Valuable,
 )]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 pub enum EmbeddingMatrix {
     CarboxymethylCellulose,
@@ -73,9 +70,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
     Deserialize,
     Serialize,
     FromSqlRow,
-    strum::IntoStaticStr,
-    strum::EnumString,
-    strum::EnumIter,
+    strum::VariantArray,
     Clone,
     Copy,
     SqlType,
@@ -86,7 +81,6 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
 )]
 #[serde(rename_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
-#[strum(serialize_all = "snake_case")]
 pub enum PreservationMethod {
     Cryopreservation,
     DspFixation,
@@ -315,13 +309,28 @@ pub struct Specimen {
     measurements: Option<Vec<SpecimenMeasurement>>,
 }
 
-#[derive(Deserialize, strum::IntoStaticStr, Valuable)]
+#[derive(Deserialize, Valuable, Default, Clone, Copy, Serialize, FromSqlRow, AsExpression, Debug)]
+#[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 enum SpecimenType {
     Block,
     Tissue,
     Fluid,
+    #[default]
+    Unknown
+}
+impl DbEnum for SpecimenType {}
+
+impl FromSql<sql_types::Text, Pg> for SpecimenType {
+    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        Self::from_sql_inner(bytes)
+    }
+}
+
+impl ToSql<sql_types::Text, diesel::pg::Pg> for SpecimenType {
+    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        self.to_sql_inner(out)
+    }
 }
 
 #[derive(Deserialize, Valuable)]
@@ -396,7 +405,6 @@ where
         }
 
         if let Some(type_) = type_ {
-            let type_: &str = type_.into();
             query = Box::new(query.and(type_col.eq(type_)));
         }
 

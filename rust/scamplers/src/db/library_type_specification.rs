@@ -17,11 +17,8 @@ use crate::schema;
 #[derive(
     Clone,
     FromSqlRow,
-    strum::VariantArray,
     AsExpression,
     Debug,
-    strum::IntoStaticStr,
-    strum::EnumString,
     PartialEq,
     Deserialize,
     Serialize,
@@ -31,45 +28,35 @@ use crate::schema;
 #[diesel(sql_type = sql_types::Text)]
 pub enum LibraryType {
     #[serde(rename = "Antibody Capture")]
-    #[strum(serialize = "Antibody Capture")]
     AntibodyCapture,
 
     #[serde(rename = "Antigen Capture")]
-    #[strum(serialize = "Antigen Capture")]
     AntigenCapture,
 
     #[serde(rename = "Chromatin Accessibility")]
-    #[strum(serialize = "Chromatin Accessibility")]
     ChromatinAccessibility,
 
     #[serde(rename = "CRISPR Guide Capture")]
-    #[strum(serialize = "CRISPR Guide Capture")]
     CrisprGuideCapture,
 
     Custom,
 
     #[serde(rename = "Gene Expression")]
-    #[strum(serialize = "Gene Expression")]
     GeneExpression,
 
     #[serde(rename = "Multiplexing Capture")]
-    #[strum(serialize = "Multiplexing Capture")]
     MultiplexingCapture,
 
     #[serde(rename = "VDJ")]
-    #[strum(serialize = "VDJ")]
     Vdj,
 
     #[serde(rename = "VDJ-B")]
-    #[strum(serialize = "VDJ-B")]
     VdjB,
 
     #[serde(rename = "VDJ-T")]
-    #[strum(serialize = "VDJ-T")]
     VdjT,
 
     #[serde(rename = "VDJ-T-GD")]
-    #[strum(serialize = "VDJ-T-GD")]
     VdjTGd,
 
     #[default]

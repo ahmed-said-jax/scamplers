@@ -140,7 +140,7 @@ impl FromRequestParts<AppState2> for User {
 
         if let AppState2::Dev { user_id, .. } = app_state {
             return Ok(User::Web {
-                user_id: user_id.clone(),
+                user_id: *user_id,
                 first_name: "you".to_string(),
                 roles: UserRole::VARIANTS.to_vec(),
             });

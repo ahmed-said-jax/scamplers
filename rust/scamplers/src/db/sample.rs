@@ -24,6 +24,9 @@ use crate::{
     },
 };
 pub mod specimen;
+mod multiplexed_suspension;
+mod suspension;
+mod suspension_measurement;
 
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of
 // API usage
@@ -34,9 +37,7 @@ pub mod specimen;
     FromSqlRow,
     AsExpression,
     Debug,
-    strum::EnumString,
-    strum::IntoStaticStr,
-    strum::EnumIter,
+    strum::VariantArray,
     Clone,
     Copy,
     Valuable,
@@ -44,7 +45,6 @@ pub mod specimen;
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 pub enum Species {
     AmbystomaMexicanum,
     CanisFamiliaris,
@@ -77,14 +77,11 @@ impl ToSql<sql_types::Text, Pg> for Species {
     FromSqlRow,
     AsExpression,
     Debug,
-    strum::EnumString,
-    strum::IntoStaticStr,
     Clone,
     Copy,
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 pub enum ComplianceCommitteeType {
     Ibc,
     Irb,
