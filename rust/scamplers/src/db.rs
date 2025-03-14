@@ -29,6 +29,7 @@ mod library_type_specification;
 pub mod person;
 pub mod sample;
 mod sequencing_run;
+mod multiplexed_suspension;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once

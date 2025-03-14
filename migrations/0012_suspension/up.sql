@@ -6,8 +6,7 @@ create table multiplexing_tag_type (
 
 create table multiplexing_tag (
     id uuid primary key default gen_random_uuid(),
-    tag_name text not null,
-    -- constrained by Rust-side enum
+    tag_name text not null, -- constrained by Rust enum
     type_id uuid references multiplexing_tag_type on update restrict on delete restrict not null,
     unique (tag_name, type_id)
 );

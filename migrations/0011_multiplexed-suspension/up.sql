@@ -3,8 +3,7 @@ create table multiplexed_suspension (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/samples/' || id) stored not null,
     legacy_id text unique not null,
-    date_pooled date not null,
-    tag_type text not null, -- constrained by Rust enum
+    pooled_at timestamp not null,
     notes text []
 );
 

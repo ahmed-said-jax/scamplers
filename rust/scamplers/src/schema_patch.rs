@@ -213,8 +213,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         legacy_id -> Text,
-        date_pooled -> Date,
-        tag_type -> Text,
+        pooled_at -> Timestamp,
         notes -> Nullable<Array<Text>>,
     }
 }
