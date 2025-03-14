@@ -1,11 +1,10 @@
 use chrono::NaiveDateTime;
+use diesel::prelude::*;
 use serde::Deserialize;
-use diesel::{prelude::*, pg::Pg};
 use uuid::Uuid;
 
-use crate::schema;
-
 use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
+use crate::schema;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -15,14 +14,13 @@ enum MultiplexingTagType {
     TotalSeqB,
     TotalSeqC,
     #[serde(rename = "ocm")]
-    OCM
+    OCM,
 }
 
 #[derive(Deserialize)]
 struct MultiplexedSuspensionMeasurement {
-    
     #[serde(flatten)]
-    data: MeasurementData
+    data: MeasurementData,
 }
 
 #[derive(Deserialize, Insertable)]
@@ -38,5 +36,5 @@ struct NewMultiplexedSuspension {
     #[diesel(skip_insertion)]
     preparer_ids: Vec<Uuid>,
     #[diesel(skip_insertion)]
-    measurements: Vec<MeasurementData>
+    measurements: Vec<MeasurementData>,
 }

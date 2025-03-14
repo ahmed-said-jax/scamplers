@@ -317,7 +317,7 @@ enum SpecimenType {
     Tissue,
     Fluid,
     #[default]
-    Unknown
+    Unknown,
 }
 impl DbEnum for SpecimenType {}
 

@@ -28,16 +28,7 @@ use crate::{
 };
 
 #[derive(
-    Clone,
-    FromSqlRow,
-    strum::VariantArray,
-    AsExpression,
-    Debug,
-    PartialEq,
-    Deserialize,
-    Serialize,
-    Copy,
-    Default,
+    Clone, FromSqlRow, strum::VariantArray, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default,
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]

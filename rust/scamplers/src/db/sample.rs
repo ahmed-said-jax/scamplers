@@ -23,8 +23,8 @@ use crate::{
         sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
     },
 };
-pub mod specimen;
 mod multiplexed_suspension;
+pub mod specimen;
 mod suspension;
 mod suspension_measurement;
 
@@ -70,16 +70,7 @@ impl ToSql<sql_types::Text, Pg> for Species {
     }
 }
 
-#[derive(
-    Deserialize,
-    Serialize,
-    Default,
-    FromSqlRow,
-    AsExpression,
-    Debug,
-    Clone,
-    Copy,
-)]
+#[derive(Deserialize, Serialize, Default, FromSqlRow, AsExpression, Debug, Clone, Copy)]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
 pub enum ComplianceCommitteeType {

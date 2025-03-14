@@ -1,7 +1,4 @@
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use std::fmt::{Debug, Display};
 
 use diesel::{
     BoxableExpression,
@@ -110,7 +107,8 @@ struct _Order<T: Valuable> {
     descending: bool,
 }
 
-trait DbEnum: DeserializeOwned + Serialize + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
+trait DbEnum:
+    DeserializeOwned + Serialize + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
 {
     fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
@@ -159,14 +157,7 @@ trait ToJsonString: Display {
 impl ToJsonString for &str {}
 impl ToJsonString for String {}
 
-#[derive(
-    Deserialize,
-    Debug,
-    Serialize,
-    Default,
-    Valuable,
-    Clone,
-)]
+#[derive(Deserialize, Debug, Serialize, Default, Valuable, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum Entity {
     Institution,

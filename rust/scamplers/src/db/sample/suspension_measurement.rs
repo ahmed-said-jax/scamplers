@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use chrono::NaiveDateTime;
 use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 use garde::Validate;
 use schemars::JsonSchema;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use super::suspension::BiologicalMaterial;
 
@@ -12,13 +10,13 @@ use super::suspension::BiologicalMaterial;
 #[serde(rename_all = "lowercase")]
 pub enum VolumeUnit {
     µl,
-    Ml
+    Ml,
 }
 
 #[derive(Deserialize, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum LengthUnit {
-    µl
+    µl,
 }
 
 #[derive(Deserialize, Serialize, Validate, Debug, FromSqlRow, Default, AsExpression, JsonSchema)]
@@ -31,28 +29,28 @@ pub enum MeasurementData {
         instrument_name: String,
         #[garde(range(min = 0.0))]
         value: f32,
-        unit: (BiologicalMaterial, VolumeUnit)
+        unit: (BiologicalMaterial, VolumeUnit),
     },
     Volume {
         measured_at: NaiveDateTime,
         instrument_name: String,
         #[garde(range(min = 0.0))]
         value: f32,
-        unit: VolumeUnit
+        unit: VolumeUnit,
     },
     Viability {
         measured_at: NaiveDateTime,
         instrument_name: String,
         #[garde(range(min = 0.0, max = 1.0))]
-        value: f32
+        value: f32,
     },
     MeanDiameter {
         measured_at: NaiveDateTime,
         instrument_name: String,
         #[garde(range(min = 0.0))]
         value: f32,
-        unit: (BiologicalMaterial, LengthUnit)
+        unit: (BiologicalMaterial, LengthUnit),
     },
     #[default]
-    Unknown
+    Unknown,
 }

@@ -14,17 +14,7 @@ use serde::{Deserialize, Serialize};
 use super::{Create, DbEnum};
 use crate::schema;
 
-#[derive(
-    Clone,
-    FromSqlRow,
-    AsExpression,
-    Debug,
-    PartialEq,
-    Deserialize,
-    Serialize,
-    Copy,
-    Default,
-)]
+#[derive(Clone, FromSqlRow, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default)]
 #[diesel(sql_type = sql_types::Text)]
 pub enum LibraryType {
     #[serde(rename = "Antibody Capture")]
