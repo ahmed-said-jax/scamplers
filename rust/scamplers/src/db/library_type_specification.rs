@@ -14,39 +14,49 @@ use serde::{Deserialize, Serialize};
 use super::{Create, DbEnum};
 use crate::schema;
 
-#[derive(Clone, FromSqlRow, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default)]
+#[derive(Clone, FromSqlRow, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default, strum::IntoStaticStr, strum::EnumString)]
 #[diesel(sql_type = sql_types::Text)]
 pub enum LibraryType {
     #[serde(rename = "Antibody Capture")]
+    #[strum(serialize = "Antibody Capture")]
     AntibodyCapture,
 
     #[serde(rename = "Antigen Capture")]
+    #[strum(serialize = "Antibody Capture")]
     AntigenCapture,
 
     #[serde(rename = "Chromatin Accessibility")]
+    #[strum(serialize = "Antibody Capture")]
     ChromatinAccessibility,
 
     #[serde(rename = "CRISPR Guide Capture")]
+    #[strum(serialize = "Antibody Capture")]
     CrisprGuideCapture,
 
     Custom,
 
     #[serde(rename = "Gene Expression")]
+    #[strum(serialize = "Antibody Capture")]
     GeneExpression,
 
     #[serde(rename = "Multiplexing Capture")]
+    #[strum(serialize = "Antibody Capture")]
     MultiplexingCapture,
 
     #[serde(rename = "VDJ")]
+    #[strum(serialize = "Antibody Capture")]
     Vdj,
 
     #[serde(rename = "VDJ-B")]
+    #[strum(serialize = "Antibody Capture")]
     VdjB,
 
     #[serde(rename = "VDJ-T")]
+    #[strum(serialize = "Antibody Capture")]
     VdjT,
 
     #[serde(rename = "VDJ-T-GD")]
+    #[strum(serialize = "Antibody Capture")]
     VdjTGd,
 
     #[default]

@@ -28,10 +28,11 @@ use crate::{
 };
 
 #[derive(
-    Clone, FromSqlRow, strum::VariantArray, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default,
+    Clone, FromSqlRow, strum::VariantArray, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default, strum::IntoStaticStr, strum::EnumString
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum UserRole {
     AppAdmin,
     ComputationalStaff,

@@ -1,5 +1,5 @@
 use anyhow::Context;
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use rand::{
     Rng,
     distr::uniform::SampleRange,
@@ -153,7 +153,7 @@ pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
         .map(|(i, metadata)| NewSpecimen::Block {
             metadata,
             legacy_id: format!("SP{i}"),
-            measurements: vec![random_specimen_measurement()],
+            measurements: vec![random_specimen_measurement(), random_specimen_measurement(), random_specimen_measurement()],
             notes: None,
             embedded_in: random_enum_choice(rng.clone()),
             preserved_with: random_enum_choice(rng.clone()),

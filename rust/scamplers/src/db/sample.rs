@@ -42,9 +42,11 @@ mod suspension_measurement;
     Copy,
     Valuable,
     JsonSchema,
+    strum::IntoStaticStr, strum::EnumString
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum Species {
     AmbystomaMexicanum,
     CanisFamiliaris,
@@ -70,9 +72,10 @@ impl ToSql<sql_types::Text, Pg> for Species {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, FromSqlRow, AsExpression, Debug, Clone, Copy)]
+#[derive(Deserialize, Serialize, Default, FromSqlRow, AsExpression, Debug, Clone, Copy, strum::IntoStaticStr, strum::EnumString)]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ComplianceCommitteeType {
     Ibc,
     Irb,

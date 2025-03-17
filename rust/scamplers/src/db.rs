@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}, str::FromStr};
 
 use diesel::{
     BoxableExpression,
@@ -107,17 +107,15 @@ struct _Order<T: Valuable> {
     descending: bool,
 }
 
-trait DbEnum:
-    DeserializeOwned + Serialize + FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Copy + Default
-{
+trait DbEnum: FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Default + FromStr where &'static str: From<Self> {
     fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
 
-        Ok(serde_json::from_str(&raw).unwrap_or_default())
+        Ok(Self::from_str(&raw).unwrap_or_default())
     }
 
     fn to_sql_inner<'b>(self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let as_str = serde_json::to_string(&self).unwrap_or_default();
+        let as_str: &str = self.into();
 
         ToSql::<sql_types::Text, Pg>::to_sql(&as_str, &mut out.reborrow())
     }

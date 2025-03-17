@@ -42,8 +42,10 @@ use crate::{
     Debug,
     Default,
     Valuable,
+    strum::IntoStaticStr, strum::EnumString
 )]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 pub enum EmbeddingMatrix {
     CarboxymethylCellulose,
@@ -78,8 +80,10 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
     Debug,
     Default,
     Valuable,
+    strum::IntoStaticStr, strum::EnumString
 )]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 pub enum PreservationMethod {
     Cryopreservation,
@@ -204,7 +208,7 @@ struct NewMeasurement<M: AsExpression<sql_types::Jsonb>>
 where
     for<'a> &'a M: AsExpression<sql_types::Jsonb>,
 {
-    specimen_id: Option<Uuid>,
+    specimen_id: Uuid,
     measured_by: Uuid,
     data: M,
 }
@@ -218,15 +222,15 @@ impl Create for Vec<NewSpecimen> {
         struct InsertSpecimen<'a> {
             legacy_id: &'a str,
             metadata_id: Option<&'a Uuid>,
-            type_: &'a str,
+            type_: SpecimenType,
             embedded_in: Option<&'a EmbeddingMatrix>,
             preserved_with: Option<&'a PreservationMethod>,
-            notes: Option<&'a [String]>,
+            notes: Option<&'a Vec<String>>,
         }
 
         let mut new_metadatas = Vec::with_capacity(self.len());
         let mut specimen_insertions = Vec::with_capacity(self.len());
-        let mut new_measurements = Vec::with_capacity(self.len() * 2); // We expect that each specimen has just two measurements, but it's not a big deal if there are more or less
+        let mut new_measurement_sets = Vec::with_capacity(self.len());
 
         for specimen in self {
             let (embedded_in, preserved_with, type_) = match specimen {
@@ -234,9 +238,9 @@ impl Create for Vec<NewSpecimen> {
                     embedded_in,
                     preserved_with,
                     ..
-                } => (Some(embedded_in), Some(preserved_with), "block"),
-                NewSpecimen::Tissue { preserved_with, .. } => (None, preserved_with.as_ref(), "tissue"),
-                NewSpecimen::Fluid { preserved_with, .. } => (None, preserved_with.as_ref(), "fluid"),
+                } => (Some(embedded_in), Some(preserved_with), SpecimenType::Block),
+                NewSpecimen::Tissue { preserved_with, .. } => (None, preserved_with.as_ref(), SpecimenType::Tissue),
+                NewSpecimen::Fluid { preserved_with, .. } => (None, preserved_with.as_ref(), SpecimenType::Fluid),
             };
 
             let (NewSpecimen::Block {
@@ -268,13 +272,9 @@ impl Create for Vec<NewSpecimen> {
                 type_,
                 embedded_in,
                 preserved_with,
-                notes: notes.as_ref().map(|n| n.as_slice()),
+                notes: notes.as_ref(),
             });
-            new_measurements.extend(measurements.iter().map(|m| NewMeasurement {
-                specimen_id: None,
-                measured_by: m.measured_by,
-                data: &m.data,
-            }));
+            new_measurement_sets.push(measurements.iter().map(|NewSpecimenMeasurement { measured_by, data }| NewMeasurement{specimen_id: Uuid::nil(), measured_by: *measured_by, data}));
         }
 
         let metadata_ids = new_metadatas.create(conn).await?;
@@ -289,12 +289,10 @@ impl Create for Vec<NewSpecimen> {
             .get_results(conn)
             .await?;
 
-        for (measurement, specimen_id) in new_measurements.iter_mut().zip(&specimen_ids) {
-            measurement.specimen_id = Some(*specimen_id)
-        }
+        let new_measurement_sets: Vec<_> = new_measurement_sets.iter_mut().zip(specimen_ids).flat_map(|(set, specimen_id)| set.map(move |mut m| {m.specimen_id = specimen_id; m})).collect();
 
         diesel::insert_into(specimen_measurement::table)
-            .values(new_measurements)
+            .values(new_measurement_sets)
             .execute(conn)
             .await?;
 
@@ -309,9 +307,10 @@ pub struct Specimen {
     measurements: Option<Vec<SpecimenMeasurement>>,
 }
 
-#[derive(Deserialize, Valuable, Default, Clone, Copy, Serialize, FromSqlRow, AsExpression, Debug)]
+#[derive(Deserialize, Valuable, Default, Clone, Copy, Serialize, FromSqlRow, AsExpression, Debug, strum::IntoStaticStr, strum::EnumString)]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 enum SpecimenType {
     Block,
     Tissue,
@@ -429,8 +428,7 @@ impl Read for Specimen {
             .first(conn)
             .boxed();
 
-        // We use this instead of the `belonging_to` function because it's technically slightly faster and looks
-        // basically the same
+        // We use this instead of the `belonging_to` function because loading the measurements and the actual spcimen opbject at the same time is faster than loading one then the other
         let measurements = SpecimenMeasurement::base_query()
             .filter(specimen_measurement::specimen_id.eq(id))
             .select(SpecimenMeasurement::as_select())
