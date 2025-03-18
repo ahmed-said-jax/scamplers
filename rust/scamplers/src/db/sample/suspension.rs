@@ -1,10 +1,6 @@
 use chrono::NaiveDateTime;
 use diesel::{
-    deserialize::FromSqlRow,
-    expression::AsExpression,
-    sql_types::{self, SqlType},
-    prelude::*,
-    pg::Pg
+    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types::{self, SqlType}
 };
 use diesel_async::RunQueryDsl;
 use futures::TryFutureExt;
@@ -14,20 +10,33 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use crate::schema;
+use crate::{db::DbEnum, schema};
 
 use super::{Create, NewSampleMetadata};
 
 #[derive(
-    Deserialize, Debug, Serialize, FromSqlRow, Clone, Copy, SqlType, AsExpression, Default, Valuable, JsonSchema,
+    Deserialize, Debug, Serialize, FromSqlRow, Clone, Copy, SqlType, AsExpression, Default, Valuable, JsonSchema, strum::IntoStaticStr, strum::EnumString
 )]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 #[diesel(sql_type = sql_types::Text)]
 pub enum BiologicalMaterial {
     Cells,
     Nuclei,
     #[default]
     Unknown,
+}
+impl DbEnum for BiologicalMaterial {}
+impl FromSql<sql_types::Text, Pg> for BiologicalMaterial {
+    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        Self::from_sql_inner(bytes)
+    }
+}
+
+impl ToSql<sql_types::Text, diesel::pg::Pg> for BiologicalMaterial {
+    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        self.to_sql_inner(out)
+    }
 }
 
 #[derive(Deserialize, Insertable, Validate)]
@@ -67,28 +76,38 @@ impl Create for Vec<NewSuspension> {
 
     async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
         use schema::suspension;
+        #[derive(Insertable)]
+        #[diesel(table_name = schema::suspension, check_for_backend(Pg))]
+        struct InsertSuspension<'a> {
+            metadata_id: Option<Uuid>,
+            #[diesel(embed)]
+            data: &'a NewSuspension
+        }
 
-        let mut suspensions_with_metadata = (Vec::with_capacity(self.len()), Vec::with_capacity(self.len()));
-        let mut suspensions_with_parent_specimen = Vec::with_capacity(self.len());
+        let mut independent_suspensions = (Vec::with_capacity(self.len()), Vec::with_capacity(self.len()));
+        let mut derived_suspensions = Vec::with_capacity(self.len());
 
         for s in self {
             s.validate_metadata()?;
 
             if let Some(metadata) = &s.metadata {
-                suspensions_with_metadata.0.push(metadata);
-                suspensions_with_metadata.1.push(s);
+                independent_suspensions.0.push(s);
+                independent_suspensions.1.push(metadata);
             } else {
-                suspensions_with_parent_specimen.push(s);
+                derived_suspensions.push(s);
             }
         }
 
-        let (new_metadatas, new_suspensions) = suspensions_with_metadata;
+        let (independent_suspensions, new_metadatas) = independent_suspensions;
 
         let metadata_ids = new_metadatas.create(conn);
-        let suspension_insertions = diesel::insert_into(suspension::table).values(suspensions_with_parent_specimen).execute(conn);
+        let derived_suspensions = diesel::insert_into(suspension::table).values(derived_suspensions).execute(conn);
 
-        let (metadata_ids, _) = tokio::try_join!(metadata_ids, suspension_insertions.err_into())?;
-        
+        let (metadata_ids, _) = tokio::try_join!(metadata_ids, derived_suspensions.err_into())?;
+
+        let independent_suspensions: Vec<_> = independent_suspensions.into_iter().zip(metadata_ids).map(move |(suspension, metadata_id)| InsertSuspension{metadata_id: Some(metadata_id), data: suspension}).collect();
+
+        diesel::insert_into(suspension::table).values(independent_suspensions).execute(conn).await?;
 
         Ok(())
     }
