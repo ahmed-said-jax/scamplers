@@ -1,4 +1,7 @@
-use std::{fmt::{Debug, Display}, str::FromStr};
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 
 use diesel::{
     BoxableExpression,
@@ -27,11 +30,11 @@ pub mod sample;
 mod sequencing_run;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
-// because diesel allows you to insert many things at once
+// because diesel allows you to insert many things at once. This improves efficiency, especially if the database and application aren't colocated
 pub trait Create: Send {
     type Returns: Send;
 
-    fn create(&self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
+    fn create(self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
 type BoxedDieselExpression<'a, T> = Box<dyn BoxableExpression<T, Pg, SqlType = Bool> + 'a>;
@@ -52,23 +55,23 @@ pub trait Read: Serialize + Sized + Send {
     type QueryParams: Sync + Send;
 
     fn fetch_many(
-        query: Self::QueryParams,
+        query: &Self::QueryParams,
         conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = Result<Vec<Self>>> + Send;
 
-    fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
+    fn fetch_by_id(id: &Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
 }
 
 pub trait Update {
     type Returns;
 
-    async fn update(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
+    async fn update(self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
 }
 
 impl<T: Update> Update for Vec<T> {
     type Returns = Vec<T::Returns>;
 
-    async fn update(&self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
+    async fn update(self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
         let mut results = Vec::with_capacity(self.len());
 
         for item in self {
@@ -82,7 +85,7 @@ impl<T: Update> Update for Vec<T> {
 pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     fn fetch_relatives(
         &self,
-        query: T::QueryParams,
+        query: &T::QueryParams,
         conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
@@ -107,7 +110,10 @@ struct _Order<T: Valuable> {
     descending: bool,
 }
 
-trait DbEnum: FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Default + FromStr where &'static str: From<Self> {
+trait DbEnum: FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Default + FromStr
+where
+    &'static str: From<Self>,
+{
     fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
 
@@ -178,8 +184,17 @@ pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) 
 }
 
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
+#[serde(untagged)]
+enum DataError {
+    #[error(transparent)]
+    Sample(#[from] sample::Error),
+}
+
+#[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
+    #[error(transparent)]
+    Data(#[from] DataError),
     #[error("duplicate record")]
     DuplicateRecord {
         entity: Entity,
@@ -193,7 +208,7 @@ pub enum Error {
         value: Option<String>,
     },
     #[error("record not found")]
-    RecordNotFound, 
+    RecordNotFound,
     #[error("other error")]
     Other { message: String },
 }

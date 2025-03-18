@@ -28,7 +28,18 @@ use crate::{
 };
 
 #[derive(
-    Clone, FromSqlRow, strum::VariantArray, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default, strum::IntoStaticStr, strum::EnumString
+    Clone,
+    FromSqlRow,
+    strum::VariantArray,
+    AsExpression,
+    Debug,
+    PartialEq,
+    Deserialize,
+    Serialize,
+    Copy,
+    Default,
+    strum::IntoStaticStr,
+    strum::EnumString,
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
@@ -77,7 +88,7 @@ pub struct NewPerson {
 impl Create for Vec<NewPerson> {
     type Returns = Vec<Person>;
 
-    async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use person::dsl::id;
 
         // This can be improved by doing the join on the insertion rather than two
@@ -92,7 +103,7 @@ impl Create for Vec<NewPerson> {
             ids: inserted_people_ids,
             ..Default::default()
         };
-        let inserted_people = Person::fetch_many(filter, conn).await?;
+        let inserted_people = Person::fetch_many(&filter, conn).await?;
 
         Ok(inserted_people)
     }
@@ -152,7 +163,7 @@ impl Read for Person {
     type Id = Uuid;
     type QueryParams = PersonQuery;
 
-    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
+    async fn fetch_by_id(id: &Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         Ok(Self::base_query()
             .filter(id_col.eq(id))
             .select(Person::as_select())
@@ -160,7 +171,7 @@ impl Read for Person {
             .await?)
     }
 
-    async fn fetch_many(filter: Self::QueryParams, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
+    async fn fetch_many(filter: &Self::QueryParams, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
         let query = Self::base_query().order_by(name_col).select(Person::as_select());
         let filter = filter.as_diesel_expression();
 

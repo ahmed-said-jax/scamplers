@@ -32,7 +32,7 @@ struct SequencingSubmission {
 impl Create for Vec<SequencingSubmission> {
     type Returns = ();
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         diesel::insert_into(chromium_sequencing_submissions::table)
             .values(self)
             .on_conflict_do_nothing()
@@ -47,21 +47,18 @@ impl Create for Vec<SequencingSubmission> {
 impl Create for Vec<NewSequencingRun> {
     type Returns = ();
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use sequencing_run::id;
+        
+        const N_LIBS_PER_SEQUENCING_RUNS: usize = 20; // A generous heuristic
 
         let new_run_ids: Vec<Uuid> = diesel::insert_into(sequencing_run::table)
-            .values(self)
+            .values(&self)
             .returning(id)
             .get_results(conn)
             .await?;
 
-        let n_sequencing_submissions = self
-            .iter()
-            .map(|NewSequencingRun { library_ids, .. }| library_ids.len())
-            .sum();
-
-        let mut sequencing_submissions = Vec::with_capacity(n_sequencing_submissions);
+        let mut sequencing_submissions = Vec::with_capacity(N_LIBS_PER_SEQUENCING_RUNS * self.len());
         for (sequencing_run_id, NewSequencingRun { library_ids, .. }) in new_run_ids.iter().zip(self) {
             let these_sequencing_submissions = library_ids.iter().map(|library_id| SequencingSubmission {
                 sequencing_run_id: *sequencing_run_id,
@@ -70,6 +67,7 @@ impl Create for Vec<NewSequencingRun> {
 
             sequencing_submissions.extend(these_sequencing_submissions);
         }
+
         sequencing_submissions.create(conn).await?;
 
         Ok(())

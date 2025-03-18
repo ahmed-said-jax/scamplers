@@ -14,7 +14,19 @@ use serde::{Deserialize, Serialize};
 use super::{Create, DbEnum};
 use crate::schema;
 
-#[derive(Clone, FromSqlRow, AsExpression, Debug, PartialEq, Deserialize, Serialize, Copy, Default, strum::IntoStaticStr, strum::EnumString)]
+#[derive(
+    Clone,
+    FromSqlRow,
+    AsExpression,
+    Debug,
+    PartialEq,
+    Deserialize,
+    Serialize,
+    Copy,
+    Default,
+    strum::IntoStaticStr,
+    strum::EnumString,
+)]
 #[diesel(sql_type = sql_types::Text)]
 pub enum LibraryType {
     #[serde(rename = "Antibody Capture")]
@@ -22,41 +34,41 @@ pub enum LibraryType {
     AntibodyCapture,
 
     #[serde(rename = "Antigen Capture")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "Antigen Capture")]
     AntigenCapture,
 
     #[serde(rename = "Chromatin Accessibility")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "Chromatin Accessibility")]
     ChromatinAccessibility,
 
     #[serde(rename = "CRISPR Guide Capture")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "CRISPR Guide Capture")]
     CrisprGuideCapture,
 
     Custom,
 
     #[serde(rename = "Gene Expression")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "Gene Expression")]
     GeneExpression,
 
     #[serde(rename = "Multiplexing Capture")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "Multiplexing Capture")]
     MultiplexingCapture,
 
     #[serde(rename = "VDJ")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "VDJ")]
     Vdj,
 
     #[serde(rename = "VDJ-B")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "VDJ-B")]
     VdjB,
 
     #[serde(rename = "VDJ-T")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "VDJ-T")]
     VdjT,
 
     #[serde(rename = "VDJ-T-GD")]
-    #[strum(serialize = "Antibody Capture")]
+    #[strum(serialize = "VDJ-T-GD")]
     VdjTGd,
 
     #[default]
@@ -95,7 +107,7 @@ struct LibraryTypeSpecification {
 impl Create for Vec<LibraryTypeSpecification> {
     type Returns = ();
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::library_type_specification::dsl::library_type_specification;
 
         diesel::insert_into(library_type_specification)

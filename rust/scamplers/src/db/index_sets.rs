@@ -51,7 +51,7 @@ pub enum IndexSets {
 impl Create for IndexSets {
     type Returns = ();
 
-    async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         match self {
             Self::Single(sets) => sets.create(conn).await?,
             Self::Dual(sets) => sets.create(conn).await?,
@@ -121,7 +121,7 @@ impl Create for Vec<NewSingleIndexSet> {
     // We should technically validate the fact that this whole set has the same kit,
     // but it doesn't really matter because this won't be exposed as an API route -
     // we are downloading these files from 10X ourselves.
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         // This one clone is necessary
         let Some(NewSingleIndexSet(index_set_name, ..)) = self.get(0).cloned() else {
             return Ok(());
@@ -132,7 +132,7 @@ impl Create for Vec<NewSingleIndexSet> {
 
         // Doing this all in a functional manner becomes cumbersome
         let mut insertables = Vec::with_capacity(self.len());
-        for index_set in self {
+        for index_set in &self {
             let NewSingleIndexSet(index_set_name, [DnaSequence(s1), DnaSequence(s2), DnaSequence(s3), DnaSequence(s4)]) =
                 index_set;
 
@@ -203,7 +203,7 @@ where
 impl Create for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = ();
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         let Some(index_set_name) = self.keys().next().cloned() else {
             return Ok(());
         };
@@ -219,7 +219,7 @@ impl Create for HashMap<IndexSetName, NewDualIndexSet> {
                 index2_workflow_a_i5,
                 index2_workflow_b_i5,
             },
-        ) in self
+        ) in &self
         {
             let well_name = index_set_name.well_name()?;
 

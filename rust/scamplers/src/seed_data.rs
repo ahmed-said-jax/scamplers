@@ -5,6 +5,7 @@ use rand::{
     distr::uniform::SampleRange,
     seq::{IndexedRandom, IteratorRandom},
 };
+use uuid::Uuid;
 
 use crate::{
     AppState2,
@@ -42,7 +43,7 @@ pub async fn download_and_insert_index_sets(app_state: AppState2, file_urls: &[I
     // A for-loop is fine because this is like 10 URLs max, and each of these is a
     // bulk insert
     let mut conn = app_state.db_conn().await?;
-    for sets in &index_sets {
+    for sets in index_sets {
         sets.create(&mut conn)
             .await
             .context("failed to insert index sets into database")?;
@@ -141,6 +142,7 @@ pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
     });
 
     let random_specimen_measurement = || NewSpecimenMeasurement {
+        specimen_id: Uuid::nil(),
         measured_by: random_person_id(),
         data: MeasurementData::Rin {
             measured_at: random_datetime(rng.clone()),

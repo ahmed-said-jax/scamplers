@@ -42,7 +42,8 @@ use crate::{
     Debug,
     Default,
     Valuable,
-    strum::IntoStaticStr, strum::EnumString
+    strum::IntoStaticStr,
+    strum::EnumString,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -80,7 +81,8 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for EmbeddingMatrix {
     Debug,
     Default,
     Valuable,
-    strum::IntoStaticStr, strum::EnumString
+    strum::IntoStaticStr,
+    strum::EnumString,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -149,9 +151,12 @@ impl ToSql<sql_types::Jsonb, Pg> for MeasurementData {
     }
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Insertable, Deserialize, Validate)]
 #[garde(allow_unvalidated)]
+#[diesel(table_name = schema::specimen_measurement)]
 pub struct NewSpecimenMeasurement {
+    #[serde(default)]
+    pub specimen_id: Uuid,
     pub measured_by: Uuid,
     #[serde(flatten)]
     pub data: MeasurementData,
@@ -202,31 +207,22 @@ pub enum NewSpecimen {
     },
 }
 
-#[derive(Insertable)]
-#[diesel(table_name = schema::specimen_measurement)]
-struct NewMeasurement<M: AsExpression<sql_types::Jsonb>>
-where
-    for<'a> &'a M: AsExpression<sql_types::Jsonb>,
-{
-    specimen_id: Uuid,
-    measured_by: Uuid,
-    data: M,
-}
-
 impl Create for Vec<NewSpecimen> {
     type Returns = Vec<Specimen>;
 
-    async fn create(&self, conn: &mut AsyncPgConnection) -> db::Result<Self::Returns> {
+    async fn create(self, conn: &mut AsyncPgConnection) -> db::Result<Self::Returns> {
         #[derive(Insertable)]
         #[diesel(table_name = schema::specimen)]
-        struct InsertSpecimen<'a> {
-            legacy_id: &'a str,
-            metadata_id: Option<&'a Uuid>,
+        struct InsertSpecimen {
+            legacy_id: String,
+            metadata_id: Option<Uuid>,
             type_: SpecimenType,
-            embedded_in: Option<&'a EmbeddingMatrix>,
-            preserved_with: Option<&'a PreservationMethod>,
-            notes: Option<&'a Vec<String>>,
+            embedded_in: Option<EmbeddingMatrix>,
+            preserved_with: Option<PreservationMethod>,
+            notes: Option<Vec<String>>,
         }
+
+        const N_MEASUREMENTS_PER_SPECIMEN: usize = 3;
 
         let mut new_metadatas = Vec::with_capacity(self.len());
         let mut specimen_insertions = Vec::with_capacity(self.len());
@@ -239,8 +235,8 @@ impl Create for Vec<NewSpecimen> {
                     preserved_with,
                     ..
                 } => (Some(embedded_in), Some(preserved_with), SpecimenType::Block),
-                NewSpecimen::Tissue { preserved_with, .. } => (None, preserved_with.as_ref(), SpecimenType::Tissue),
-                NewSpecimen::Fluid { preserved_with, .. } => (None, preserved_with.as_ref(), SpecimenType::Fluid),
+                NewSpecimen::Tissue { preserved_with, .. } => (None, preserved_with, SpecimenType::Tissue),
+                NewSpecimen::Fluid { preserved_with, .. } => (None, preserved_with, SpecimenType::Fluid),
             };
 
             let (NewSpecimen::Block {
@@ -272,31 +268,43 @@ impl Create for Vec<NewSpecimen> {
                 type_,
                 embedded_in,
                 preserved_with,
-                notes: notes.as_ref(),
+                notes,
             });
-            new_measurement_sets.push(measurements.iter().map(|NewSpecimenMeasurement { measured_by, data }| NewMeasurement{specimen_id: Uuid::nil(), measured_by: *measured_by, data}));
+            new_measurement_sets.push(measurements);
         }
 
         let metadata_ids = new_metadatas.create(conn).await?;
 
-        for (specimen, metadata_id) in specimen_insertions.iter_mut().zip(&metadata_ids) {
+        for (specimen, metadata_id) in specimen_insertions.iter_mut().zip(metadata_ids) {
             specimen.metadata_id = Some(metadata_id);
         }
 
-        let specimen_ids = diesel::insert_into(specimen::table)
+        let specimen_ids: Vec<Uuid> = diesel::insert_into(specimen::table)
             .values(specimen_insertions)
             .returning(id_col)
             .get_results(conn)
             .await?;
 
-        let new_measurement_sets: Vec<_> = new_measurement_sets.iter_mut().zip(&specimen_ids).flat_map(|(set, specimen_id)| set.map(|mut m| {m.specimen_id = *specimen_id; m})).collect();
+        let mut new_measurements = Vec::with_capacity(N_MEASUREMENTS_PER_SPECIMEN * self.len()); // a generous heuristic
+        for (measurement_set, specimen_id) in new_measurement_sets.into_iter().zip(specimen_ids) {
+            for mut measurement in measurement_set.drain(..) {
+                measurement.specimen_id = specimen_id;
+                new_measurements.push(measurement)
+            }
+        }
 
         diesel::insert_into(specimen_measurement::table)
             .values(new_measurement_sets)
             .execute(conn)
             .await?;
 
-        let specimens = Specimen::fetch_many(SpecimenQuery {ids: specimen_ids, limit: self.len() as i64, ..Default::default()}, conn).await?;
+        let query = SpecimenQuery {
+            ids: specimen_ids,
+            limit: self.len() as i64,
+            ..Default::default()
+        };
+
+        let specimens = Specimen::fetch_many(&query, conn).await?;
 
         Ok(specimens)
     }
@@ -309,7 +317,19 @@ pub struct Specimen {
     measurements: Option<Vec<SpecimenMeasurement>>,
 }
 
-#[derive(Deserialize, Valuable, Default, Clone, Copy, Serialize, FromSqlRow, AsExpression, Debug, strum::IntoStaticStr, strum::EnumString)]
+#[derive(
+    Deserialize,
+    Valuable,
+    Default,
+    Clone,
+    Copy,
+    Serialize,
+    FromSqlRow,
+    AsExpression,
+    Debug,
+    strum::IntoStaticStr,
+    strum::EnumString,
+)]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -423,7 +443,7 @@ impl Read for Specimen {
     type Id = Uuid;
     type QueryParams = SpecimenQuery;
 
-    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+    async fn fetch_by_id(id: &Self::Id, conn: &mut AsyncPgConnection) -> db::Result<Self> {
         let core = Self::base_query()
             .filter(id_col.eq(id))
             .select(SpecimenCore::as_select())
@@ -445,7 +465,7 @@ impl Read for Specimen {
         })
     }
 
-    async fn fetch_many(query: Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
+    async fn fetch_many(query: &Self::QueryParams, conn: &mut AsyncPgConnection) -> db::Result<Vec<Self>> {
         let Self::QueryParams {
             order,
             descending,

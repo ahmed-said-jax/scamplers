@@ -58,7 +58,7 @@ mod handlers {
                 async move {
                     set_transaction_user(user.id(), conn).await?;
 
-                    T::fetch_by_id(id, conn).await
+                    T::fetch_by_id(&id, conn).await
                 }
                 .scope_boxed()
             })
@@ -84,7 +84,7 @@ mod handlers {
                 async move {
                     set_transaction_user(user.id(), conn).await?;
 
-                    T::fetch_many(query, conn).await
+                    T::fetch_many(&query, conn).await
                 }
                 .scope_boxed()
             })
@@ -113,7 +113,7 @@ mod handlers {
                 async move {
                     set_transaction_user(user.id(), conn).await?;
 
-                    id.fetch_relatives(query, conn).await
+                    id.fetch_relatives(&query, conn).await
                 }
                 .scope_boxed()
             })

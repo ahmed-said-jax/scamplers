@@ -213,8 +213,8 @@ pub enum Error {
     Database(#[from] db::Error),
     #[error("invalid API key")]
     InvalidApiKey,
-    #[error("invalid data")]
-    InvalidData { reason: String },
+    #[error("simple invalid data")]
+    SimpleData { reason: String },
     #[error("invalid session ID")]
     InvalidSessionId { auth_url: String },
     #[error("malformed request")]
@@ -229,18 +229,19 @@ pub enum Error {
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
         use Error::{
-            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidData, InvalidSessionId, MalformedRequest,
-            Permission,
+            ApiKeyGeneration, ApiKeyNotFound, Database, InvalidApiKey, InvalidSessionId, MalformedRequest, Permission,
+            SimpleData,
         };
-        use db::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
+        use db::Error::{Data, DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
             ApiKeyGeneration(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiKeyNotFound | InvalidApiKey => StatusCode::UNAUTHORIZED,
-            InvalidData { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+            SimpleData { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             InvalidSessionId { .. } => StatusCode::TEMPORARY_REDIRECT,
             Permission { .. } => StatusCode::FORBIDDEN,
             Database(inner) => match inner {
+                Data(_) => StatusCode::UNPROCESSABLE_ENTITY,
                 Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,
                 DuplicateRecord { .. } => StatusCode::CONFLICT,
                 RecordNotFound => StatusCode::NOT_FOUND,
@@ -250,7 +251,7 @@ impl Error {
         }
     }
 
-    fn permission() -> Self {
+    fn new_permission() -> Self {
         // initialize with empty message
         let mut err = Self::Permission { message: String::new() };
 
@@ -305,7 +306,7 @@ impl From<deadpool::PoolError> for Error {
 
 impl From<garde::Report> for Error {
     fn from(err: garde::Report) -> Self {
-        Self::InvalidData {
+        Self::SimpleData {
             reason: format!("{err:#}"),
         }
     }

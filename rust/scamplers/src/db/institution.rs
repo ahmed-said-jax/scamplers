@@ -24,13 +24,11 @@ pub struct NewInstitution {
 impl Create for Vec<NewInstitution> {
     type Returns = Vec<Institution>;
 
-    async fn create(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::institution::dsl::*;
 
-        let as_immut = &*self;
-
         let inserted = diesel::insert_into(institution)
-            .values(as_immut)
+            .values(self)
             .returning(Institution::as_returning())
             .get_results(conn)
             .await?;
@@ -54,9 +52,9 @@ pub struct UpdatedInstitution {
 impl Update for UpdatedInstitution {
     type Returns = Institution;
 
-    async fn update(&self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        Ok(diesel::update(self)
-            .set(self)
+    async fn update(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        Ok(diesel::update(&self)
+            .set(&self)
             .returning(Self::Returns::as_returning())
             .get_result(conn)
             .await?)
@@ -75,7 +73,7 @@ impl Read for Institution {
     type Id = Uuid;
     type QueryParams = ();
 
-    async fn fetch_by_id(id: Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
+    async fn fetch_by_id(id: &Self::Id, conn: &mut AsyncPgConnection) -> super::Result<Self> {
         use schema::institution::dsl::institution;
 
         let found = institution.find(id).select(Self::as_select()).first(conn).await?;
@@ -83,7 +81,7 @@ impl Read for Institution {
         Ok(found)
     }
 
-    async fn fetch_many(_filter: Self::QueryParams, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
+    async fn fetch_many(_filter: &Self::QueryParams, conn: &mut AsyncPgConnection) -> super::Result<Vec<Self>> {
         use schema::institution::dsl::institution;
 
         let institutions = institution.select(Self::as_select()).load(conn).await?;

@@ -1,9 +1,15 @@
 use chrono::NaiveDateTime;
 use diesel::{
-    backend::Backend, deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, prelude::*, serialize::ToSql, sql_types::{self, SqlType}
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    prelude::*,
+    serialize::ToSql,
+    sql_types::{self, SqlType},
 };
-use diesel_async::RunQueryDsl;
-use futures::TryFutureExt;
+use diesel_async::{RunQueryDsl, scoped_futures::ScopedFutureExt};
+use futures::{FutureExt, TryFutureExt};
 use garde::Validate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,7 +21,19 @@ use crate::{db::DbEnum, schema};
 use super::{Create, NewSampleMetadata};
 
 #[derive(
-    Deserialize, Debug, Serialize, FromSqlRow, Clone, Copy, SqlType, AsExpression, Default, Valuable, JsonSchema, strum::IntoStaticStr, strum::EnumString
+    Deserialize,
+    Debug,
+    Serialize,
+    FromSqlRow,
+    Clone,
+    Copy,
+    SqlType,
+    AsExpression,
+    Default,
+    Valuable,
+    JsonSchema,
+    strum::IntoStaticStr,
+    strum::EnumString,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -39,7 +57,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for BiologicalMaterial {
     }
 }
 
-#[derive(Deserialize, Insertable, Validate)]
+#[derive(Deserialize, Insertable, Validate, Clone)]
 #[diesel(table_name = schema::suspension, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewSuspension {
@@ -48,11 +66,13 @@ pub struct NewSuspension {
     #[diesel(skip_insertion)]
     #[garde(dive)]
     metadata: Option<NewSampleMetadata>,
+    #[serde(skip)]
+    metadata_id: Option<Uuid>,
     parent_specimen_id: Option<Uuid>,
     biological_material: BiologicalMaterial,
     created_at: NaiveDateTime,
-    pooled_into_id: Option<Uuid>,
-    multiplexing_tag_id: Option<Uuid>,
+    pub pooled_into_id: Option<Uuid>,
+    pub multiplexing_tag_id: Option<Uuid>,
     #[garde(range(min = 0.0))]
     targeted_cell_recovery: f32,
     #[garde(range(min = 0))]
@@ -61,10 +81,17 @@ pub struct NewSuspension {
 
 impl NewSuspension {
     fn validate_metadata(&self) -> crate::db::Result<()> {
-        let Self {metadata, parent_specimen_id, ..} = self;
+        let Self {
+            metadata,
+            parent_specimen_id,
+            ..
+        } = self;
 
         if metadata.is_some() == parent_specimen_id.is_some() {
-            return Err(crate::db::Error::Other { message: "a suspension may not both derive from a parent specimen and have its own metadata".to_string() }); // TODO: this should be a strongly-typed `InvalidData` error
+            return Err(crate::db::Error::Other {
+                message: "a suspension may not both derive from a parent specimen and have its own metadata"
+                    .to_string(),
+            }); // TODO: this should be a strongly-typed `InvalidData` error
         }
 
         Ok(())
@@ -74,40 +101,42 @@ impl NewSuspension {
 impl Create for Vec<NewSuspension> {
     type Returns = (); // Don't need to return anything yet
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
+    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
         use schema::suspension;
-        #[derive(Insertable)]
-        #[diesel(table_name = schema::suspension, check_for_backend(Pg))]
-        struct InsertSuspension<'a> {
-            metadata_id: Option<Uuid>,
-            #[diesel(embed)]
-            data: &'a NewSuspension
-        }
 
         let mut independent_suspensions = (Vec::with_capacity(self.len()), Vec::with_capacity(self.len()));
         let mut derived_suspensions = Vec::with_capacity(self.len());
 
-        for s in self {
-            s.validate_metadata()?;
+        for mut suspension in self {
+            suspension.validate_metadata()?;
 
-            if let Some(metadata) = &s.metadata {
-                independent_suspensions.0.push(s);
+            let metadata = suspension.metadata.take(); // Take is awesome because we don't need the metadata in the suspension, so we can just leave `None` in its place
+
+            if let Some(metadata) = metadata {
                 independent_suspensions.1.push(metadata);
+                independent_suspensions.0.push(suspension);
             } else {
-                derived_suspensions.push(s);
+                derived_suspensions.push(suspension);
             }
         }
 
-        let (independent_suspensions, new_metadatas) = independent_suspensions;
+        diesel::insert_into(suspension::table)
+            .values(derived_suspensions)
+            .execute(conn)
+            .await?;
 
-        let metadata_ids = new_metadatas.create(conn);
-        let derived_suspensions = diesel::insert_into(suspension::table).values(derived_suspensions).execute(conn);
+        let (mut independent_suspensions, new_metadatas) = independent_suspensions;
 
-        let (metadata_ids, _) = tokio::try_join!(metadata_ids, derived_suspensions.err_into())?;
+        let metadata_ids = new_metadatas.create(conn).await?;
 
-        let independent_suspensions: Vec<_> = independent_suspensions.into_iter().zip(metadata_ids).map(move |(suspension, metadata_id)| InsertSuspension{metadata_id: Some(metadata_id), data: suspension}).collect();
+        for (suspension, metadata_id) in independent_suspensions.iter_mut().zip(metadata_ids) {
+            suspension.metadata_id = Some(metadata_id);
+        }
 
-        diesel::insert_into(suspension::table).values(independent_suspensions).execute(conn).await?;
+        diesel::insert_into(suspension::table)
+            .values(independent_suspensions)
+            .execute(conn)
+            .await?;
 
         Ok(())
     }

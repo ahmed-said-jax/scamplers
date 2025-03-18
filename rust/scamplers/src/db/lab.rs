@@ -34,31 +34,26 @@ pub struct NewLab {
 impl Create for Vec<NewLab> {
     type Returns = Vec<Lab>;
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use lab::id;
+        const N_LAB_MEMBERS: usize = 20;
 
         let new_lab_ids: Vec<Uuid> = diesel::insert_into(lab::table)
-            .values(self)
+            .values(&self)
             .returning(id)
             .get_results(conn)
             .await?;
 
-        let n_members = self.iter().map(|NewLab { member_ids, .. }| member_ids.len() + 1).sum(); // Add 1 so we can add the PI
+        let mut member_insertions = Vec::with_capacity(N_LAB_MEMBERS); // probably a good heuristic
+        for (lab_id, NewLab { mut member_ids, pi_id, .. }) in new_lab_ids.iter().zip(self) {
+            member_ids.push(pi_id);
 
-        let mut member_insertions = Vec::with_capacity(n_members);
-        for (lab_id, NewLab { member_ids, pi_id, .. }) in new_lab_ids.iter().zip(self) {
             let this_lab_member_insertions = member_ids.iter().map(|member_id| LabMembership {
                 lab_id: *lab_id,
                 member_id: *member_id,
             });
 
             member_insertions.extend(this_lab_member_insertions);
-
-            // Add the PI just in case
-            member_insertions.push(LabMembership {
-                lab_id: *lab_id,
-                member_id: *pi_id,
-            });
         }
 
         // We take advantage of the fact that adding lab members returns the `Lab` because that is probably desirable
@@ -85,7 +80,7 @@ struct LabMembership {
 impl Create for Vec<LabMembership> {
     type Returns = Vec<Lab>;
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use lab_membership::lab_id;
 
         let lab_ids = diesel::insert_into(lab_membership::table)
@@ -95,7 +90,7 @@ impl Create for Vec<LabMembership> {
             .get_results(conn)
             .await?;
 
-        Lab::fetch_many(LabQuery { ids: lab_ids }, conn).await
+        Lab::fetch_many(&LabQuery { ids: lab_ids }, conn).await
     }
 }
 
@@ -170,7 +165,7 @@ impl Read for Lab {
     type Id = Uuid;
     type QueryParams = LabQuery;
 
-    async fn fetch_by_id(id: Self::Id, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self> {
+    async fn fetch_by_id(id: &Self::Id, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self> {
         use lab::id as id_col;
         use lab_membership::lab_id;
 
@@ -195,7 +190,7 @@ impl Read for Lab {
     }
 
     async fn fetch_many(
-        filter: Self::QueryParams,
+        filter: &Self::QueryParams,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Vec<Self>> {
         use lab::name as name_col;
@@ -242,7 +237,7 @@ impl Display for LabId {
 impl ReadRelatives<Person> for LabId {
     async fn fetch_relatives(
         &self,
-        person_filter: <Person as super::Read>::QueryParams,
+        person_filter: &<Person as super::Read>::QueryParams,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::Result<Vec<Person>> {
         use lab_membership::dsl::lab_id as lab_id_col;

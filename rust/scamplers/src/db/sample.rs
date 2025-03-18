@@ -42,7 +42,8 @@ mod suspension_measurement;
     Copy,
     Valuable,
     JsonSchema,
-    strum::IntoStaticStr, strum::EnumString
+    strum::IntoStaticStr,
+    strum::EnumString,
 )]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
@@ -72,7 +73,18 @@ impl ToSql<sql_types::Text, Pg> for Species {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, FromSqlRow, AsExpression, Debug, Clone, Copy, strum::IntoStaticStr, strum::EnumString)]
+#[derive(
+    Deserialize,
+    Serialize,
+    Default,
+    FromSqlRow,
+    AsExpression,
+    Debug,
+    Clone,
+    Copy,
+    strum::IntoStaticStr,
+    strum::EnumString,
+)]
 #[diesel(sql_type = sql_types::Text)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -96,7 +108,7 @@ impl ToSql<sql_types::Text, Pg> for ComplianceCommitteeType {
     }
 }
 
-#[derive(Deserialize, Insertable)]
+#[derive(Deserialize, Insertable, Clone)]
 #[diesel(table_name = schema::committee_approval, check_for_backend(Pg))]
 pub struct NewCommitteeApproval {
     institution_id: Uuid,
@@ -120,7 +132,7 @@ where
     compliance_identifier: Str,
 }
 
-#[derive(Deserialize, Validate, Insertable)]
+#[derive(Deserialize, Validate, Insertable, Clone)]
 #[garde(allow_unvalidated)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 pub struct NewSampleMetadata {
@@ -143,12 +155,12 @@ pub struct NewSampleMetadata {
 
 // We don't need to `impl Create for Vec<NewSampleMetadata>` - we actually only use this as part of other structs, so
 // it's always used as a reference
-impl Create for Vec<&NewSampleMetadata> {
+impl Create for Vec<NewSampleMetadata> {
     // This is a bit of an exception to the pattern established thus far, as we generally don't need the metadata
     // objects to be returned. The IDs however are useful
     type Returns = Vec<Uuid>;
 
-    async fn create(&self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         let owned_refs = self.clone();
 
         let ids = diesel::insert_into(sample_metadata::table)
@@ -267,4 +279,10 @@ where
 
         Some(query)
     }
+}
+
+#[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
+pub enum Error {
+    #[error(transparent)]
+    MultiplexedSuspension(#[from] multiplexed_suspension::Error),
 }
