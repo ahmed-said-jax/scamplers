@@ -193,7 +193,7 @@ pub enum Error {
         value: Option<String>,
     },
     #[error("record not found")]
-    RecordNotFound,
+    RecordNotFound, 
     #[error("other error")]
     Other { message: String },
 }

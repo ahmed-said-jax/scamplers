@@ -84,7 +84,7 @@
  diesel::table! {
      multiplexed_suspension_measurement (id) {
          id -> Uuid,
-@@ -269,37 +269,37 @@
+@@ -263,37 +263,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -126,7 +126,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -307,14 +307,14 @@
+@@ -301,14 +301,14 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
@@ -143,9 +143,9 @@
  diesel::table! {
      specimen_measurement (id) {
          id -> Uuid,
-@@ -335,13 +335,13 @@
+@@ -329,13 +329,13 @@
          biological_material -> Text,
-         created_at -> Nullable<Timestamp>,
+         created_at -> Timestamp,
          pooled_into_id -> Nullable<Uuid>,
          multiplexing_tag_id -> Nullable<Uuid>,
          targeted_cell_recovery -> Float4,

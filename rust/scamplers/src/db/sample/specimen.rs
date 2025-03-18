@@ -214,7 +214,7 @@ where
 }
 
 impl Create for Vec<NewSpecimen> {
-    type Returns = ();
+    type Returns = Vec<Specimen>;
 
     async fn create(&self, conn: &mut AsyncPgConnection) -> db::Result<Self::Returns> {
         #[derive(Insertable)]
@@ -289,14 +289,16 @@ impl Create for Vec<NewSpecimen> {
             .get_results(conn)
             .await?;
 
-        let new_measurement_sets: Vec<_> = new_measurement_sets.iter_mut().zip(specimen_ids).flat_map(|(set, specimen_id)| set.map(move |mut m| {m.specimen_id = specimen_id; m})).collect();
+        let new_measurement_sets: Vec<_> = new_measurement_sets.iter_mut().zip(&specimen_ids).flat_map(|(set, specimen_id)| set.map(|mut m| {m.specimen_id = *specimen_id; m})).collect();
 
         diesel::insert_into(specimen_measurement::table)
             .values(new_measurement_sets)
             .execute(conn)
             .await?;
 
-        Ok(())
+        let specimens = Specimen::fetch_many(SpecimenQuery {ids: specimen_ids, limit: self.len() as i64, ..Default::default()}, conn).await?;
+
+        Ok(specimens)
     }
 }
 
@@ -332,7 +334,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for SpecimenType {
     }
 }
 
-#[derive(Deserialize, Valuable)]
+#[derive(Deserialize, Valuable, Default)]
 pub struct SpecimenQuery {
     #[serde(default)]
     #[valuable(skip)]
@@ -450,7 +452,6 @@ impl Read for Specimen {
             with_measurements,
             limit,
             offset,
-            // pagination: Pagination {limit, offset},
             ..
         } = &query;
 

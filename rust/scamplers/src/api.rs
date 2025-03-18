@@ -339,7 +339,7 @@ impl IntoResponse for Error {
             _ => (
                 status,
                 axum::Json(ErrorResponse {
-                    status: status.as_u16(),
+                    status: status.as_u16(), // why did I choose a u16 for this
                     error: Some(self),
                 }),
             )

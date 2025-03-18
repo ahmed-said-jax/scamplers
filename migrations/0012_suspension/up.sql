@@ -1,14 +1,9 @@
 -- Your SQL goes here
-create table multiplexing_tag_type (
-    id uuid primary key default gen_random_uuid(),
-    name text not null unique --constrained by Rust enum, but can be updated if needed
-);
-
 create table multiplexing_tag (
     id uuid primary key default gen_random_uuid(),
-    tag_name text not null, -- constrained by Rust enum
-    type_id uuid references multiplexing_tag_type on update restrict on delete restrict not null,
-    unique (tag_name, type_id)
+    tag_id text not null, -- constrained by Rust enum
+    type text not null,
+    unique (tag_id, type)
 );
 
 create table suspension (
@@ -19,7 +14,7 @@ create table suspension (
     parent_specimen_id uuid references specimen on delete restrict on update restrict,
     is_derived boolean generated always as (parent_specimen_id is not null) stored,
     biological_material text not null, -- constrained by Rust-side enum
-    created_at timestamp,
+    created_at timestamp not null,
     pooled_into_id uuid references multiplexed_suspension on delete restrict on update restrict,
     multiplexing_tag_id uuid references multiplexing_tag on delete restrict on update restrict,
     targeted_cell_recovery real not null, -- validated on Rust side

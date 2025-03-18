@@ -238,15 +238,9 @@ diesel::table! {
 diesel::table! {
     multiplexing_tag (id) {
         id -> Uuid,
-        tag_name -> Text,
-        type_id -> Uuid,
-    }
-}
-
-diesel::table! {
-    multiplexing_tag_type (id) {
-        id -> Uuid,
-        name -> Text,
+        tag_id -> Text,
+        #[sql_name = "type"]
+        type_ -> Text,
     }
 }
 
@@ -333,7 +327,7 @@ diesel::table! {
         parent_specimen_id -> Nullable<Uuid>,
         is_derived -> Nullable<Bool>,
         biological_material -> Text,
-        created_at -> Nullable<Timestamp>,
+        created_at -> Timestamp,
         pooled_into_id -> Nullable<Uuid>,
         multiplexing_tag_id -> Nullable<Uuid>,
         targeted_cell_recovery -> Float4,
@@ -394,7 +388,6 @@ diesel::joinable!(multiplexed_suspension_measurement -> multiplexed_suspension (
 diesel::joinable!(multiplexed_suspension_measurement -> person (measured_by));
 diesel::joinable!(multiplexed_suspension_preparers -> multiplexed_suspension (suspension_id));
 diesel::joinable!(multiplexed_suspension_preparers -> person (prepared_by));
-diesel::joinable!(multiplexing_tag -> multiplexing_tag_type (type_id));
 diesel::joinable!(person -> institution (institution_id));
 diesel::joinable!(sample_metadata -> lab (lab_id));
 diesel::joinable!(single_index_set -> index_kit (kit));
@@ -437,7 +430,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     multiplexed_suspension_measurement,
     multiplexed_suspension_preparers,
     multiplexing_tag,
-    multiplexing_tag_type,
     person,
     sample_metadata,
     sequencing_run,
