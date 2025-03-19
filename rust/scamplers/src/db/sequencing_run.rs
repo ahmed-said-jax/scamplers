@@ -5,7 +5,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::Create;
+use super::{utils::MappingStruct, Create};
 use crate::schema::{self, chromium_sequencing_submissions, sequencing_run};
 
 #[derive(Insertable, Deserialize, Valuable)]
@@ -27,6 +27,12 @@ struct NewSequencingRun {
 struct SequencingSubmission {
     sequencing_run_id: Uuid,
     library_id: Uuid,
+}
+
+impl MappingStruct for SequencingSubmission {
+    fn new(id1: Uuid, id2: Uuid) -> Self {
+        Self {sequencing_run_id: id1, library_id: id2}
+    }
 }
 
 impl Create for Vec<SequencingSubmission> {
@@ -52,21 +58,16 @@ impl Create for Vec<NewSequencingRun> {
 
         const N_LIBS_PER_SEQUENCING_RUNS: usize = 20; // A generous heuristic
 
+        let n_sequencing_runs = self.len();
+
         let new_run_ids: Vec<Uuid> = diesel::insert_into(sequencing_run::table)
             .values(&self)
             .returning(id)
             .get_results(conn)
             .await?;
 
-        let mut sequencing_submissions = Vec::with_capacity(N_LIBS_PER_SEQUENCING_RUNS * self.len());
-        for (sequencing_run_id, NewSequencingRun { library_ids, .. }) in new_run_ids.iter().zip(self) {
-            let these_sequencing_submissions = library_ids.iter().map(|library_id| SequencingSubmission {
-                sequencing_run_id: *sequencing_run_id,
-                library_id: *library_id,
-            });
-
-            sequencing_submissions.extend(these_sequencing_submissions);
-        }
+        let library_ids = self.iter().map(|NewSequencingRun{library_ids, ..}| library_ids);
+        let sequencing_submissions = SequencingSubmission::from_grouped_ids(&new_run_ids, library_ids, N_LIBS_PER_SEQUENCING_RUNS * n_sequencing_runs);
 
         sequencing_submissions.create(conn).await?;
 
