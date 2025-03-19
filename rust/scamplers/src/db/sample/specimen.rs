@@ -19,7 +19,11 @@ use valuable::Valuable;
 
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
-    db::{self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read, person::PersonStub},
+    db::{
+        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read,
+        person::PersonStub,
+        utils::{Child, Children, ChildrenSets},
+    },
     schema::{
         self, lab, person,
         sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
@@ -159,7 +163,26 @@ pub struct NewSpecimenMeasurement {
     pub specimen_id: Uuid,
     pub measured_by: Uuid,
     #[serde(flatten)]
+    #[garde(dive)]
     pub data: MeasurementData,
+}
+
+impl Create for Vec<NewSpecimenMeasurement> {
+    type Returns = ();
+
+    async fn create(self, conn: &mut AsyncPgConnection) -> db::Result<Self::Returns> {
+        diesel::insert_into(specimen_measurement::table)
+            .values(&self)
+            .execute(conn)
+            .await?;
+
+        Ok(())
+    }
+}
+impl Child<specimen::table> for NewSpecimenMeasurement {
+    fn set_parent_id(&mut self, parent_id: Uuid) {
+        self.specimen_id = parent_id;
+    }
 }
 
 // Common fields could be factored out of these enum variants, but it becomes a bit confusing
@@ -215,18 +238,26 @@ impl Create for Vec<NewSpecimen> {
         #[diesel(table_name = schema::specimen)]
         struct InsertSpecimen {
             legacy_id: String,
-            metadata_id: Option<Uuid>,
+            metadata_id: Uuid,
             type_: SpecimenType,
             embedded_in: Option<EmbeddingMatrix>,
             preserved_with: Option<PreservationMethod>,
             notes: Option<Vec<String>>,
         }
 
-        const N_MEASUREMENTS_PER_SPECIMEN: usize = 3;
+        impl Child<sample_metadata::table> for InsertSpecimen {
+            fn set_parent_id(&mut self, parent_id: Uuid) {
+                self.metadata_id = parent_id;
+            }
+        }
 
-        let mut new_metadatas = Vec::with_capacity(self.len());
-        let mut specimen_insertions = Vec::with_capacity(self.len());
-        let mut new_measurement_sets = Vec::with_capacity(self.len());
+        const N_MEASUREMENTS_PER_SPECIMEN: usize = 4;
+
+        let n_specimens = self.len();
+
+        let mut metadatas = Vec::with_capacity(n_specimens);
+        let mut specimen_insertions = Vec::with_capacity(n_specimens);
+        let mut measurement_sets = Vec::with_capacity(n_specimens);
 
         for specimen in self {
             let (embedded_in, preserved_with, type_) = match specimen {
@@ -261,23 +292,20 @@ impl Create for Vec<NewSpecimen> {
                 ..
             }) = specimen;
 
-            new_metadatas.push(metadata);
+            metadatas.push(metadata);
             specimen_insertions.push(InsertSpecimen {
                 legacy_id,
-                metadata_id: None,
+                metadata_id: Uuid::nil(),
                 type_,
                 embedded_in,
                 preserved_with,
                 notes,
             });
-            new_measurement_sets.push(measurements);
+            measurement_sets.push(measurements);
         }
 
-        let metadata_ids = new_metadatas.create(conn).await?;
-
-        for (specimen, metadata_id) in specimen_insertions.iter_mut().zip(metadata_ids) {
-            specimen.metadata_id = Some(metadata_id);
-        }
+        let metadata_ids = metadatas.create(conn).await?;
+        specimen_insertions.set_parent_ids(&metadata_ids);
 
         let specimen_ids: Vec<Uuid> = diesel::insert_into(specimen::table)
             .values(specimen_insertions)
@@ -285,22 +313,13 @@ impl Create for Vec<NewSpecimen> {
             .get_results(conn)
             .await?;
 
-        let mut new_measurements = Vec::with_capacity(N_MEASUREMENTS_PER_SPECIMEN * self.len()); // a generous heuristic
-        for (measurement_set, specimen_id) in new_measurement_sets.into_iter().zip(specimen_ids) {
-            for mut measurement in measurement_set.drain(..) {
-                measurement.specimen_id = specimen_id;
-                new_measurements.push(measurement)
-            }
-        }
-
-        diesel::insert_into(specimen_measurement::table)
-            .values(new_measurement_sets)
-            .execute(conn)
-            .await?;
+        let flattened_measurements =
+            measurement_sets.flatten_and_set_parent_ids(&specimen_ids, N_MEASUREMENTS_PER_SPECIMEN * n_specimens);
+        flattened_measurements.create(conn).await?;
 
         let query = SpecimenQuery {
             ids: specimen_ids,
-            limit: self.len() as i64,
+            limit: n_specimens as i64,
             ..Default::default()
         };
 
@@ -450,7 +469,8 @@ impl Read for Specimen {
             .first(conn)
             .boxed();
 
-        // We use this instead of the `belonging_to` function because loading the measurements and the actual spcimen opbject at the same time is faster than loading one then the other
+        // We use this instead of the `belonging_to` function because loading the measurements and the actual spcimen
+        // opbject at the same time is faster than loading one then the other
         let measurements = SpecimenMeasurement::base_query()
             .filter(specimen_measurement::specimen_id.eq(id))
             .select(SpecimenMeasurement::as_select())

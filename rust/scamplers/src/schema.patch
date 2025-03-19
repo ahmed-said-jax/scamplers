@@ -143,11 +143,11 @@
  diesel::table! {
      specimen_measurement (id) {
          id -> Uuid,
-@@ -329,13 +329,13 @@
-         biological_material -> Text,
+@@ -330,13 +330,13 @@
          created_at -> Timestamp,
          pooled_into_id -> Nullable<Uuid>,
          multiplexing_tag_id -> Nullable<Uuid>,
+         lysis_duration_min -> Nullable<Float4>,
          targeted_cell_recovery -> Float4,
          target_reads_per_cell -> Int4,
 -        notes -> Nullable<Array<Nullable<Text>>>,

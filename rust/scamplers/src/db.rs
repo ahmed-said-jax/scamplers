@@ -28,9 +28,11 @@ mod library_type_specification;
 pub mod person;
 pub mod sample;
 mod sequencing_run;
+mod utils;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
-// because diesel allows you to insert many things at once. This improves efficiency, especially if the database and application aren't colocated
+// because diesel allows you to insert many things at once. This improves efficiency, especially if the database and
+// application aren't colocated
 pub trait Create: Send {
     type Returns: Send;
 
@@ -185,9 +187,11 @@ pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) 
 
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(untagged)]
-enum DataError {
+pub enum DataError {
     #[error(transparent)]
     Sample(#[from] sample::Error),
+    #[error("{0}")]
+    Other(String),
 }
 
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
@@ -219,6 +223,12 @@ impl Error {
         Self::Other {
             message: format!("{err:?}"),
         }
+    }
+}
+
+impl From<sample::Error> for Error {
+    fn from(err: sample::Error) -> Self {
+        Self::Data(DataError::from(err))
     }
 }
 

@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, Read, ReadRelatives, person::Person};
+use super::{
+    AsDieselExpression, BoxedDieselExpression, Create, Read, ReadRelatives, person::Person, utils::MappingStruct,
+};
 use crate::schema::{institution, lab, lab_membership, person};
 
 // This is the first instance where one API body might represent multiple
@@ -36,7 +38,9 @@ impl Create for Vec<NewLab> {
 
     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use lab::id;
-        const N_LAB_MEMBERS: usize = 20;
+        const N_MEMBERS_PER_LAB: usize = 20;
+
+        let n_labs = self.len();
 
         let new_lab_ids: Vec<Uuid> = diesel::insert_into(lab::table)
             .values(&self)
@@ -44,17 +48,10 @@ impl Create for Vec<NewLab> {
             .get_results(conn)
             .await?;
 
-        let mut member_insertions = Vec::with_capacity(N_LAB_MEMBERS); // probably a good heuristic
-        for (lab_id, NewLab { mut member_ids, pi_id, .. }) in new_lab_ids.iter().zip(self) {
-            member_ids.push(pi_id);
+        let member_id_sets = self.iter().map(|NewLab { member_ids, .. }| member_ids);
 
-            let this_lab_member_insertions = member_ids.iter().map(|member_id| LabMembership {
-                lab_id: *lab_id,
-                member_id: *member_id,
-            });
-
-            member_insertions.extend(this_lab_member_insertions);
-        }
+        let member_insertions =
+            LabMembership::from_grouped_ids(&new_lab_ids, member_id_sets, N_MEMBERS_PER_LAB * n_labs);
 
         // We take advantage of the fact that adding lab members returns the `Lab` because that is probably desirable
         // for an API
@@ -76,11 +73,19 @@ struct LabMembership {
     lab_id: Uuid,
     member_id: Uuid,
 }
+impl MappingStruct for LabMembership {
+    fn new(id1: Uuid, id2: Uuid) -> Self {
+        Self {
+            lab_id: id1,
+            member_id: id2,
+        }
+    }
+}
 
 impl Create for Vec<LabMembership> {
     type Returns = Vec<Lab>;
 
-    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use lab_membership::lab_id;
 
         let lab_ids = diesel::insert_into(lab_membership::table)

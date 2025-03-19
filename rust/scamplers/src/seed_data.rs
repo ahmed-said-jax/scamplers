@@ -150,12 +150,16 @@ pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
             value: (1.0..10.0).sample_single(&mut rng.clone()).unwrap(),
         },
     };
-    let specimens: Vec<_> = sample_metadatas
+    let mut specimens: Vec<_> = sample_metadatas
         .enumerate()
         .map(|(i, metadata)| NewSpecimen::Block {
             metadata,
             legacy_id: format!("SP{i}"),
-            measurements: vec![random_specimen_measurement(), random_specimen_measurement(), random_specimen_measurement()],
+            measurements: vec![
+                random_specimen_measurement(),
+                random_specimen_measurement(),
+                random_specimen_measurement(),
+            ],
             notes: None,
             embedded_in: random_enum_choice(rng.clone()),
             preserved_with: random_enum_choice(rng.clone()),

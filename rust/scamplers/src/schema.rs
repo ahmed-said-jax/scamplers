@@ -330,6 +330,7 @@ diesel::table! {
         created_at -> Timestamp,
         pooled_into_id -> Nullable<Uuid>,
         multiplexing_tag_id -> Nullable<Uuid>,
+        lysis_duration_min -> Nullable<Float4>,
         targeted_cell_recovery -> Float4,
         target_reads_per_cell -> Int4,
         notes -> Nullable<Array<Text>>,

@@ -19,6 +19,14 @@ pub enum LengthUnit {
     µl,
 }
 
+#[derive(Deserialize, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CellCountingMethod {
+    BrightField,
+    Aopi,
+    TrypanBlue,
+}
+
 #[derive(Deserialize, Serialize, Validate, Debug, FromSqlRow, Default, AsExpression, JsonSchema)]
 #[diesel(sql_type = sql_types::Jsonb)]
 #[serde(rename_all = "snake_case", tag = "quantity")]
@@ -27,6 +35,7 @@ pub enum MeasurementData {
     Concentration {
         measured_at: NaiveDateTime,
         instrument_name: String,
+        counting_method: CellCountingMethod,
         #[garde(range(min = 0.0))]
         value: f32,
         unit: (BiologicalMaterial, VolumeUnit),

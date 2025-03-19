@@ -19,7 +19,7 @@ use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, lab::LabS
 use crate::{
     db::ILike,
     schema::{
-        self, lab,
+        self, committee_approval, lab,
         sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
     },
 };
@@ -111,28 +111,14 @@ impl ToSql<sql_types::Text, Pg> for ComplianceCommitteeType {
 #[derive(Deserialize, Insertable, Clone)]
 #[diesel(table_name = schema::committee_approval, check_for_backend(Pg))]
 pub struct NewCommitteeApproval {
+    #[serde(default)]
+    sample_id: Uuid,
     institution_id: Uuid,
     committee_type: ComplianceCommitteeType,
     compliance_identifier: String,
 }
 
-// We create a generic struct that can hold either a `String` or an `&str`. The reason is because we need both depending
-// on whether we're inserting a new sample metadata that has compliance numbers already, or if we're adding compliance
-// numbers to an existing sample metadata. However, we don't really care about copying `Uuid` and `CommitteeType`
-// because those are very small and cheap to copy
-#[derive(Deserialize, Insertable)]
-#[diesel(table_name = schema::committee_approval, check_for_backend(Pg))]
-pub struct ExistingSampleNewCommitteeApproval<Str: AsExpression<sql_types::Text>>
-where
-    for<'a> &'a Str: AsExpression<sql_types::Text>,
-{
-    sample_id: Uuid,
-    institution_id: Uuid,
-    committee_type: ComplianceCommitteeType,
-    compliance_identifier: Str,
-}
-
-#[derive(Deserialize, Validate, Insertable, Clone)]
+#[derive(Deserialize, Validate, Insertable)]
 #[garde(allow_unvalidated)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 pub struct NewSampleMetadata {
@@ -153,43 +139,97 @@ pub struct NewSampleMetadata {
     pub returned_by: Option<Uuid>,
 }
 
-// We don't need to `impl Create for Vec<NewSampleMetadata>` - we actually only use this as part of other structs, so
-// it's always used as a reference
 impl Create for Vec<NewSampleMetadata> {
-    // This is a bit of an exception to the pattern established thus far, as we generally don't need the metadata
-    // objects to be returned. The IDs however are useful
     type Returns = Vec<Uuid>;
 
-    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
-        let owned_refs = self.clone();
-
+    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
         let ids = diesel::insert_into(sample_metadata::table)
-            .values(owned_refs)
+            .values(&self)
             .returning(sample_metadata::id)
             .get_results(conn)
             .await?;
 
-        let mut commitee_approval_insertions =
-            Vec::with_capacity(self.iter().map(|m| m.committee_approvals.len()).sum());
-
-        for (metadata, sample_id) in self.iter().zip(&ids) {
-            commitee_approval_insertions.extend(metadata.committee_approvals.iter().map(
-                |NewCommitteeApproval {
-                     institution_id,
-                     committee_type,
-                     compliance_identifier,
-                 }| ExistingSampleNewCommitteeApproval {
-                    sample_id: *sample_id,
-                    institution_id: *institution_id,
-                    committee_type: *committee_type,
-                    compliance_identifier,
-                },
-            ));
+        let mut committee_approval_insertions = Vec::with_capacity(self.len());
+        for (
+            NewSampleMetadata {
+                committee_approvals, ..
+            },
+            sample_id,
+        ) in self.iter_mut().zip(&ids)
+        {
+            for approval in committee_approvals {
+                approval.sample_id = *sample_id;
+                committee_approval_insertions.push(&*approval);
+            }
         }
+
+        diesel::insert_into(committee_approval::table)
+            .values(committee_approval_insertions)
+            .execute(conn)
+            .await?;
 
         Ok(ids)
     }
 }
+
+// We don't need to `impl Create for Vec<NewSampleMetadata>` - we actually only use this as part of other structs, so
+// it's always used as a reference
+// impl Create for Vec<NewSampleMetadata> {
+//     // This is a bit of an exception to the pattern established thus far, as we generally don't need the metadata
+//     // objects to be returned. The IDs however are useful
+//     type Returns = Vec<Uuid>;
+
+//     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+//         let ids = diesel::insert_into(sample_metadata::table)
+//             .values(&self)
+//             .returning(sample_metadata::id)
+//             .get_results(conn)
+//             .await?;
+
+//         let mut commitee_approval_insertions =
+//             Vec::with_capacity(self.iter().map(|m| m.committee_approvals.len()).sum());
+
+//         for (metadata, sample_id) in self.iter().zip(&ids) {
+//             commitee_approval_insertions.extend(metadata.committee_approvals.iter().map(
+//                 |NewCommitteeApproval {
+//                      institution_id,
+//                      committee_type,
+//                      compliance_identifier,
+//                  }| ExistingSampleNewCommitteeApproval {
+//                     sample_id: *sample_id,
+//                     institution_id: *institution_id,
+//                     committee_type: *committee_type,
+//                     compliance_identifier,
+//                 },
+//             ));
+//         }
+
+//         Ok(ids)
+//     }
+// }
+
+// This is useful because frequently, samples have optional metadata (like `Suspension`)
+// impl Create for Vec<Option<NewSampleMetadata>> {
+//     type Returns = Vec<Option<Uuid>>;
+
+//     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+//         let mut indices_with_value = Vec::with_capacity(self.len());
+//         let mut elements_with_value = Vec::with_capacity(self.len());
+
+//         for (i, metadata) in self.iter().enumerate() {
+//             let Some(metadata) = metadata else {
+//                 continue;
+//             };
+//             indices_with_value.push(i);
+//             elements_with_value.push(*metadata);
+//         }
+//         let with_value: Vec<_> = self.into_iter().filter_map(|s| s).collect();
+//         with_value.create(conn).await?;
+
+//         Ok(vec![])
+
+//     }
+// }
 
 #[derive(Selectable, Queryable, Serialize, JsonSchema)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
@@ -282,7 +322,16 @@ where
 }
 
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Error {
-    #[error(transparent)]
-    MultiplexedSuspension(#[from] multiplexed_suspension::Error),
+    #[error("all suspensions pooled into a multiplexed suspension must have the same tag type")]
+    DifferentMultiplexingTagTypes(Vec<String>),
+    #[error("multiplexing tag must be provided for suspensions pooled into a multiplexed suspension")]
+    MultiplexingTagNotProvided,
+    #[error("a sample must specify exactly one of its own metadata or a parental specimen")]
+    InvalidMetadata,
+    #[error("invalid multiplexing tag IDs")]
+    InvalidMultiplexingTagSet(#[valuable(skip)] Vec<Uuid>),
 }
+
+type Result<T> = std::result::Result<T, Error>;

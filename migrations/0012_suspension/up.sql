@@ -17,6 +17,7 @@ create table suspension (
     created_at timestamp not null,
     pooled_into_id uuid references multiplexed_suspension on delete restrict on update restrict,
     multiplexing_tag_id uuid references multiplexing_tag on delete restrict on update restrict,
+    lysis_duration_min real,
     targeted_cell_recovery real not null, -- validated on Rust side
     target_reads_per_cell integer not null, -- validated on Rust side
     notes text [],

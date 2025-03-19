@@ -49,7 +49,7 @@ impl Create for Vec<NewSequencingRun> {
 
     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use sequencing_run::id;
-        
+
         const N_LIBS_PER_SEQUENCING_RUNS: usize = 20; // A generous heuristic
 
         let new_run_ids: Vec<Uuid> = diesel::insert_into(sequencing_run::table)
