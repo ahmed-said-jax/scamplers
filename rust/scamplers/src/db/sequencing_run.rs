@@ -5,7 +5,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{utils::MappingStruct, Create};
+use super::{Create, utils::MappingStruct};
 use crate::schema::{self, chromium_sequencing_submissions, sequencing_run};
 
 #[derive(Insertable, Deserialize, Valuable)]
@@ -31,7 +31,10 @@ struct SequencingSubmission {
 
 impl MappingStruct for SequencingSubmission {
     fn new(id1: Uuid, id2: Uuid) -> Self {
-        Self {sequencing_run_id: id1, library_id: id2}
+        Self {
+            sequencing_run_id: id1,
+            library_id: id2,
+        }
     }
 }
 
@@ -66,8 +69,12 @@ impl Create for Vec<NewSequencingRun> {
             .get_results(conn)
             .await?;
 
-        let library_ids = self.iter().map(|NewSequencingRun{library_ids, ..}| library_ids);
-        let sequencing_submissions = SequencingSubmission::from_grouped_ids(&new_run_ids, library_ids, N_LIBS_PER_SEQUENCING_RUNS * n_sequencing_runs);
+        let library_ids = self.iter().map(|NewSequencingRun { library_ids, .. }| library_ids);
+        let sequencing_submissions = SequencingSubmission::from_grouped_ids(
+            &new_run_ids,
+            library_ids,
+            N_LIBS_PER_SEQUENCING_RUNS * n_sequencing_runs,
+        );
 
         sequencing_submissions.create(conn).await?;
 
