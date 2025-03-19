@@ -107,7 +107,7 @@ struct LibraryTypeSpecification {
 impl Create for Vec<LibraryTypeSpecification> {
     type Returns = ();
 
-    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::library_type_specification::dsl::library_type_specification;
 
         diesel::insert_into(library_type_specification)

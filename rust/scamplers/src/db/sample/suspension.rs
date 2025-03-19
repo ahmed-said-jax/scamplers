@@ -8,8 +8,8 @@ use diesel::{
     serialize::ToSql,
     sql_types::{self, SqlType},
 };
-use diesel_async::{RunQueryDsl, scoped_futures::ScopedFutureExt};
-use futures::{FutureExt, TryFutureExt};
+use diesel_async::RunQueryDsl;
+use futures::FutureExt;
 use garde::Validate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

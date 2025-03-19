@@ -1,5 +1,5 @@
 use anyhow::Context;
-use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use rand::{
     Rng,
     distr::uniform::SampleRange,
@@ -150,7 +150,7 @@ pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
             value: (1.0..10.0).sample_single(&mut rng.clone()).unwrap(),
         },
     };
-    let mut specimens: Vec<_> = sample_metadatas
+    let specimens: Vec<_> = sample_metadatas
         .enumerate()
         .map(|(i, metadata)| NewSpecimen::Block {
             metadata,

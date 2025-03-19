@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 
 use chrono::NaiveDateTime;
 use diesel::{
@@ -15,7 +14,6 @@ use garde::Validate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use valuable::Valuable;
 
 use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
 use crate::{
@@ -115,7 +113,7 @@ impl Create for Vec<NewMultiplexedSuspension> {
 
     // we don't need to return anything yet
 
-    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
         use schema::multiplexed_suspension;
         const N_SUSPENSIONS_PER_POOL: usize = 16; // The maximum number of suspensions in a pool
 

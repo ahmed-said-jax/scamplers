@@ -31,7 +31,7 @@ struct NewDatasetMetadata {
 impl Create for Vec<&NewDatasetMetadata> {
     type Returns = Vec<Uuid>;
 
-    async fn create(mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::dataset_metadata::dsl::{dataset_metadata, id};
 
         let owned_refs = self.clone(); // We are just cloning references here
