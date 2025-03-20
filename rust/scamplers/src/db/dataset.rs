@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, ILike, lab::LabStub};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, lab::LabStub, utils::AsIlike};
 use crate::schema::{
     self,
     dataset_metadata::{self, delivered_at, name as name_col},
@@ -101,7 +101,7 @@ where
 
         let mut query: BoxedDieselExpression<T> = match name {
             None => Box::new(name_col.is_not_null()),
-            Some(n) => Box::new(name_col.ilike(n.for_ilike())),
+            Some(n) => Box::new(name_col.ilike(n.as_ilike())),
         };
 
         // This is necessary so that we can safely call `assume_not_null` in the next set of checks

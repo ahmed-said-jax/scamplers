@@ -20,9 +20,9 @@ use valuable::Valuable;
 use super::{NewSampleMetadata, OrdinalColumns as MetadataOrdinalColumns, SampleMetadata, SampleMetadataQuery};
 use crate::{
     db::{
-        self, AsDieselExpression, BoxedDieselExpression, Create, DbEnum, DbJson, Read,
+        self, AsDieselExpression, BoxedDieselExpression, Create, Read,
         person::PersonStub,
-        utils::{Child, Children, ChildrenSets},
+        utils::{Child, Children, ChildrenSets, DbEnum, DbJson},
     },
     schema::{
         self, lab, person,
@@ -384,7 +384,7 @@ pub struct SpecimenQuery {
     preserved_with: Option<PreservationMethod>,
     #[serde(alias = "type")]
     type_: Option<SpecimenType>,
-    #[serde(default = "super::super::default_limit")]
+    #[serde(default = "crate::db::utils::default_query_limit")]
     limit: i64,
     #[serde(default)]
     offset: i64,

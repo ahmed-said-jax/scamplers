@@ -1,4 +1,20 @@
+use diesel::{
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    serialize::ToSql,
+    sql_types,
+};
+use serde::{Serialize, de::DeserializeOwned};
+use std::str::FromStr;
 use uuid::Uuid;
+
+const DEFAULT_QUERY_LIMIT: i64 = 500;
+
+pub fn default_query_limit() -> i64 {
+    DEFAULT_QUERY_LIMIT
+}
 
 // Type parametrization here so we can use the same trait multiple times for the same struct, since tables are
 // frequently children of more than one table
@@ -74,36 +90,51 @@ pub trait MappingStruct: Sized {
     }
 }
 
-// pub trait ChildrenSets2<T, U> where T: Child<U>, U: diesel::Table {
-//     fn flatten_and_set_parent_ids(self, parent_ids: &[Uuid], n_children_per_parent: usize) -> Vec<T> ;
-// }
+pub trait DbEnum: FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Default + FromStr
+where
+    &'static str: From<Self>,
+{
+    fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
 
-// impl<T, U> ChildrenSets<T, U> for Vec<Vec<T>> where T: Child<U>, U: diesel::Table {
-//     fn flatten_and_set_parent_ids(self, parent_ids: &[Uuid], n_children_per_parent: usize) -> Vec<T> {
-//         let mut flattened_children = Vec::with_capacity(n_children_per_parent * self.len());
+        Ok(Self::from_str(&raw).unwrap_or_default())
+    }
 
-//         for (children, parent_id) in self.into_iter().zip(parent_ids) {
-//             for mut child in children {
-//                 child.set_parent_id(*parent_id);
-//                 flattened_children.push(child);
-//             }
-//         }
+    fn to_sql_inner<'b>(self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        let as_str: &str = self.into();
 
-//         flattened_children
-//     }
-// }
+        ToSql::<sql_types::Text, Pg>::to_sql(&as_str, &mut out.reborrow())
+    }
+}
 
-// impl <T, U> ChildrenSets<T, U> for Vec<&Vec<T>> where T: Child<U>, U: diesel::Table {
-//     fn flatten_and_set_parent_ids(self, parent_ids: &[Uuid], n_children_per_parent: usize) -> Vec<T> {
-//         let mut flattened_children = Vec::with_capacity(n_children_per_parent * self.len());
+pub trait DbJson:
+    DeserializeOwned + Serialize + Default + FromSqlRow<sql_types::Jsonb, Pg> + AsExpression<sql_types::Jsonb>
+{
+    fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let data: serde_json::Value = FromSql::<sql_types::Jsonb, Pg>::from_sql(bytes)?;
 
-//         for (children, parent_id) in self.into_iter().zip(parent_ids) {
-//             for mut child in children {
-//                 child.set_parent_id(*parent_id);
-//                 flattened_children.push(child);
-//             }
-//         }
+        Ok(serde_json::from_value(data).unwrap_or_default())
+    }
 
-//         flattened_children
-//     }
-// }
+    fn to_sql_inner<'b>(&self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        let as_json = serde_json::to_value(self).unwrap();
+
+        ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
+    }
+}
+
+pub trait AsIlike {
+    fn as_ilike(&self) -> String;
+}
+
+impl AsIlike for &str {
+    fn as_ilike(&self) -> String {
+        format!("%{self}%")
+    }
+}
+
+impl AsIlike for String {
+    fn as_ilike(&self) -> String {
+        self.as_str().as_ilike()
+    }
+}

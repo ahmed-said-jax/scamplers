@@ -15,9 +15,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, lab::LabStub};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, lab::LabStub, utils::DbEnum};
 use crate::{
-    db::ILike,
+    db::utils::AsIlike,
     schema::{
         self, committee_approval, lab,
         sample_metadata::{self, name as name_col, received_at, species as species_col, tissue as tissue_col},
@@ -172,65 +172,6 @@ impl Create for Vec<NewSampleMetadata> {
     }
 }
 
-// We don't need to `impl Create for Vec<NewSampleMetadata>` - we actually only use this as part of other structs, so
-// it's always used as a reference
-// impl Create for Vec<NewSampleMetadata> {
-//     // This is a bit of an exception to the pattern established thus far, as we generally don't need the metadata
-//     // objects to be returned. The IDs however are useful
-//     type Returns = Vec<Uuid>;
-
-//     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
-//         let ids = diesel::insert_into(sample_metadata::table)
-//             .values(&self)
-//             .returning(sample_metadata::id)
-//             .get_results(conn)
-//             .await?;
-
-//         let mut commitee_approval_insertions =
-//             Vec::with_capacity(self.iter().map(|m| m.committee_approvals.len()).sum());
-
-//         for (metadata, sample_id) in self.iter().zip(&ids) {
-//             commitee_approval_insertions.extend(metadata.committee_approvals.iter().map(
-//                 |NewCommitteeApproval {
-//                      institution_id,
-//                      committee_type,
-//                      compliance_identifier,
-//                  }| ExistingSampleNewCommitteeApproval {
-//                     sample_id: *sample_id,
-//                     institution_id: *institution_id,
-//                     committee_type: *committee_type,
-//                     compliance_identifier,
-//                 },
-//             ));
-//         }
-
-//         Ok(ids)
-//     }
-// }
-
-// This is useful because frequently, samples have optional metadata (like `Suspension`)
-// impl Create for Vec<Option<NewSampleMetadata>> {
-//     type Returns = Vec<Option<Uuid>>;
-
-//     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
-//         let mut indices_with_value = Vec::with_capacity(self.len());
-//         let mut elements_with_value = Vec::with_capacity(self.len());
-
-//         for (i, metadata) in self.iter().enumerate() {
-//             let Some(metadata) = metadata else {
-//                 continue;
-//             };
-//             indices_with_value.push(i);
-//             elements_with_value.push(*metadata);
-//         }
-//         let with_value: Vec<_> = self.into_iter().filter_map(|s| s).collect();
-//         with_value.create(conn).await?;
-
-//         Ok(vec![])
-
-//     }
-// }
-
 #[derive(Selectable, Queryable, Serialize, JsonSchema)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 struct SampleMetadata {
@@ -298,11 +239,11 @@ where
         // This is a hack but not sure what else I can do
         let mut query: BoxedDieselExpression<T> = match name {
             None => Box::new(name_col.is_not_null()),
-            Some(n) => Box::new(name_col.ilike(n.for_ilike())),
+            Some(n) => Box::new(name_col.ilike(n.as_ilike())),
         };
 
         if let Some(tissue) = tissue {
-            query = Box::new(query.and(tissue_col.ilike(tissue.for_ilike())));
+            query = Box::new(query.and(tissue_col.ilike(tissue.as_ilike())));
         }
 
         if let Some(received_before) = received_before {

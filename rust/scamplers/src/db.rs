@@ -92,79 +92,9 @@ pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
-// #[serde_as]
-#[derive(Deserialize, Clone, Copy, Valuable)]
-struct _Pagination {
-    #[serde(default = "default_limit")]
-    limit: i64,
-    #[serde(default)]
-    offset: i32,
-}
-fn default_limit() -> i64 {
-    500
-}
-
-#[derive(Deserialize, Valuable)]
-struct _Order<T: Valuable> {
-    #[serde(default)]
-    order_by: T,
-    #[serde(default)]
-    descending: bool,
-}
-
-trait DbEnum: FromSqlRow<sql_types::Text, Pg> + AsExpression<sql_types::Text> + Default + FromStr
-where
-    &'static str: From<Self>,
-{
-    fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let raw: String = FromSql::<sql_types::Text, diesel::pg::Pg>::from_sql(bytes)?;
-
-        Ok(Self::from_str(&raw).unwrap_or_default())
-    }
-
-    fn to_sql_inner<'b>(self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let as_str: &str = self.into();
-
-        ToSql::<sql_types::Text, Pg>::to_sql(&as_str, &mut out.reborrow())
-    }
-}
-
-trait DbJson:
-    DeserializeOwned + Serialize + Default + FromSqlRow<sql_types::Jsonb, Pg> + AsExpression<sql_types::Jsonb>
-{
-    fn from_sql_inner(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let data: serde_json::Value = FromSql::<sql_types::Jsonb, Pg>::from_sql(bytes)?;
-
-        Ok(serde_json::from_value(data).unwrap_or_default())
-    }
-
-    fn to_sql_inner<'b>(&self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let as_json = serde_json::to_value(self).unwrap();
-
-        ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
-    }
-}
-
-// I don't like this trait name
-trait ILike {
-    fn for_ilike(&self) -> String;
-}
-impl ILike for String {
-    fn for_ilike(&self) -> String {
-        format!("%{self}%")
-    }
-}
-
-trait ToJsonString: Display {
-    fn to_json_string(&self) -> String {
-        format!("\"{self}\"")
-    }
-}
-impl ToJsonString for &str {}
-impl ToJsonString for String {}
-
-#[derive(Deserialize, Debug, Serialize, Default, Valuable, Clone)]
+#[derive(Debug, Serialize, Default, Valuable, Clone, strum::EnumString)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum Entity {
     Institution,
     Person,
@@ -269,7 +199,7 @@ impl
     ) -> Self {
         use diesel::result::DatabaseErrorKind::{ForeignKeyViolation, UniqueViolation};
 
-        let entity = serde_json::from_str(&info.table_name().unwrap_or_default().to_json_string()).unwrap_or_default();
+        let entity = Entity::from_str(&info.table_name().unwrap_or_default()).unwrap_or_default();
 
         let detail_regex = Regex::new(r"Key \((.+)\)=\((.+)\).+").unwrap(); // This isn't perfect
         let details = info.details().unwrap_or_default();
@@ -286,7 +216,7 @@ impl
             ForeignKeyViolation => {
                 let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace('"', "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
-                let referenced_entity = serde_json::from_str(&referenced_entity.to_json_string()).unwrap_or_default();
+                let referenced_entity = Entity::from_str(&referenced_entity).unwrap_or_default();
 
                 Self::ReferenceNotFound {
                     entity,

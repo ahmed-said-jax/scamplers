@@ -15,9 +15,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, DbEnum, Read, institution::Institution};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, Read, institution::Institution, utils::DbEnum};
 use crate::{
-    db::ILike,
+    db::utils::AsIlike,
     schema::{
         institution,
         person::{
@@ -142,11 +142,11 @@ where
         };
 
         if let Some(name) = name {
-            query = Box::new(query.and(name_col.ilike(name.for_ilike())));
+            query = Box::new(query.and(name_col.ilike(name.as_ilike())));
         }
 
         if let Some(email) = email {
-            query = Box::new(query.and(email_col.ilike(email.for_ilike())));
+            query = Box::new(query.and(email_col.ilike(email.as_ilike())));
         }
 
         Some(query)

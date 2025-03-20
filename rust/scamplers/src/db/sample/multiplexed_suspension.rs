@@ -16,7 +16,10 @@ use uuid::Uuid;
 
 use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
 use crate::{
-    db::{Create, DbEnum, DbJson},
+    db::{
+        Create,
+        utils::{DbEnum, DbJson},
+    },
     schema::{self, multiplexing_tag},
 };
 

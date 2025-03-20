@@ -19,8 +19,8 @@ use valuable::Valuable;
 use super::{Create, NewSampleMetadata, suspension_measurement::MeasurementData};
 use crate::{
     db::{
-        DbEnum, DbJson,
         utils::{Child, Children, ChildrenSets, MappingStruct},
+        utils::{DbEnum, DbJson},
     },
     schema::{self, sample_metadata, suspension, suspension_measurement, suspension_preparers},
 };

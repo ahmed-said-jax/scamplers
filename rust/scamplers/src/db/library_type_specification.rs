@@ -11,7 +11,7 @@ use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 
-use super::{Create, DbEnum};
+use super::{Create, utils::DbEnum};
 use crate::schema;
 
 #[derive(
