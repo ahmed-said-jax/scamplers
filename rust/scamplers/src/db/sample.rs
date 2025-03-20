@@ -172,9 +172,11 @@ impl Create for Vec<NewSampleMetadata> {
     }
 }
 
-#[derive(Selectable, Queryable, Serialize, JsonSchema)]
+#[derive(Selectable, Queryable, Serialize, JsonSchema, Identifiable)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 struct SampleMetadata {
+    #[serde(skip)]
+    id: Uuid,
     name: String,
     #[diesel(embed)]
     lab: LabStub,

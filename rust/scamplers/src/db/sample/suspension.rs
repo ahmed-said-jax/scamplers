@@ -16,12 +16,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, NewSampleMetadata, suspension_measurement::MeasurementData};
+use super::{Create, NewSampleMetadata, SampleMetadata, suspension_measurement::MeasurementData};
 use crate::{
-    db::{
-        utils::{Child, Children, ChildrenSets, MappingStruct},
-        utils::{DbEnum, DbJson},
-    },
+    db::person::PersonStub,
+    db::utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
     schema::{self, sample_metadata, suspension, suspension_measurement, suspension_preparers},
 };
 
@@ -94,7 +92,7 @@ struct NewSuspensionMeasurement {
     #[garde(dive)]
     data: SuspensionMeasurement,
 }
-impl Child<suspension::table> for NewSuspensionMeasurement {
+impl BelongsToExt<NewSuspension> for NewSuspensionMeasurement {
     fn set_parent_id(&mut self, parent_id: Uuid) {
         self.suspension_id = parent_id;
     }
@@ -121,7 +119,7 @@ struct SuspensionPreparer {
     prepared_by: Uuid,
 }
 
-impl MappingStruct for SuspensionPreparer {
+impl JunctionStruct for SuspensionPreparer {
     fn new(id1: Uuid, id2: Uuid) -> Self {
         Self {
             suspension_id: id1,
@@ -210,7 +208,7 @@ impl NewSuspension {
     }
 }
 
-impl Child<sample_metadata::table> for NewSuspension {
+impl BelongsToExt<NewSampleMetadata> for NewSuspension {
     fn set_parent_id(&mut self, parent_id: Uuid) {
         let Self {
             metadata_id,
@@ -222,6 +220,12 @@ impl Child<sample_metadata::table> for NewSuspension {
         } else {
             *metadata_id = None;
         }
+    }
+}
+
+impl Parent<NewSuspensionMeasurement> for NewSuspension {
+    fn children(&mut self) -> &mut Vec<NewSuspensionMeasurement> {
+        &mut self.measurements
     }
 }
 
@@ -237,32 +241,29 @@ impl Create for Vec<NewSuspension> {
         let n_suspensions = self.len();
 
         let mut metadatas = Vec::with_capacity(n_suspensions);
-        let mut measurement_sets = Vec::with_capacity(n_suspensions);
 
         for suspension in self.iter_mut() {
             suspension.validate_metadata()?;
             suspension.validate_lysis()?;
 
             let NewSuspension {
-                metadata, measurements, ..
+                has_metadata, metadata, ..
             } = suspension;
-
-            // This step is necessary for Rusty reasons
-            let measurements: Vec<_> = measurements.drain(..).collect();
-
-            measurement_sets.push(measurements);
 
             let Some(metadata) = metadata.take() else {
                 continue;
             };
 
-            suspension.has_metadata = true;
+            *has_metadata = true;
             metadatas.push(metadata);
         }
 
         let metadata_ids = metadatas.create(conn).await?;
-        self.set_parent_ids(&metadata_ids);
+        for (suspension, metadata_id) in self.iter_mut().zip(metadata_ids) {
+            <NewSuspension as BelongsToExt<NewSampleMetadata>>::set_parent_id(suspension, metadata_id);
+        }
 
+        // Insert them and get the new IDs
         let suspension_ids = diesel::insert_into(suspension::table)
             .values(&self)
             .returning(suspension::id)
@@ -270,16 +271,16 @@ impl Create for Vec<NewSuspension> {
             .await?;
 
         let flattened_measurements =
-            measurement_sets.flatten_and_set_parent_ids(&suspension_ids, N_MEASUREMENTS_PER_SUSPENSION * n_suspensions);
+            self.flatten_children_and_set_ids(&suspension_ids, N_MEASUREMENTS_PER_SUSPENSION * n_suspensions);
         flattened_measurements.create(conn).await?;
 
+        // Collect preparer IDs into an iterator of iterators of IDs
         let preparer_id_sets = self.iter().map(|NewSuspension { preparer_ids, .. }| preparer_ids);
-        let preparer_insertions = SuspensionPreparer::from_grouped_ids(
+        let preparer_insertions = SuspensionPreparer::from_ids_grouped_by_parent1(
             &suspension_ids,
             preparer_id_sets,
             N_PREPARERS_PER_SUSPENSION * n_suspensions,
         );
-
         preparer_insertions.create(conn).await?;
 
         Ok(())

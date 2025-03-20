@@ -1,4 +1,5 @@
 use diesel::{
+    associations::BelongsTo,
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
@@ -16,43 +17,32 @@ pub fn default_query_limit() -> i64 {
     DEFAULT_QUERY_LIMIT
 }
 
-// Type parametrization here so we can use the same trait multiple times for the same struct, since tables are
-// frequently children of more than one table
-pub trait Child<T: diesel::Table> {
+pub trait BelongsToExt<Parent> {
     fn set_parent_id(&mut self, parent_id: Uuid);
 }
 
-pub trait Children<T, U>
-where
-    T: Child<U>,
-    U: diesel::Table,
-{
-    fn set_parent_ids(&mut self, parent_ids: &[Uuid]);
+pub trait Parent<Child> {
+    fn children(&mut self) -> &mut Vec<Child>;
 }
 
-impl<T, U> Children<T, U> for Vec<T>
+pub trait ParentSet<'a, P, Child>
 where
-    T: Child<U>,
-    U: diesel::Table,
+    P: Parent<Child>,
 {
-    fn set_parent_ids(&mut self, parent_ids: &[Uuid]) {
-        for (item, parent_id) in self.iter_mut().zip(parent_ids) {
-            item.set_parent_id(*parent_id);
-        }
-    }
+    fn flatten_children_and_set_ids(&'a mut self, parent_ids: &[Uuid], n_children: usize) -> Vec<Child>;
 }
 
-pub trait ChildrenSets<T, U, V>: IntoIterator<Item = T> + Sized
+impl<'a, P, Child> ParentSet<'a, P, Child> for Vec<P>
 where
-    T: IntoIterator<Item = U>,
-    U: Child<V>,
-    V: diesel::Table,
+    P: Parent<Child> + Sized,
+    Child: BelongsToExt<P>,
 {
-    fn flatten_and_set_parent_ids(self, parent_ids: &[Uuid], n_children: usize) -> Vec<U> {
+    fn flatten_children_and_set_ids(&'a mut self, ids: &[Uuid], n_children: usize) -> Vec<Child> {
         let mut flattened_children = Vec::with_capacity(n_children);
+        let nested_children = self.iter_mut().map(|p| p.children().drain(..).collect::<Vec<_>>());
 
-        for (children, parent_id) in self.into_iter().zip(parent_ids) {
-            for mut child in children {
+        for (children, parent_id) in nested_children.zip(ids) {
+            for mut child in children.into_iter() {
                 child.set_parent_id(*parent_id);
                 flattened_children.push(child);
             }
@@ -61,17 +51,14 @@ where
         flattened_children
     }
 }
-impl<T, U, V> ChildrenSets<T, U, V> for Vec<T>
-where
-    T: IntoIterator<Item = U>,
-    U: Child<V>,
-    V: diesel::Table,
-{
-}
 
-pub trait MappingStruct: Sized {
-    fn new(id1: Uuid, id2: Uuid) -> Self;
-    fn from_grouped_ids<I1, I2, I3, U>(parents: I1, children_sets: I2, n_relationships: usize) -> Vec<Self>
+pub trait JunctionStruct: Sized {
+    fn new(parent1_id: Uuid, parent2_id: Uuid) -> Self;
+    fn from_ids_grouped_by_parent1<I1, I2, I3, U>(
+        parent1_ids: I1,
+        parent2_id_groups: I2,
+        n_relationships: usize,
+    ) -> Vec<Self>
     where
         I1: IntoIterator<Item = U>,
         I2: IntoIterator<Item = I3>,
@@ -80,7 +67,7 @@ pub trait MappingStruct: Sized {
     {
         let mut mapping_structs = Vec::with_capacity(n_relationships);
 
-        for (parent_id, children) in parents.into_iter().zip(children_sets) {
+        for (parent_id, children) in parent1_ids.into_iter().zip(parent2_id_groups) {
             for child_id in children {
                 mapping_structs.push(Self::new(*parent_id.as_ref(), *child_id.as_ref()))
             }

@@ -10,9 +10,12 @@ use uuid::Uuid;
 use valuable::Valuable;
 
 use super::{
-    AsDieselExpression, BoxedDieselExpression, Create, Read, ReadRelatives, person::Person, utils::MappingStruct,
+    AsDieselExpression, BoxedDieselExpression, Create, Read, ReadRelatives, person::Person, utils::JunctionStruct,
 };
-use crate::schema::{institution, lab, lab_membership, person};
+use crate::{
+    db::person::PersonStub,
+    schema::{institution, lab, lab_membership, person},
+};
 
 // This is the first instance where one API body might represent multiple
 // queries. You'll find a top-level struct that represents the whole API request
@@ -51,7 +54,7 @@ impl Create for Vec<NewLab> {
         let member_id_sets = self.iter().map(|NewLab { member_ids, .. }| member_ids);
 
         let member_insertions =
-            LabMembership::from_grouped_ids(&new_lab_ids, member_id_sets, N_MEMBERS_PER_LAB * n_labs);
+            LabMembership::from_ids_grouped_by_parent1(&new_lab_ids, member_id_sets, N_MEMBERS_PER_LAB * n_labs);
 
         // We take advantage of the fact that adding lab members returns the `Lab` because that is probably desirable
         // for an API
@@ -67,18 +70,15 @@ impl Create for Vec<NewLab> {
 // update a lab. However, UUIDs are 16 bytes - very cheap to copy by value, so
 // it's not worth it.
 #[derive(Deserialize, Validate, Insertable, Identifiable, Selectable, Queryable, Associations)]
-#[diesel(table_name = lab_membership, check_for_backend(Pg), primary_key(lab_id, member_id), belongs_to(LabInner, foreign_key = lab_id), belongs_to(Person, foreign_key = member_id))]
+#[diesel(table_name = lab_membership, check_for_backend(Pg), primary_key(lab_id, member_id), belongs_to(LabInner, foreign_key = lab_id))]
 #[garde(allow_unvalidated)]
 struct LabMembership {
     lab_id: Uuid,
     member_id: Uuid,
 }
-impl MappingStruct for LabMembership {
-    fn new(id1: Uuid, id2: Uuid) -> Self {
-        Self {
-            lab_id: id1,
-            member_id: id2,
-        }
+impl JunctionStruct for LabMembership {
+    fn new(lab_id: Uuid, member_id: Uuid) -> Self {
+        Self { lab_id, member_id }
     }
 }
 

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, utils::MappingStruct};
+use super::{Create, chromium_library::ChromiumLibrary, utils::JunctionStruct};
 use crate::schema::{self, chromium_sequencing_submissions, sequencing_run};
 
 #[derive(Insertable, Deserialize, Valuable)]
@@ -29,7 +29,7 @@ struct SequencingSubmission {
     library_id: Uuid,
 }
 
-impl MappingStruct for SequencingSubmission {
+impl JunctionStruct for SequencingSubmission {
     fn new(id1: Uuid, id2: Uuid) -> Self {
         Self {
             sequencing_run_id: id1,
@@ -70,7 +70,7 @@ impl Create for Vec<NewSequencingRun> {
             .await?;
 
         let library_ids = self.iter().map(|NewSequencingRun { library_ids, .. }| library_ids);
-        let sequencing_submissions = SequencingSubmission::from_grouped_ids(
+        let sequencing_submissions = SequencingSubmission::from_ids_grouped_by_parent1(
             &new_run_ids,
             library_ids,
             N_LIBS_PER_SEQUENCING_RUNS * n_sequencing_runs,
@@ -80,4 +80,10 @@ impl Create for Vec<NewSequencingRun> {
 
         Ok(())
     }
+}
+
+#[derive(Identifiable)]
+#[diesel(table_name = schema::sequencing_run, check_for_backend(Pg))]
+struct SequencingRun {
+    id: Uuid,
 }

@@ -1,8 +1,8 @@
 -- Your SQL goes here
 create table multiplexing_tag (
     id uuid primary key default gen_random_uuid(),
-    tag_id text not null, -- constrained by Rust enum
-    type text not null,
+    tag_id text not null,
+    type text not null, -- constrained by Rust enum
     unique (tag_id, type)
 );
 

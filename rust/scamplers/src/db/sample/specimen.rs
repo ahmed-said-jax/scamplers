@@ -22,7 +22,7 @@ use crate::{
     db::{
         self, AsDieselExpression, BoxedDieselExpression, Create, Read,
         person::PersonStub,
-        utils::{Child, Children, ChildrenSets, DbEnum, DbJson},
+        utils::{BelongsToExt, DbEnum, DbJson, Parent, ParentSet},
     },
     schema::{
         self, lab, person,
@@ -155,9 +155,9 @@ impl ToSql<sql_types::Jsonb, Pg> for MeasurementData {
     }
 }
 
-#[derive(Insertable, Deserialize, Validate)]
+#[derive(Insertable, Deserialize, Validate, Associations)]
 #[garde(allow_unvalidated)]
-#[diesel(table_name = schema::specimen_measurement)]
+#[diesel(table_name = schema::specimen_measurement, belongs_to(SpecimenCore, foreign_key = specimen_id))]
 pub struct NewSpecimenMeasurement {
     #[serde(default)]
     pub specimen_id: Uuid,
@@ -177,11 +177,6 @@ impl Create for Vec<NewSpecimenMeasurement> {
             .await?;
 
         Ok(())
-    }
-}
-impl Child<specimen::table> for NewSpecimenMeasurement {
-    fn set_parent_id(&mut self, parent_id: Uuid) {
-        self.specimen_id = parent_id;
     }
 }
 
@@ -234,8 +229,8 @@ impl Create for Vec<NewSpecimen> {
     type Returns = Vec<Specimen>;
 
     async fn create(self, conn: &mut AsyncPgConnection) -> db::Result<Self::Returns> {
-        #[derive(Insertable)]
-        #[diesel(table_name = schema::specimen)]
+        #[derive(Insertable, Associations)]
+        #[diesel(table_name = schema::specimen, belongs_to(SampleMetadata, foreign_key = metadata_id))]
         struct InsertSpecimen {
             legacy_id: String,
             metadata_id: Uuid,
@@ -243,11 +238,25 @@ impl Create for Vec<NewSpecimen> {
             embedded_in: Option<EmbeddingMatrix>,
             preserved_with: Option<PreservationMethod>,
             notes: Option<Vec<String>>,
+            #[diesel(skip_insertion)]
+            measurements: Vec<NewSpecimenMeasurement>,
         }
 
-        impl Child<sample_metadata::table> for InsertSpecimen {
+        impl BelongsToExt<SampleMetadata> for InsertSpecimen {
             fn set_parent_id(&mut self, parent_id: Uuid) {
                 self.metadata_id = parent_id;
+            }
+        }
+
+        impl BelongsToExt<InsertSpecimen> for NewSpecimenMeasurement {
+            fn set_parent_id(&mut self, parent_id: Uuid) {
+                self.specimen_id = parent_id;
+            }
+        }
+
+        impl Parent<NewSpecimenMeasurement> for InsertSpecimen {
+            fn children(&mut self) -> &mut Vec<NewSpecimenMeasurement> {
+                &mut self.measurements
             }
         }
 
@@ -257,7 +266,6 @@ impl Create for Vec<NewSpecimen> {
 
         let mut metadatas = Vec::with_capacity(n_specimens);
         let mut specimen_insertions = Vec::with_capacity(n_specimens);
-        let mut measurement_sets = Vec::with_capacity(n_specimens);
 
         for specimen in self {
             let (embedded_in, preserved_with, type_) = match specimen {
@@ -300,21 +308,23 @@ impl Create for Vec<NewSpecimen> {
                 embedded_in,
                 preserved_with,
                 notes,
+                measurements,
             });
-            measurement_sets.push(measurements);
         }
 
         let metadata_ids = metadatas.create(conn).await?;
-        specimen_insertions.set_parent_ids(&metadata_ids);
+        for (specimen, metadata_id) in specimen_insertions.iter_mut().zip(metadata_ids) {
+            specimen.set_parent_id(metadata_id);
+        }
 
         let specimen_ids: Vec<Uuid> = diesel::insert_into(specimen::table)
-            .values(specimen_insertions)
+            .values(&specimen_insertions)
             .returning(id_col)
             .get_results(conn)
             .await?;
 
         let flattened_measurements =
-            measurement_sets.flatten_and_set_parent_ids(&specimen_ids, N_MEASUREMENTS_PER_SPECIMEN * n_specimens);
+            specimen_insertions.flatten_children_and_set_ids(&specimen_ids, N_MEASUREMENTS_PER_SPECIMEN * n_specimens);
         flattened_measurements.create(conn).await?;
 
         let query = SpecimenQuery {

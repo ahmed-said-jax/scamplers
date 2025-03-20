@@ -3,23 +3,16 @@ use std::{
     str::FromStr,
 };
 
-use diesel::{
-    BoxableExpression,
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    result::DatabaseErrorInformation,
-    serialize::ToSql,
-    sql_types::{self, Bool},
-};
+use diesel::{BoxableExpression, pg::Pg, result::DatabaseErrorInformation, sql_types::Bool};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
 use regex::Regex;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 
 mod chemistry;
+mod chromium_library;
+mod chromium_run;
 mod dataset;
 pub mod index_sets;
 pub mod institution;
