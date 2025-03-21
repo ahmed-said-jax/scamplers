@@ -18,8 +18,10 @@ use valuable::Valuable;
 
 use super::{Create, NewSampleMetadata, SampleMetadata, suspension_measurement::MeasurementData};
 use crate::{
-    db::person::PersonStub,
-    db::utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
+    db::{
+        person::PersonStub,
+        utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
+    },
     schema::{self, sample_metadata, suspension, suspension_measurement, suspension_preparers},
 };
 
@@ -224,8 +226,8 @@ impl BelongsToExt<NewSampleMetadata> for NewSuspension {
 }
 
 impl Parent<NewSuspensionMeasurement> for NewSuspension {
-    fn children(&mut self) -> &mut Vec<NewSuspensionMeasurement> {
-        &mut self.measurements
+    fn drain_children(&mut self) -> Vec<NewSuspensionMeasurement> {
+        self.measurements.drain(..).collect()
     }
 }
 

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use diesel::{
     associations::BelongsTo,
     backend::Backend,
@@ -8,7 +10,6 @@ use diesel::{
     sql_types,
 };
 use serde::{Serialize, de::DeserializeOwned};
-use std::str::FromStr;
 use uuid::Uuid;
 
 const DEFAULT_QUERY_LIMIT: i64 = 500;
@@ -22,7 +23,7 @@ pub trait BelongsToExt<Parent> {
 }
 
 pub trait Parent<Child> {
-    fn children(&mut self) -> &mut Vec<Child>;
+    fn drain_children(&mut self) -> Vec<Child>;
 }
 
 pub trait ParentSet<'a, P, Child>
@@ -39,7 +40,7 @@ where
 {
     fn flatten_children_and_set_ids(&'a mut self, ids: &[Uuid], n_children: usize) -> Vec<Child> {
         let mut flattened_children = Vec::with_capacity(n_children);
-        let nested_children = self.iter_mut().map(|p| p.children().drain(..).collect::<Vec<_>>());
+        let nested_children = self.iter_mut().map(|p| p.drain_children());
 
         for (children, parent_id) in nested_children.zip(ids) {
             for mut child in children.into_iter() {
@@ -65,15 +66,15 @@ pub trait JunctionStruct: Sized {
         I3: IntoIterator<Item = U>,
         U: AsRef<Uuid>,
     {
-        let mut mapping_structs = Vec::with_capacity(n_relationships);
+        let mut junction_structs = Vec::with_capacity(n_relationships);
 
         for (parent_id, children) in parent1_ids.into_iter().zip(parent2_id_groups) {
             for child_id in children {
-                mapping_structs.push(Self::new(*parent_id.as_ref(), *child_id.as_ref()))
+                junction_structs.push(Self::new(*parent_id.as_ref(), *child_id.as_ref()))
             }
         }
 
-        mapping_structs
+        junction_structs
     }
 }
 

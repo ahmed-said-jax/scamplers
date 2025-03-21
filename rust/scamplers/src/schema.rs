@@ -17,6 +17,7 @@ diesel::table! {
         legacy_id -> Text,
         prepared_at -> Timestamp,
         gems_id -> Uuid,
+        n_amplification_cycles -> Int4,
         storage_location -> Nullable<Text>,
         notes -> Nullable<Array<Text>>,
     }
@@ -47,8 +48,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
-        gem_id -> Uuid,
+    chip_loading (gems_id, suspension_id, multiplexed_suspension_id) {
+        gems_id -> Uuid,
         suspension_id -> Uuid,
         multiplexed_suspension_id -> Uuid,
         suspension_volume_loaded -> Jsonb,
@@ -103,15 +104,9 @@ diesel::table! {
         legacy_id -> Text,
         chip -> Text,
         run_at -> Timestamp,
+        run_by -> Uuid,
         succeeded -> Bool,
         notes -> Nullable<Array<Text>>,
-    }
-}
-
-diesel::table! {
-    chromium_runners (run_id, run_by) {
-        run_id -> Uuid,
-        run_by -> Uuid,
     }
 }
 
@@ -160,6 +155,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         legacy_id -> Text,
+        chemistry -> Text,
         chromium_run_id -> Uuid,
     }
 }
@@ -197,8 +193,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    library_type_specification (chemistry_name, library_type) {
-        chemistry_name -> Text,
+    library_type_specification (chemistry, library_type) {
+        chemistry -> Text,
         library_type -> Text,
         index_kit -> Text,
         #[sql_name = "cdna_volume_µl"]
@@ -359,7 +355,7 @@ diesel::joinable!(cdna_measurement -> cdna (cdna_id));
 diesel::joinable!(cdna_measurement -> person (measured_by));
 diesel::joinable!(cdna_preparers -> cdna (cdna_id));
 diesel::joinable!(cdna_preparers -> person (prepared_by));
-diesel::joinable!(chip_loading -> gems (gem_id));
+diesel::joinable!(chip_loading -> gems (gems_id));
 diesel::joinable!(chip_loading -> multiplexed_suspension (multiplexed_suspension_id));
 diesel::joinable!(chip_loading -> suspension (suspension_id));
 diesel::joinable!(chromium_dataset -> dataset_metadata (id));
@@ -371,19 +367,19 @@ diesel::joinable!(chromium_library_measurement -> chromium_library (library_id))
 diesel::joinable!(chromium_library_measurement -> person (measured_by));
 diesel::joinable!(chromium_library_preparers -> chromium_library (library_id));
 diesel::joinable!(chromium_library_preparers -> person (prepared_by));
-diesel::joinable!(chromium_runners -> chromium_run (run_id));
-diesel::joinable!(chromium_runners -> person (run_by));
+diesel::joinable!(chromium_run -> person (run_by));
 diesel::joinable!(chromium_sequencing_submissions -> chromium_library (library_id));
 diesel::joinable!(chromium_sequencing_submissions -> sequencing_run (sequencing_run_id));
 diesel::joinable!(committee_approval -> institution (institution_id));
 diesel::joinable!(committee_approval -> sample_metadata (sample_id));
 diesel::joinable!(dataset_metadata -> lab (lab_id));
 diesel::joinable!(dual_index_set -> index_kit (kit));
+diesel::joinable!(gems -> chemistry (chemistry));
 diesel::joinable!(gems -> chromium_run (chromium_run_id));
 diesel::joinable!(lab -> person (pi_id));
 diesel::joinable!(lab_membership -> lab (lab_id));
 diesel::joinable!(lab_membership -> person (member_id));
-diesel::joinable!(library_type_specification -> chemistry (chemistry_name));
+diesel::joinable!(library_type_specification -> chemistry (chemistry));
 diesel::joinable!(library_type_specification -> index_kit (index_kit));
 diesel::joinable!(multiplexed_suspension_measurement -> multiplexed_suspension (suspension_id));
 diesel::joinable!(multiplexed_suspension_measurement -> person (measured_by));
@@ -416,7 +412,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     chromium_library_measurement,
     chromium_library_preparers,
     chromium_run,
-    chromium_runners,
     chromium_sequencing_submissions,
     committee_approval,
     dataset_metadata,

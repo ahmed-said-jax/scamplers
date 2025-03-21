@@ -1,11 +1,11 @@
 --- src/schema.rs
 +++ src/schema.patch
-@@ -15,13 +15,13 @@
-         link -> Text,
+@@ -16,13 +16,13 @@
          library_type -> Text,
          legacy_id -> Text,
          prepared_at -> Timestamp,
          gems_id -> Uuid,
+         n_amplification_cycles -> Int4,
          storage_location -> Nullable<Text>,
 -        notes -> Nullable<Array<Nullable<Text>>>,
 +        notes -> Nullable<Array<Text>>,
@@ -15,9 +15,9 @@
  diesel::table! {
      cdna_measurement (id) {
          id -> Uuid,
-@@ -50,21 +50,21 @@
-     chip_loading (gem_id, suspension_id, multiplexed_suspension_id) {
-         gem_id -> Uuid,
+@@ -51,21 +51,21 @@
+     chip_loading (gems_id, suspension_id, multiplexed_suspension_id) {
+         gems_id -> Uuid,
          suspension_id -> Uuid,
          multiplexed_suspension_id -> Uuid,
          suspension_volume_loaded -> Jsonb,
@@ -39,7 +39,7 @@
  
  diesel::table! {
      chromium_library (id) {
-@@ -73,13 +73,13 @@
+@@ -74,13 +74,13 @@
          legacy_id -> Text,
          cdna_id -> Uuid,
          single_index_set_name -> Nullable<Text>,
@@ -54,12 +54,12 @@
  diesel::table! {
      chromium_library_measurement (id) {
          id -> Uuid,
-@@ -101,13 +101,13 @@
-         id -> Uuid,
+@@ -103,13 +103,13 @@
          link -> Text,
          legacy_id -> Text,
          chip -> Text,
          run_at -> Timestamp,
+         run_by -> Uuid,
          succeeded -> Bool,
 -        notes -> Nullable<Array<Nullable<Text>>>,
 +        notes -> Nullable<Array<Text>>,
@@ -67,9 +67,9 @@
  }
  
  diesel::table! {
-     chromium_runners (run_id, run_by) {
-         run_id -> Uuid,
-@@ -212,13 +212,13 @@
+     chromium_sequencing_submissions (library_id, sequencing_run_id) {
+         library_id -> Uuid,
+@@ -208,13 +208,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
          link -> Text,
@@ -84,7 +84,7 @@
  diesel::table! {
      multiplexed_suspension_measurement (id) {
          id -> Uuid,
-@@ -263,37 +263,37 @@
+@@ -259,37 +259,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -126,7 +126,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -301,14 +301,14 @@
+@@ -297,14 +297,14 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
@@ -143,7 +143,7 @@
  diesel::table! {
      specimen_measurement (id) {
          id -> Uuid,
-@@ -330,13 +330,13 @@
+@@ -326,13 +326,13 @@
          created_at -> Timestamp,
          pooled_into_id -> Nullable<Uuid>,
          multiplexing_tag_id -> Nullable<Uuid>,

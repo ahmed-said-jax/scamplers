@@ -5,7 +5,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, chromium_library::ChromiumLibrary, utils::JunctionStruct};
+use super::{Create, utils::JunctionStruct};
 use crate::schema::{self, chromium_sequencing_submissions, sequencing_run};
 
 #[derive(Insertable, Deserialize, Valuable)]

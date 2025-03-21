@@ -26,7 +26,7 @@ use crate::{
 mod multiplexed_suspension;
 pub mod specimen;
 mod suspension;
-mod suspension_measurement;
+pub mod suspension_measurement;
 
 // This is the first real complexity. We want to abstract away different sample types into one `Sample` enum for ease of
 // API usage

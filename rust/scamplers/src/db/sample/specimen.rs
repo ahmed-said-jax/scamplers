@@ -255,8 +255,8 @@ impl Create for Vec<NewSpecimen> {
         }
 
         impl Parent<NewSpecimenMeasurement> for InsertSpecimen {
-            fn children(&mut self) -> &mut Vec<NewSpecimenMeasurement> {
-                &mut self.measurements
+            fn drain_children(&mut self) -> Vec<NewSpecimenMeasurement> {
+                self.measurements.drain(..).collect()
             }
         }
 

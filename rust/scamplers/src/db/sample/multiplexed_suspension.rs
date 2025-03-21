@@ -18,13 +18,12 @@ use uuid::Uuid;
 use valuable::Valuable;
 
 use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
-use crate::schema::{self, multiplexed_suspension, multiplexing_tag};
 use crate::{
     db::{
         Create,
         utils::{self, BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
     },
-    schema::multiplexed_suspension_preparers,
+    schema::{self, multiplexed_suspension, multiplexed_suspension_preparers, multiplexing_tag},
 };
 
 #[derive(
@@ -145,8 +144,8 @@ impl BelongsToExt<NewMultiplexedSuspension> for NewSuspension {
     }
 }
 impl Parent<NewSuspension> for NewMultiplexedSuspension {
-    fn children(&mut self) -> &mut Vec<NewSuspension> {
-        &mut self.suspensions
+    fn drain_children(&mut self) -> Vec<NewSuspension> {
+        self.suspensions.drain(..).collect()
     }
 }
 

@@ -10,6 +10,7 @@ use diesel::{
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
+use valuable::Valuable;
 
 use super::{Create, utils::DbEnum};
 use crate::schema;
@@ -26,6 +27,7 @@ use crate::schema;
     Default,
     strum::IntoStaticStr,
     strum::EnumString,
+    Valuable,
 )]
 #[diesel(sql_type = sql_types::Text)]
 pub enum LibraryType {
@@ -88,11 +90,51 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for LibraryType {
     }
 }
 
+pub trait LibraryTypeGroup {
+    fn validate(&mut self) -> Result<(), Error>;
+}
+impl LibraryTypeGroup for Vec<LibraryType> {
+    fn validate(&mut self) -> Result<(), Error> {
+        type T = LibraryType;
+
+        self.sort();
+
+        match self.as_slice() {
+            [T::AntibodyCapture] => Ok(("cellranger", "count")),
+            [T::AntibodyCapture, T::GeneExpression], false) => Ok(("cellranger", "count")),
+            [T::AntibodyCapture, T::GeneExpression], true) => Ok(("cellranger", "multi")),
+            [T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture], true) => {
+                        Ok(("cellranger", "multi"))
+                    }
+                    (
+                        [T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture, T::Vdj | T::VdjB | T::VdjT | T::VdjTGd],
+                        true,
+                    ) => Ok(("cellranger", "multi")),
+                    (
+                        [T::AntibodyCapture, T::GeneExpression, T::Vdj | T::VdjB | T::VdjT | T::VdjTGd],
+                        false,
+                    ) => Ok(("cellranger", "multi")),
+                    ([T::ChromatinAccessibility], false) => Ok(("cellranger-atac", "count")),
+                    ([T::ChromatinAccessibility, T::GeneExpression], false) => {
+                        Ok(("cellranger-arc", "count"))
+                    }
+                    ([T::GeneExpression], false) => Ok(("cellranger", "count")),
+                    ([T::GeneExpression], true) => Ok(("cellranger", "multi")),
+                    ([T::GeneExpression, T::MultiplexingCapture], true) => Ok(("cellranger", "multi")),
+                    ([T::GeneExpression, T::Vdj | T::VdjB | T::VdjT | T::VdjTGd], _) => {
+                        Ok(("cellranger", "multi"))
+                    }
+                    ([T::Vdj | T::VdjB | T::VdjT | T::VdjTGd], false) => Ok(("cellranger", "vdj")),
+                    _ => Err(core::Error::LibraryTypes(self.clone())),
+                }
+    }
+}
+
 #[derive(Insertable, Deserialize, Validate)]
 #[diesel(table_name = schema::library_type_specification, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 struct LibraryTypeSpecification {
-    chemistry_name: String,
+    chemistry: String,
     library_type: LibraryType,
     index_kit: String,
     #[garde(range(min = 0.0))]
@@ -118,4 +160,12 @@ impl Create for Vec<LibraryTypeSpecification> {
 
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[error("invalid library type group")]
+pub struct Error {
+    expected: [Vec<LibraryType>; 10],
+    found: Vec<LibraryType>,
 }

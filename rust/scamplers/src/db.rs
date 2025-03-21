@@ -10,6 +10,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use valuable::Valuable;
 
+mod cdna;
 mod chemistry;
 mod chromium_library;
 mod chromium_run;
@@ -21,6 +22,7 @@ mod library_type_specification;
 pub mod person;
 pub mod sample;
 mod sequencing_run;
+mod units;
 mod utils;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
@@ -113,6 +115,8 @@ pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) 
 pub enum DataError {
     #[error(transparent)]
     Sample(#[from] sample::Error),
+    #[error(transparent)]
+    Library(#[from] library_type_specification::Error),
     #[error("{0}")]
     Other(String),
 }

@@ -1,4 +1,3 @@
-use crate::schema;
 use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
@@ -9,11 +8,26 @@ use diesel::{
     serialize::ToSql,
     sql_types::{self, SqlType},
 };
+use diesel_async::RunQueryDsl;
+use futures::FutureExt;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::utils::{BelongsToExt, DbEnum};
+use super::{
+    Create,
+    sample::suspension_measurement::{self},
+    utils::{BelongsToExt, DbEnum, JunctionStruct, Parent},
+};
+use crate::{
+    db::{units::VolumeUnit, utils::ParentSet},
+    schema::{
+        self,
+        chip_loading::{self, table},
+        chromium_run, gems,
+    },
+};
+const N_SUSPENSIONS_PER_GEMS: usize = 4;
 
 #[derive(
     Debug,
@@ -71,27 +85,255 @@ struct NewChromiumRun {
     run_at: NaiveDateTime,
     succeeded: bool,
     notes: Option<Vec<String>>,
+    run_by: Uuid,
     #[diesel(skip_insertion)]
-    runners: Vec<Uuid>,
-    #[diesel(skip_insertion)]
-    #[garde(length(min = 1))]
+    #[garde(dive, length(min = 1, max = 8))]
     gems: Vec<NewGems>,
 }
 
-impl BelongsToExt<NewChromiumRun> for NewGems {
+impl Parent<NewGems> for NewChromiumRun {
+    fn drain_children(&mut self) -> Vec<NewGems> {
+        self.gems.drain(..).collect()
+    }
+}
+
+impl Create for Vec<NewChromiumRun> {
+    type Returns = ();
+
+    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+        const N_GEMS_PER_RUN: usize = 8;
+        let n_runs = self.len();
+
+        let chromium_run_ids = diesel::insert_into(chromium_run::table)
+            .values(&self)
+            .returning(chromium_run::id)
+            .get_results(conn)
+            .await?;
+
+        let flattened_gems = self.flatten_children_and_set_ids(&chromium_run_ids, N_GEMS_PER_RUN * n_runs);
+        flattened_gems.create(conn).await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Insertable, Validate, Clone)]
+#[diesel(table_name = schema::chip_loading, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
+struct ChipLoading {
+    #[serde(default)]
+    gems_id: Uuid,
+    #[garde(dive)]
+    suspension_volume_loaded: suspension_measurement::MeasurementData,
+    #[garde(dive)]
+    buffer_volume_loaded: suspension_measurement::MeasurementData,
+    notes: Option<Vec<String>>,
+}
+impl BelongsToExt<NewGems> for ChipLoading {
+    fn set_parent_id(&mut self, parent_id: Uuid) {
+        self.gems_id = parent_id;
+    }
+}
+impl ChipLoading {
+    fn validate_volumes(&self) -> crate::db::Result<()> {
+        use suspension_measurement::MeasurementData::Volume;
+
+        use crate::db::units::VolumeUnit;
+
+        let Self {
+            suspension_volume_loaded,
+            buffer_volume_loaded,
+            ..
+        } = self;
+        let volumes = [suspension_volume_loaded, buffer_volume_loaded];
+
+        let err = "invalid chip loading volume - quantity must be 'volume' and unit must be 'µl'".to_string();
+
+        for v in volumes {
+            let Volume { unit, .. } = v else {
+                return Err(crate::db::Error::Other { message: err });
+            };
+            if !matches!(unit, VolumeUnit::Mcl) {
+                return Err(crate::db::Error::Other { message: err });
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Insertable, Validate)]
+#[diesel(table_name = schema::chip_loading, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
+struct SuspensionChipLoading {
+    suspension_id: Uuid,
+    #[serde(flatten)]
+    #[diesel(embed)]
+    #[garde(dive)]
+    inner: ChipLoading,
+}
+impl SuspensionChipLoading {
+    fn validate_chip_loading(&self) -> crate::db::Result<()> {
+        self.inner.validate_volumes()
+    }
+}
+impl BelongsToExt<NewGems> for SuspensionChipLoading {
+    fn set_parent_id(&mut self, parent_id: Uuid) {
+        self.inner.set_parent_id(parent_id);
+    }
+}
+impl Create for Vec<SuspensionChipLoading> {
+    type Returns = ();
+
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+        diesel::insert_into(chip_loading::table)
+            .values(&self)
+            .execute(conn)
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Insertable, Validate, Clone)]
+#[diesel(table_name = schema::chip_loading, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
+struct MultiplexedSuspensionChipLoading {
+    multiplexed_suspension_id: Uuid,
+    #[serde(flatten)]
+    #[diesel(embed)]
+    #[garde(dive)]
+    inner: ChipLoading,
+}
+impl MultiplexedSuspensionChipLoading {
+    fn validate_chip_loading(&self) -> crate::db::Result<()> {
+        self.inner.validate_volumes()
+    }
+}
+impl BelongsToExt<NewGems> for MultiplexedSuspensionChipLoading {
+    fn set_parent_id(&mut self, parent_id: Uuid) {
+        self.inner.set_parent_id(parent_id);
+    }
+}
+impl Create for Vec<MultiplexedSuspensionChipLoading> {
+    type Returns = ();
+
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+        diesel::insert_into(chip_loading::table)
+            .values(&self)
+            .execute(conn)
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Insertable, Validate)]
+#[diesel(table_name = schema::gems, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
+struct NewGemsCore {
+    legacy_id: String,
+    chemistry: String,
+    #[serde(skip)]
+    chromium_run_id: Uuid,
+}
+impl BelongsToExt<NewChromiumRun> for NewGemsCore {
     fn set_parent_id(&mut self, parent_id: Uuid) {
         self.chromium_run_id = parent_id;
     }
 }
 
-#[derive(Deserialize, Insertable)]
-#[diesel(table_name = schema::gems, check_for_backend(Pg))]
-struct NewGems {
-    legacy_id: String,
-    #[serde(skip)]
-    chromium_run_id: Uuid,
-    #[diesel(skip_insertion)]
-    suspension_ids: Vec<Uuid>,
-    #[diesel(skip_insertion)]
-    multiplexed_suspension_ids: Vec<Uuid>,
+#[derive(Deserialize, Validate)]
+#[garde(allow_unvalidated)]
+#[serde(tag = "plexy", rename_all = "snake_case")]
+enum NewGems {
+    Singleplexed {
+        #[serde(flatten)]
+        #[garde(dive)]
+        inner: NewGemsCore,
+        #[garde(dive, length(min = 1, max = N_SUSPENSIONS_PER_GEMS))]
+        loading: Vec<SuspensionChipLoading>,
+    },
+    Multiplexed {
+        #[serde(flatten)]
+        #[garde(dive)]
+        inner: NewGemsCore,
+        #[garde(dive)]
+        loading: MultiplexedSuspensionChipLoading,
+    },
+}
+impl NewGems {
+    fn validate_chip_loading(&self) -> crate::db::Result<()> {
+        match self {
+            Self::Singleplexed { loading, .. } => loading.iter().try_for_each(|v| v.validate_chip_loading()),
+            Self::Multiplexed { loading, .. } => loading.validate_chip_loading(),
+        }
+    }
+}
+
+impl Parent<SuspensionChipLoading> for NewGems {
+    fn drain_children(&mut self) -> Vec<SuspensionChipLoading> {
+        match self {
+            Self::Singleplexed {
+                loading: suspensions, ..
+            } => suspensions.drain(..).collect(),
+            Self::Multiplexed { .. } => vec![],
+        }
+    }
+}
+impl Parent<MultiplexedSuspensionChipLoading> for NewGems {
+    fn drain_children(&mut self) -> Vec<MultiplexedSuspensionChipLoading> {
+        match self {
+            Self::Singleplexed { .. } => vec![],
+            Self::Multiplexed { loading, .. } => vec![loading.clone()], /* This clone is fine because we avoid complexity and it's a small data structure */
+        }
+    }
+}
+impl Create for Vec<NewGems> {
+    type Returns = ();
+
+    async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+        use NewGems::{Multiplexed, Singleplexed};
+        self.iter().try_for_each(|g| g.validate_chip_loading())?;
+
+        let n_gems = self.len();
+
+        let inners: Vec<_> = self
+            .iter()
+            .map(|(Singleplexed { inner, .. } | Multiplexed { inner, .. })| inner)
+            .collect();
+
+        let gems_ids = diesel::insert_into(gems::table)
+            .values(inners)
+            .returning(gems::id)
+            .get_results(conn)
+            .await?;
+
+        // It appears like we're doing a shit-ton of iterations here, but a given gems only returns a non-empty `Vec`
+        // for one of these calls
+        let suspension_chip_loads = <Self as ParentSet<_, SuspensionChipLoading>>::flatten_children_and_set_ids(
+            &mut self,
+            &gems_ids,
+            N_SUSPENSIONS_PER_GEMS * n_gems,
+        );
+        suspension_chip_loads.create(conn).await?;
+
+        let multiplexed_suspension_chip_loads =
+            <Self as ParentSet<_, MultiplexedSuspensionChipLoading>>::flatten_children_and_set_ids(
+                &mut self, &gems_ids, n_gems,
+            );
+        multiplexed_suspension_chip_loads.create(conn).await?;
+
+        Ok(())
+    }
+}
+
+impl BelongsToExt<NewChromiumRun> for NewGems {
+    fn set_parent_id(&mut self, parent_id: Uuid) {
+        match self {
+            NewGems::Singleplexed { inner, .. } | NewGems::Multiplexed { inner, .. } => {
+                inner.set_parent_id(parent_id);
+            }
+        }
+    }
 }

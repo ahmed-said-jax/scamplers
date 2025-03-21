@@ -5,7 +5,8 @@ create table cdna (
     library_type text not null, -- validated by Rust enum
     legacy_id text unique not null,
     prepared_at timestamp not null,
-    gems_id uuid references gems not null,
+    gems_id uuid references gems on delete restrict on update restrict not null,
+    n_amplification_cycles integer not null,
     storage_location text,
     notes text []
 );
