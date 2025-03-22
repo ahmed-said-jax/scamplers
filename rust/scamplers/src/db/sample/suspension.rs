@@ -16,13 +16,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, NewSampleMetadata, SampleMetadata, suspension_measurement::MeasurementData};
+use super::{Create, NewSampleMetadata, suspension_measurement::MeasurementData};
 use crate::{
-    db::{
-        person::PersonStub,
-        utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
-    },
-    schema::{self, sample_metadata, suspension, suspension_measurement, suspension_preparers},
+    db::utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
+    schema::{self, suspension, suspension_measurement, suspension_preparers},
 };
 
 #[derive(

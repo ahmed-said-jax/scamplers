@@ -12,10 +12,7 @@ use valuable::Valuable;
 use super::{
     AsDieselExpression, BoxedDieselExpression, Create, Read, ReadRelatives, person::Person, utils::JunctionStruct,
 };
-use crate::{
-    db::person::PersonStub,
-    schema::{institution, lab, lab_membership, person},
-};
+use crate::schema::{institution, lab, lab_membership, person};
 
 // This is the first instance where one API body might represent multiple
 // queries. You'll find a top-level struct that represents the whole API request

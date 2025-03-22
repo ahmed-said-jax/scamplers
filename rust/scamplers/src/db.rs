@@ -160,7 +160,7 @@ impl From<sample::Error> for Error {
 }
 impl From<library_type_specification::Error> for Error {
     fn from(err: library_type_specification::Error) -> Self {
-        self::Data(DataError::From(err))
+        Self::Data(DataError::from(err))
     }
 }
 

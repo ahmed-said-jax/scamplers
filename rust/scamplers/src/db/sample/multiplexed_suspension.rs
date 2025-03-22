@@ -1,4 +1,3 @@
-use std::ptr::null_mut;
 
 use chrono::NaiveDateTime;
 use diesel::{
@@ -21,9 +20,9 @@ use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
 use crate::{
     db::{
         Create,
-        utils::{self, BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
+        utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
     },
-    schema::{self, multiplexed_suspension, multiplexed_suspension_preparers, multiplexing_tag},
+    schema::{self, multiplexed_suspension_preparers, multiplexing_tag},
 };
 
 #[derive(

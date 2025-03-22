@@ -129,8 +129,6 @@ pub trait LibraryTypeGroup {
 }
 impl LibraryTypeGroup for Vec<LibraryType> {
     fn validate(&self) -> Result<(), Error> {
-        type T = LibraryType;
-
         let expected = Self::valid_combinations();
 
         let mut library_types = self.clone();

@@ -20,10 +20,10 @@ use super::{
     utils::{BelongsToExt, DbEnum, JunctionStruct, Parent},
 };
 use crate::{
-    db::{units::VolumeUnit, utils::ParentSet},
+    db::utils::ParentSet,
     schema::{
         self,
-        chip_loading::{self, table},
+        chip_loading::{self},
         chromium_run, gems,
     },
 };

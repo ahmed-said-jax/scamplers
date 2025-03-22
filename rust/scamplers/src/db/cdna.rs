@@ -12,12 +12,10 @@ use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use valuable::Valuable;
 
 use super::{
     Create,
     library_type_specification::{self, LibraryType, LibraryTypeGroup},
-    person::PersonStub,
     units::{MassUnit, VolumeUnit},
     utils::{BelongsToExt, DbJson, JunctionStruct, Parent},
 };

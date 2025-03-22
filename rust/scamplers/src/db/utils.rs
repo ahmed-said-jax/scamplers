@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use diesel::{
-    associations::BelongsTo,
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
