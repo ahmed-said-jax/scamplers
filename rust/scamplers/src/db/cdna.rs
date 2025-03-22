@@ -16,7 +16,7 @@ use valuable::Valuable;
 
 use super::{
     Create,
-    library_type_specification::LibraryType,
+    library_type_specification::{self, LibraryType, LibraryTypeGroup},
     person::PersonStub,
     units::{MassUnit, VolumeUnit},
     utils::{BelongsToExt, DbJson, JunctionStruct, Parent},
@@ -108,7 +108,44 @@ impl Parent<CdnaMeasurement> for NewCdna {
     }
 }
 trait CdnaGroup {
-    async fn validate_library_types(&self, conn: &diesel_async::AsyncPgConnection) -> Result;
+    async fn validate_library_types(&self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<()>;
+}
+impl CdnaGroup for Vec<NewCdna> {
+    async fn validate_library_types(&self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<()> {
+        use schema::{
+            chemistry::{library_types as library_types_col, table as chemistry_table},
+            gems::{id, table as gems_table},
+        };
+
+        let Some(NewCdna { gems_id, .. }) = self.get(0) else {
+            return Ok(());
+        };
+
+        let lib_types: Vec<_> = self.iter().map(|NewCdna { library_type, .. }| *library_type).collect();
+        lib_types.validate()?;
+
+        let err = || library_type_specification::Error::new(lib_types.clone());
+
+        let expected_lib_types: Option<Vec<LibraryType>> = gems_table
+            .filter(id.eq(gems_id))
+            .left_join(chemistry_table)
+            .select(library_types_col.nullable())
+            .first(conn)
+            .await?;
+        let Some(mut expected_lib_types) = expected_lib_types else {
+            if lib_types != [LibraryType::AntibodyCapture] {
+                return Err(err().into());
+            }
+            return Ok(());
+        };
+
+        expected_lib_types.sort();
+        if lib_types != expected_lib_types {
+            return Err(err().into());
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Insertable)]

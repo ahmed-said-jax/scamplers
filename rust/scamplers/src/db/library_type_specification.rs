@@ -136,18 +136,14 @@ impl LibraryTypeGroup for Vec<LibraryType> {
         let mut library_types = self.clone();
         library_types.sort();
 
+        let err = || Error::new(library_types.clone());
+
         if self.len() > 4 {
-            return Err(Error {
-                expected,
-                found: library_types,
-            });
+            return Err(err());
         }
 
         if !expected.contains(&library_types) {
-            return Err(Error {
-                expected,
-                found: library_types,
-            });
+            return Err(err());
         }
         Ok(())
     }
@@ -191,4 +187,12 @@ impl Create for Vec<LibraryTypeSpecification> {
 pub struct Error {
     expected: [Vec<LibraryType>; 23],
     found: Vec<LibraryType>,
+}
+impl Error {
+    pub fn new(library_types: Vec<LibraryType>) -> Self {
+        Self {
+            expected: <Vec<_> as LibraryTypeGroup>::valid_combinations(),
+            found: library_types,
+        }
+    }
 }

@@ -44,6 +44,7 @@ diesel::table! {
         name -> Text,
         description -> Text,
         definition -> Jsonb,
+        library_types -> Array<Text>,
     }
 }
 
@@ -155,7 +156,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         legacy_id -> Text,
-        chemistry -> Text,
+        chemistry -> Nullable<Text>,
         chromium_run_id -> Uuid,
     }
 }

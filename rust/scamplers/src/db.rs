@@ -158,6 +158,11 @@ impl From<sample::Error> for Error {
         Self::Data(DataError::from(err))
     }
 }
+impl From<library_type_specification::Error> for Error {
+    fn from(err: library_type_specification::Error) -> Self {
+        self::Data(DataError::From(err))
+    }
+}
 
 impl From<diesel::result::Error> for Error {
     fn from(err: diesel::result::Error) -> Self {
