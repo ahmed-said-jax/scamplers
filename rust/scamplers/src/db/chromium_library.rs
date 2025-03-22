@@ -1,4 +1,3 @@
-use crate::db::units::{MassUnit, VolumeUnit};
 use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
@@ -13,9 +12,11 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::schema;
-
 use super::utils::DbJson;
+use crate::{
+    db::units::{MassUnit, VolumeUnit},
+    schema,
+};
 
 #[derive(Deserialize, Serialize, SqlType, AsExpression, Debug, FromSqlRow, Default, Validate)]
 #[serde(rename_all = "snake_case", tag = "quantity")]

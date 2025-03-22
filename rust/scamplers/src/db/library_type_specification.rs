@@ -28,6 +28,9 @@ use crate::schema;
     strum::IntoStaticStr,
     strum::EnumString,
     Valuable,
+    Eq,
+    PartialOrd,
+    Ord,
 )]
 #[diesel(sql_type = sql_types::Text)]
 pub enum LibraryType {
@@ -91,42 +94,62 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for LibraryType {
 }
 
 pub trait LibraryTypeGroup {
-    fn validate(&mut self) -> Result<(), Error>;
-}
-impl LibraryTypeGroup for Vec<LibraryType> {
-    fn validate(&mut self) -> Result<(), Error> {
+    fn validate(&self) -> Result<(), Error>;
+    fn valid_combinations() -> [Vec<LibraryType>; 23] {
         type T = LibraryType;
 
-        self.sort();
+        let valid_combos = [
+            vec![T::AntibodyCapture],
+            vec![T::AntibodyCapture, T::GeneExpression],
+            vec![T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture],
+            vec![T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture, T::Vdj],
+            vec![T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture, T::VdjB],
+            vec![T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture, T::VdjT],
+            vec![T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture, T::VdjTGd],
+            vec![T::AntibodyCapture, T::GeneExpression, T::Vdj],
+            vec![T::AntibodyCapture, T::GeneExpression, T::VdjB],
+            vec![T::AntibodyCapture, T::GeneExpression, T::VdjT],
+            vec![T::AntibodyCapture, T::GeneExpression, T::VdjTGd],
+            vec![T::ChromatinAccessibility],
+            vec![T::ChromatinAccessibility, T::GeneExpression],
+            vec![T::GeneExpression],
+            (vec![T::GeneExpression, T::MultiplexingCapture]),
+            (vec![T::GeneExpression, T::Vdj]),
+            (vec![T::GeneExpression, T::VdjB]),
+            (vec![T::GeneExpression, T::VdjT]),
+            (vec![T::GeneExpression, T::VdjTGd]),
+            (vec![T::Vdj]),
+            vec![T::VdjB],
+            vec![T::VdjT],
+            vec![T::VdjTGd],
+        ];
 
-        match self.as_slice() {
-            [T::AntibodyCapture] => Ok(("cellranger", "count")),
-            [T::AntibodyCapture, T::GeneExpression], false) => Ok(("cellranger", "count")),
-            [T::AntibodyCapture, T::GeneExpression], true) => Ok(("cellranger", "multi")),
-            [T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture], true) => {
-                        Ok(("cellranger", "multi"))
-                    }
-                    (
-                        [T::AntibodyCapture, T::GeneExpression, T::MultiplexingCapture, T::Vdj | T::VdjB | T::VdjT | T::VdjTGd],
-                        true,
-                    ) => Ok(("cellranger", "multi")),
-                    (
-                        [T::AntibodyCapture, T::GeneExpression, T::Vdj | T::VdjB | T::VdjT | T::VdjTGd],
-                        false,
-                    ) => Ok(("cellranger", "multi")),
-                    ([T::ChromatinAccessibility], false) => Ok(("cellranger-atac", "count")),
-                    ([T::ChromatinAccessibility, T::GeneExpression], false) => {
-                        Ok(("cellranger-arc", "count"))
-                    }
-                    ([T::GeneExpression], false) => Ok(("cellranger", "count")),
-                    ([T::GeneExpression], true) => Ok(("cellranger", "multi")),
-                    ([T::GeneExpression, T::MultiplexingCapture], true) => Ok(("cellranger", "multi")),
-                    ([T::GeneExpression, T::Vdj | T::VdjB | T::VdjT | T::VdjTGd], _) => {
-                        Ok(("cellranger", "multi"))
-                    }
-                    ([T::Vdj | T::VdjB | T::VdjT | T::VdjTGd], false) => Ok(("cellranger", "vdj")),
-                    _ => Err(core::Error::LibraryTypes(self.clone())),
-                }
+        valid_combos
+    }
+}
+impl LibraryTypeGroup for Vec<LibraryType> {
+    fn validate(&self) -> Result<(), Error> {
+        type T = LibraryType;
+
+        let expected = Self::valid_combinations();
+
+        let mut library_types = self.clone();
+        library_types.sort();
+
+        if self.len() > 4 {
+            return Err(Error {
+                expected,
+                found: library_types,
+            });
+        }
+
+        if !expected.contains(&library_types) {
+            return Err(Error {
+                expected,
+                found: library_types,
+            });
+        }
+        Ok(())
     }
 }
 
@@ -166,6 +189,6 @@ impl Create for Vec<LibraryTypeSpecification> {
 #[serde(tag = "type", rename_all = "snake_case")]
 #[error("invalid library type group")]
 pub struct Error {
-    expected: [Vec<LibraryType>; 10],
+    expected: [Vec<LibraryType>; 23],
     found: Vec<LibraryType>,
 }
