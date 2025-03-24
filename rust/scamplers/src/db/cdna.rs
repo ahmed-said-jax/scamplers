@@ -1,4 +1,3 @@
-use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
@@ -16,39 +15,13 @@ use uuid::Uuid;
 use super::{
     Create,
     library_type_specification::{self, LibraryType, LibraryTypeGroup},
+    nucleic_acid_measurement,
     units::{MassUnit, VolumeUnit},
-    utils::{BelongsToExt, DbJson, JunctionStruct, Parent},
+    utils::{BelongsToExt, DbJson, DefaultNowNaiveDateTime, JunctionStruct, Parent},
 };
 use crate::{db::utils::ParentSet, schema};
 const N_MEASUREMENTS_PER_CDNA: usize = 2;
 const N_PREPARERS_PER_CDNA: usize = 2;
-
-#[derive(Deserialize, Serialize, SqlType, AsExpression, Debug, FromSqlRow, Default, Validate)]
-#[serde(rename_all = "snake_case", tag = "quantity")]
-#[diesel(sql_type = sql_types::Jsonb)]
-#[garde(allow_unvalidated)]
-enum MeasurementData {
-    Concentration {
-        measured_at: NaiveDateTime,
-        instrument_name: String,
-        #[garde(range(min = 1.0))]
-        value: f32,
-        unit: (MassUnit, VolumeUnit),
-    },
-    #[default]
-    Unknown,
-}
-impl DbJson for MeasurementData {}
-impl FromSql<sql_types::Jsonb, Pg> for MeasurementData {
-    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        Self::from_sql_inner(bytes)
-    }
-}
-impl ToSql<sql_types::Jsonb, Pg> for MeasurementData {
-    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        self.to_sql_inner(out)
-    }
-}
 
 #[derive(Insertable, Deserialize, Serialize, Validate)]
 #[diesel(table_name = schema::cdna_measurement, check_for_backend(Pg))]
@@ -58,7 +31,7 @@ struct CdnaMeasurement {
     cdna_id: Uuid,
     measured_by: Uuid,
     #[garde(dive)]
-    data: MeasurementData,
+    data: nucleic_acid_measurement::MeasurementData,
 }
 impl BelongsToExt<NewCdna> for CdnaMeasurement {
     fn set_parent_id(&mut self, parent_id: Uuid) {
@@ -87,7 +60,8 @@ impl Create for Vec<CdnaMeasurement> {
 struct NewCdna {
     library_type: LibraryType,
     legacy_id: String,
-    prepared_at: NaiveDateTime,
+    #[serde(default)]
+    prepared_at: DefaultNowNaiveDateTime,
     gems_id: Uuid,
     #[garde(range(min = 1))]
     n_amplification_cycles: i32,
@@ -101,7 +75,7 @@ struct NewCdna {
     preparer_ids: Vec<Uuid>,
 }
 impl Parent<CdnaMeasurement> for NewCdna {
-    fn drain_children(&mut self) -> Vec<CdnaMeasurement> {
+    fn owned_children(&mut self) -> Vec<CdnaMeasurement> {
         self.measurements.drain(..).collect()
     }
 }
@@ -187,10 +161,10 @@ impl Create for Vec<NewCdna> {
         let flattened_measurements = self.flatten_children_and_set_ids(&cdna_ids, N_MEASUREMENTS_PER_CDNA * n_cdnas);
         flattened_measurements.create(conn).await?;
 
-        let preparer_id_sets = self.iter().map(|NewCdna { preparer_ids, .. }| preparer_ids);
+        let preparer_id_sets = self.into_iter().map(|NewCdna { preparer_ids, .. }| preparer_ids);
 
         let cdna_preparers =
-            CdnaPreparer::from_ids_grouped_by_parent1(&cdna_ids, preparer_id_sets, N_PREPARERS_PER_CDNA * n_cdnas);
+            CdnaPreparer::from_ids_grouped_by_parent1(cdna_ids, preparer_id_sets, N_PREPARERS_PER_CDNA * n_cdnas);
 
         cdna_preparers.create(conn).await?;
 

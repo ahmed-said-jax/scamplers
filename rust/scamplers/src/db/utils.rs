@@ -1,15 +1,19 @@
 use std::str::FromStr;
 
+use chrono::{NaiveDateTime, Utc};
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
     serialize::ToSql,
-    sql_types,
+    sql_types::{self, SqlType},
 };
-use serde::{Serialize, de::DeserializeOwned};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use strum::AsRefStr;
 use uuid::Uuid;
+use valuable::Valuable;
 
 const DEFAULT_QUERY_LIMIT: i64 = 500;
 
@@ -22,7 +26,7 @@ pub trait BelongsToExt<Parent> {
 }
 
 pub trait Parent<Child> {
-    fn drain_children(&mut self) -> Vec<Child>;
+    fn owned_children(&mut self) -> Vec<Child>;
 }
 
 pub trait ParentSet<'a, P, Child>
@@ -39,7 +43,7 @@ where
 {
     fn flatten_children_and_set_ids(&'a mut self, ids: &[Uuid], n_children: usize) -> Vec<Child> {
         let mut flattened_children = Vec::with_capacity(n_children);
-        let nested_children = self.iter_mut().map(|p| p.drain_children());
+        let nested_children = self.iter_mut().map(|p| p.owned_children());
 
         for (children, parent_id) in nested_children.zip(ids) {
             for mut child in children.into_iter() {
@@ -52,24 +56,19 @@ where
     }
 }
 
-pub trait JunctionStruct: Sized {
-    fn new(parent1_id: Uuid, parent2_id: Uuid) -> Self;
-    fn from_ids_grouped_by_parent1<I1, I2, I3, U>(
-        parent1_ids: I1,
-        parent2_id_groups: I2,
-        n_relationships: usize,
-    ) -> Vec<Self>
+pub trait JunctionStruct<T: Clone = Uuid, U = Uuid>: Sized {
+    fn new(parent1: T, parent2_id: U) -> Self;
+    fn from_ids_grouped_by_parent1<I1, I2, I3>(parent1: I1, parent2_groups: I2, n_relationships: usize) -> Vec<Self>
     where
-        I1: IntoIterator<Item = U>,
+        I1: IntoIterator<Item = T>,
         I2: IntoIterator<Item = I3>,
         I3: IntoIterator<Item = U>,
-        U: AsRef<Uuid>,
     {
         let mut junction_structs = Vec::with_capacity(n_relationships);
 
-        for (parent_id, children) in parent1_ids.into_iter().zip(parent2_id_groups) {
+        for (parent_id, children) in parent1.into_iter().zip(parent2_groups) {
             for child_id in children {
-                junction_structs.push(Self::new(*parent_id.as_ref(), *child_id.as_ref()))
+                junction_structs.push(Self::new(parent_id.clone(), child_id))
             }
         }
 
@@ -123,5 +122,32 @@ impl AsIlike for &str {
 impl AsIlike for String {
     fn as_ilike(&self) -> String {
         self.as_str().as_ilike()
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, AsExpression, SqlType, JsonSchema, Clone)]
+#[diesel(sql_type = sql_types::Timestamp)]
+#[serde(transparent)]
+pub struct DefaultNowNaiveDateTime(NaiveDateTime);
+impl From<NaiveDateTime> for DefaultNowNaiveDateTime {
+    fn from(value: NaiveDateTime) -> Self {
+        Self(value)
+    }
+}
+impl Default for DefaultNowNaiveDateTime {
+    fn default() -> Self {
+        Self(Utc::now().naive_utc())
+    }
+}
+impl ToSql<sql_types::Timestamp, Pg> for DefaultNowNaiveDateTime {
+    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        let Self(inner) = self;
+
+        ToSql::<sql_types::Timestamp, Pg>::to_sql(inner, &mut out.reborrow())
+    }
+}
+impl FromSql<sql_types::Timestamp, Pg> for DefaultNowNaiveDateTime {
+    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        Ok(Self(FromSql::<sql_types::Timestamp, Pg>::from_sql(bytes)?))
     }
 }

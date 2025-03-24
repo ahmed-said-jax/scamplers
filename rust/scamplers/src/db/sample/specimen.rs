@@ -1,4 +1,3 @@
-use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
@@ -22,7 +21,7 @@ use crate::{
     db::{
         self, AsDieselExpression, BoxedDieselExpression, Create, Read,
         person::PersonStub,
-        utils::{BelongsToExt, DbEnum, DbJson, Parent, ParentSet},
+        utils::{BelongsToExt, DbEnum, DbJson, DefaultNowNaiveDateTime, Parent, ParentSet},
     },
     schema::{
         self, lab, person,
@@ -127,13 +126,15 @@ fn is_block_preservation_method(preservation_method: &PreservationMethod, _: &()
 #[garde(allow_unvalidated)]
 pub enum MeasurementData {
     Rin {
-        measured_at: NaiveDateTime,
+        #[serde(default)]
+        measured_at: DefaultNowNaiveDateTime,
         instrument_name: String, // This should be an enum
         #[garde(range(min = 1.0, max = 10.0))]
         value: f32,
     },
     Dv200 {
-        measured_at: NaiveDateTime,
+        #[serde(default)]
+        measured_at: DefaultNowNaiveDateTime,
         instrument_name: String, // This should be a different enum
         #[garde(range(min = 0.0, max = 1.0))]
         value: f32,
@@ -255,7 +256,7 @@ impl Create for Vec<NewSpecimen> {
         }
 
         impl Parent<NewSpecimenMeasurement> for InsertSpecimen {
-            fn drain_children(&mut self) -> Vec<NewSpecimenMeasurement> {
+            fn owned_children(&mut self) -> Vec<NewSpecimenMeasurement> {
                 self.measurements.drain(..).collect()
             }
         }

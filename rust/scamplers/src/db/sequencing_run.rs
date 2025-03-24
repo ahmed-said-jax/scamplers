@@ -5,7 +5,10 @@ use serde::Deserialize;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{Create, utils::JunctionStruct};
+use super::{
+    Create,
+    utils::{DefaultNowNaiveDateTime, JunctionStruct},
+};
 use crate::schema::{self, chromium_sequencing_submissions, sequencing_run};
 
 #[derive(Insertable, Deserialize, Valuable)]
@@ -13,32 +16,36 @@ use crate::schema::{self, chromium_sequencing_submissions, sequencing_run};
 struct NewSequencingRun {
     legacy_id: String,
     #[valuable(skip)]
-    begun_at: NaiveDateTime,
+    #[serde(default)]
+    begun_at: DefaultNowNaiveDateTime,
     #[valuable(skip)]
     finished_at: Option<NaiveDateTime>,
     notes: Option<Vec<String>>,
     #[diesel(skip_insertion)]
     #[valuable(skip)]
-    library_ids: Vec<Uuid>,
+    libraries: Vec<NewSequencingSubmission>,
 }
 
 #[derive(Insertable, Deserialize)]
 #[diesel(table_name = schema::chromium_sequencing_submissions, check_for_backend(Pg))]
-struct SequencingSubmission {
+struct NewSequencingSubmission {
+    #[serde(default)]
     sequencing_run_id: Uuid,
     library_id: Uuid,
+    fastq_paths: Option<Vec<String>>, /* TODO: write a validation function to ensure these are absolute paths
+                                       * following a specific naming scheme */
+    #[serde(default)]
+    submitted_at: DefaultNowNaiveDateTime,
 }
 
-impl JunctionStruct for SequencingSubmission {
-    fn new(id1: Uuid, id2: Uuid) -> Self {
-        Self {
-            sequencing_run_id: id1,
-            library_id: id2,
-        }
+impl JunctionStruct<Uuid, NewSequencingSubmission> for NewSequencingSubmission {
+    fn new(sequencing_run_id: Uuid, mut submission: NewSequencingSubmission) -> Self {
+        submission.sequencing_run_id = sequencing_run_id;
+        submission
     }
 }
 
-impl Create for Vec<SequencingSubmission> {
+impl Create for Vec<NewSequencingSubmission> {
     type Returns = ();
 
     async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
@@ -69,10 +76,10 @@ impl Create for Vec<NewSequencingRun> {
             .get_results(conn)
             .await?;
 
-        let library_ids = self.iter().map(|NewSequencingRun { library_ids, .. }| library_ids);
-        let sequencing_submissions = SequencingSubmission::from_ids_grouped_by_parent1(
-            &new_run_ids,
-            library_ids,
+        let libraries = self.into_iter().map(|NewSequencingRun { libraries, .. }| libraries);
+        let sequencing_submissions = NewSequencingSubmission::from_ids_grouped_by_parent1(
+            new_run_ids,
+            libraries,
             N_LIBS_PER_SEQUENCING_RUNS * n_sequencing_runs,
         );
 
@@ -80,10 +87,4 @@ impl Create for Vec<NewSequencingRun> {
 
         Ok(())
     }
-}
-
-#[derive(Identifiable)]
-#[diesel(table_name = schema::sequencing_run, check_for_backend(Pg))]
-struct SequencingRun {
-    id: Uuid,
 }

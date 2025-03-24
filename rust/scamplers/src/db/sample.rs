@@ -15,7 +15,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, lab::LabStub, utils::DbEnum};
+use super::{
+    AsDieselExpression, BoxedDieselExpression, Create,
+    lab::LabStub,
+    utils::{BelongsToExt, DbEnum, DefaultNowNaiveDateTime, Parent, ParentSet},
+};
 use crate::{
     db::utils::AsIlike,
     schema::{
@@ -117,6 +121,23 @@ pub struct NewCommitteeApproval {
     committee_type: ComplianceCommitteeType,
     compliance_identifier: String,
 }
+impl BelongsToExt<NewSampleMetadata> for NewCommitteeApproval {
+    fn set_parent_id(&mut self, parent_id: Uuid) {
+        self.sample_id = parent_id;
+    }
+}
+impl Create for Vec<NewCommitteeApproval> {
+    type Returns = ();
+
+    async fn create(self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
+        diesel::insert_into(committee_approval::table)
+            .values(self)
+            .execute(conn)
+            .await?;
+
+        Ok(())
+    }
+}
 
 #[derive(Deserialize, Validate, Insertable)]
 #[garde(allow_unvalidated)]
@@ -126,7 +147,8 @@ pub struct NewSampleMetadata {
     pub name: String,
     pub submitted_by: Uuid,
     pub lab_id: Uuid,
-    pub received_at: NaiveDateTime,
+    #[serde(default)]
+    pub received_at: DefaultNowNaiveDateTime,
     #[garde(length(min = 1))]
     pub species: Vec<Species>,
     #[garde(length(min = 1))]
@@ -138,35 +160,27 @@ pub struct NewSampleMetadata {
     pub returned_at: Option<NaiveDateTime>,
     pub returned_by: Option<Uuid>,
 }
+impl Parent<NewCommitteeApproval> for NewSampleMetadata {
+    fn owned_children(&mut self) -> Vec<NewCommitteeApproval> {
+        self.committee_approvals.drain(..).collect()
+    }
+}
 
 impl Create for Vec<NewSampleMetadata> {
     type Returns = Vec<Uuid>;
 
     async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<Self::Returns> {
+        const N_APPROVALS_PER_SAMPLE: usize = 2;
+        let n_samples = self.len();
+
         let ids = diesel::insert_into(sample_metadata::table)
             .values(&self)
             .returning(sample_metadata::id)
             .get_results(conn)
             .await?;
 
-        let mut committee_approval_insertions = Vec::with_capacity(self.len());
-        for (
-            NewSampleMetadata {
-                committee_approvals, ..
-            },
-            sample_id,
-        ) in self.iter_mut().zip(&ids)
-        {
-            for approval in committee_approvals {
-                approval.sample_id = *sample_id;
-                committee_approval_insertions.push(&*approval);
-            }
-        }
-
-        diesel::insert_into(committee_approval::table)
-            .values(committee_approval_insertions)
-            .execute(conn)
-            .await?;
+        let flattened_committee_approvals = self.flatten_children_and_set_ids(&ids, N_APPROVALS_PER_SAMPLE * n_samples);
+        flattened_committee_approvals.create(conn).await?;
 
         Ok(ids)
     }

@@ -14,16 +14,17 @@ mod cdna;
 mod chemistry;
 mod chromium_library;
 mod chromium_run;
-mod dataset;
+pub mod dataset;
 pub mod index_sets;
 pub mod institution;
 pub mod lab;
 mod library_type_specification;
+mod nucleic_acid_measurement;
 pub mod person;
 pub mod sample;
 mod sequencing_run;
 mod units;
-mod utils;
+pub mod utils;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once. This improves efficiency, especially if the database and

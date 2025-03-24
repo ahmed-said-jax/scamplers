@@ -48,10 +48,10 @@ impl Create for Vec<NewLab> {
             .get_results(conn)
             .await?;
 
-        let member_id_sets = self.iter().map(|NewLab { member_ids, .. }| member_ids);
+        let member_id_sets = self.into_iter().map(|NewLab { member_ids, .. }| member_ids);
 
         let member_insertions =
-            LabMembership::from_ids_grouped_by_parent1(&new_lab_ids, member_id_sets, N_MEMBERS_PER_LAB * n_labs);
+            LabMembership::from_ids_grouped_by_parent1(new_lab_ids, member_id_sets, N_MEMBERS_PER_LAB * n_labs);
 
         // We take advantage of the fact that adding lab members returns the `Lab` because that is probably desirable
         // for an API

@@ -45,6 +45,7 @@ diesel::table! {
         description -> Text,
         definition -> Jsonb,
         library_types -> Array<Text>,
+        cmdline -> Text,
     }
 }
 
@@ -63,8 +64,8 @@ diesel::table! {
     chromium_dataset (id) {
         id -> Uuid,
         gems_id -> Uuid,
-        metrics -> Nullable<Array<Jsonb>>,
-        cellranger_web_summary -> Nullable<Text>,
+        metrics -> Array<Jsonb>,
+        web_summary -> Text,
     }
 }
 
@@ -77,6 +78,7 @@ diesel::table! {
         single_index_set_name -> Nullable<Text>,
         dual_index_set_name -> Nullable<Text>,
         number_of_sample_index_pcr_cycles -> Int4,
+        target_reads_per_cell -> Int4,
         prepared_at -> Timestamp,
         notes -> Nullable<Array<Text>>,
     }
@@ -115,7 +117,7 @@ diesel::table! {
     chromium_sequencing_submissions (library_id, sequencing_run_id) {
         library_id -> Uuid,
         sequencing_run_id -> Uuid,
-        fastq_path -> Nullable<Text>,
+        fastq_paths -> Nullable<Array<Text>>,
         submitted_at -> Timestamp,
     }
 }
@@ -156,6 +158,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         legacy_id -> Text,
+        n_samples -> Int4,
         chemistry -> Nullable<Text>,
         chromium_run_id -> Uuid,
     }

@@ -1,4 +1,3 @@
-use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
@@ -18,7 +17,7 @@ use valuable::Valuable;
 
 use super::{Create, NewSampleMetadata, suspension_measurement::MeasurementData};
 use crate::{
-    db::utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
+    db::utils::{BelongsToExt, DbEnum, DbJson, DefaultNowNaiveDateTime, JunctionStruct, Parent, ParentSet},
     schema::{self, suspension, suspension_measurement, suspension_preparers},
 };
 
@@ -157,7 +156,8 @@ pub struct NewSuspension {
     has_metadata: bool,
     parent_specimen_id: Option<Uuid>,
     biological_material: BiologicalMaterial,
-    created_at: NaiveDateTime,
+    #[serde(default)]
+    created_at: DefaultNowNaiveDateTime,
     pub pooled_into_id: Option<Uuid>,
     pub multiplexing_tag_id: Option<Uuid>,
     #[garde(range(min = 0.0))]
@@ -223,7 +223,7 @@ impl BelongsToExt<NewSampleMetadata> for NewSuspension {
 }
 
 impl Parent<NewSuspensionMeasurement> for NewSuspension {
-    fn drain_children(&mut self) -> Vec<NewSuspensionMeasurement> {
+    fn owned_children(&mut self) -> Vec<NewSuspensionMeasurement> {
         self.measurements.drain(..).collect()
     }
 }
@@ -274,9 +274,9 @@ impl Create for Vec<NewSuspension> {
         flattened_measurements.create(conn).await?;
 
         // Collect preparer IDs into an iterator of iterators of IDs
-        let preparer_id_sets = self.iter().map(|NewSuspension { preparer_ids, .. }| preparer_ids);
+        let preparer_id_sets = self.into_iter().map(|NewSuspension { preparer_ids, .. }| preparer_ids);
         let preparer_insertions = SuspensionPreparer::from_ids_grouped_by_parent1(
-            &suspension_ids,
+            suspension_ids,
             preparer_id_sets,
             N_PREPARERS_PER_SUSPENSION * n_suspensions,
         );

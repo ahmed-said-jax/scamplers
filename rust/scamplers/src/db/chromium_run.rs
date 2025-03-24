@@ -1,7 +1,12 @@
+use std::{collections::HashMap, hash::RandomState};
+
+// TODO: this file could make use of the snazzy new `JunctionStruct` trait, but it's gonna take some work to
+// deconvolute and simplify things
 use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
+    dsl::count_star,
     expression::AsExpression,
     pg::Pg,
     prelude::*,
@@ -24,7 +29,7 @@ use crate::{
     schema::{
         self,
         chip_loading::{self},
-        chromium_run, gems,
+        chromium_run, gems, suspension,
     },
 };
 const N_SUSPENSIONS_PER_GEMS: usize = 4;
@@ -92,7 +97,7 @@ struct NewChromiumRun {
 }
 
 impl Parent<NewGems> for NewChromiumRun {
-    fn drain_children(&mut self) -> Vec<NewGems> {
+    fn owned_children(&mut self) -> Vec<NewGems> {
         self.gems.drain(..).collect()
     }
 }
@@ -233,6 +238,8 @@ impl Create for Vec<MultiplexedSuspensionChipLoading> {
 #[garde(allow_unvalidated)]
 struct NewGemsCore {
     legacy_id: String,
+    #[serde(skip)]
+    n_samples: i32,
     chemistry: String,
     #[serde(skip)]
     chromium_run_id: Uuid,
@@ -269,10 +276,38 @@ impl NewGems {
             Self::Multiplexed { loading, .. } => loading.validate_chip_loading(),
         }
     }
+
+    fn set_n_samples(&mut self, pool_counts: &HashMap<Uuid, i64>) {
+        match self {
+            Self::Singleplexed { inner, loading } => {
+                inner.n_samples = loading.len() as i32;
+            }
+            Self::Multiplexed { inner, loading } => {
+                inner.n_samples = pool_counts
+                    .get(&loading.multiplexed_suspension_id)
+                    .copied()
+                    .unwrap_or_default() as i32;
+            }
+        }
+    }
+
+    fn multiplexed_suspension_id(&self) -> Option<Uuid> {
+        match self {
+            Self::Multiplexed {
+                loading:
+                    MultiplexedSuspensionChipLoading {
+                        multiplexed_suspension_id,
+                        ..
+                    },
+                ..
+            } => Some(*multiplexed_suspension_id),
+            _ => None,
+        }
+    }
 }
 
 impl Parent<SuspensionChipLoading> for NewGems {
-    fn drain_children(&mut self) -> Vec<SuspensionChipLoading> {
+    fn owned_children(&mut self) -> Vec<SuspensionChipLoading> {
         match self {
             Self::Singleplexed {
                 loading: suspensions, ..
@@ -282,7 +317,7 @@ impl Parent<SuspensionChipLoading> for NewGems {
     }
 }
 impl Parent<MultiplexedSuspensionChipLoading> for NewGems {
-    fn drain_children(&mut self) -> Vec<MultiplexedSuspensionChipLoading> {
+    fn owned_children(&mut self) -> Vec<MultiplexedSuspensionChipLoading> {
         match self {
             Self::Singleplexed { .. } => vec![],
             Self::Multiplexed { loading, .. } => vec![loading.clone()], /* This clone is fine because we avoid complexity and it's a small data structure */
@@ -294,9 +329,24 @@ impl Create for Vec<NewGems> {
 
     async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use NewGems::{Multiplexed, Singleplexed};
+
         self.iter().try_for_each(|g| g.validate_chip_loading())?;
 
         let n_gems = self.len();
+
+        let multiplexed_suspension_ids = self.iter().filter_map(|g| g.multiplexed_suspension_id());
+        let pool_counts: Vec<(Uuid, i64)> = suspension::table
+            .filter(suspension::pooled_into_id.eq_any(multiplexed_suspension_ids))
+            .group_by(suspension::pooled_into_id)
+            .select((suspension::pooled_into_id.assume_not_null(), count_star()))
+            .load(conn)
+            .await?;
+
+        let pool_counts: HashMap<_, _, RandomState> = HashMap::from_iter(pool_counts);
+
+        for g in &mut self {
+            g.set_n_samples(&pool_counts);
+        }
 
         let inners: Vec<_> = self
             .iter()

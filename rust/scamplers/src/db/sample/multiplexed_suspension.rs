@@ -1,5 +1,3 @@
-
-use chrono::NaiveDateTime;
 use diesel::{
     backend::Backend,
     deserialize::{FromSql, FromSqlRow},
@@ -20,7 +18,7 @@ use super::{suspension::NewSuspension, suspension_measurement::MeasurementData};
 use crate::{
     db::{
         Create,
-        utils::{BelongsToExt, DbEnum, DbJson, JunctionStruct, Parent, ParentSet},
+        utils::{BelongsToExt, DbEnum, DbJson, DefaultNowNaiveDateTime, JunctionStruct, Parent, ParentSet},
     },
     schema::{self, multiplexed_suspension_preparers, multiplexing_tag},
 };
@@ -125,7 +123,8 @@ struct NewMultiplexedSuspensionMeasurement {
 #[garde(allow_unvalidated)]
 struct NewMultiplexedSuspension {
     legacy_id: String,
-    pooled_at: NaiveDateTime,
+    #[serde(default)]
+    pooled_at: DefaultNowNaiveDateTime,
     notes: Option<Vec<String>>,
     #[diesel(skip_insertion)]
     #[garde(dive)]
@@ -143,7 +142,7 @@ impl BelongsToExt<NewMultiplexedSuspension> for NewSuspension {
     }
 }
 impl Parent<NewSuspension> for NewMultiplexedSuspension {
-    fn drain_children(&mut self) -> Vec<NewSuspension> {
+    fn owned_children(&mut self) -> Vec<NewSuspension> {
         self.suspensions.drain(..).collect()
     }
 }
@@ -235,10 +234,10 @@ impl Create for Vec<NewMultiplexedSuspension> {
         flattened_measurements.create(conn).await?;
 
         let grouped_preparer_ids = self
-            .iter()
+            .into_iter()
             .map(|NewMultiplexedSuspension { preparer_ids, .. }| preparer_ids);
         let multiplexed_suspension_preparers = MultiplexedSuspensionPreparer::from_ids_grouped_by_parent1(
-            &new_ids,
+            new_ids,
             grouped_preparer_ids,
             N_PREPARERS_PER_POOL * n_multiplexed_suspensions,
         );

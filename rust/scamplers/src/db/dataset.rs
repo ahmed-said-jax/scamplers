@@ -11,12 +11,17 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, lab::LabStub, utils::AsIlike};
+use super::{
+    AsDieselExpression, BoxedDieselExpression, Create,
+    lab::LabStub,
+    utils::{AsIlike, DefaultNowNaiveDateTime},
+};
 use crate::schema::{
     self,
     dataset_metadata::{self, delivered_at, name as name_col},
     lab,
 };
+mod chromium;
 
 #[derive(Insertable, Deserialize, Validate)]
 #[diesel(table_name = schema::dataset_metadata, check_for_backend(Pg))]
@@ -24,8 +29,25 @@ use crate::schema::{
 struct NewDatasetMetadata {
     name: String,
     lab_id: Uuid,
-    data_path: String, // There should be some nice validation for this
-    delivered_at: Option<NaiveDateTime>,
+    data_path: String, // TODO: There should be some nice validation for this
+    #[serde(default)]
+    delivered_at: Option<DefaultNowNaiveDateTime>,
+}
+
+impl Create for Vec<NewDatasetMetadata> {
+    type Returns = Vec<Uuid>;
+
+    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        use schema::dataset_metadata::dsl::{dataset_metadata, id};
+
+        let ids = diesel::insert_into(dataset_metadata)
+            .values(&self)
+            .returning(id)
+            .get_results(conn)
+            .await?;
+
+        Ok(ids)
+    }
 }
 
 impl Create for Vec<&NewDatasetMetadata> {
@@ -34,10 +56,8 @@ impl Create for Vec<&NewDatasetMetadata> {
     async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::dataset_metadata::dsl::{dataset_metadata, id};
 
-        let owned_refs = self.clone(); // We are just cloning references here
-
         let ids = diesel::insert_into(dataset_metadata)
-            .values(owned_refs)
+            .values(self)
             .returning(id)
             .get_results(conn)
             .await?;

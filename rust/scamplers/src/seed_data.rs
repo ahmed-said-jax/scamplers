@@ -19,6 +19,7 @@ use crate::{
             NewSampleMetadata,
             specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement},
         },
+        utils::DefaultNowNaiveDateTime,
     },
 };
 
@@ -61,15 +62,15 @@ pub async fn insert_test_data(app_state: AppState2) -> anyhow::Result<()> {
         *T::VARIANTS.choose(&mut rng).unwrap()
     }
 
-    fn random_datetime(mut rng: impl Rng) -> NaiveDateTime {
+    fn random_datetime(mut rng: impl Rng) -> DefaultNowNaiveDateTime {
         let year = (1999..2025).sample_single(&mut rng).unwrap();
         let date = (1..365).sample_single(&mut rng).unwrap();
         let secs = (0..86_400).sample_single(&mut rng).unwrap();
 
-        NaiveDateTime::new(
+        DefaultNowNaiveDateTime::from(NaiveDateTime::new(
             NaiveDate::from_yo_opt(year, date).unwrap(),
             NaiveTime::from_num_seconds_from_midnight_opt(secs, 0).unwrap(),
-        )
+        ))
     }
 
     fn random_string(strs: &[&str], mut rng: impl Rng) -> String {

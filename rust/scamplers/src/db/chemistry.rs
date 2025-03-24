@@ -13,4 +13,8 @@ struct Chemistry {
     description: String,
     #[serde(flatten)]
     definition: JsonValue,
+    #[serde(default)]
+    library_types: Vec<String>,
+    #[serde(default)]
+    cmdline: String,
 }
