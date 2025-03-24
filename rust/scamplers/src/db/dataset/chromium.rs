@@ -12,7 +12,7 @@ use diesel::{
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize, de::Expected};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 

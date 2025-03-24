@@ -1,26 +1,15 @@
-use diesel::{
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{self, SqlType},
-};
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use garde::Validate;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use uuid::Uuid;
 
 use super::{
     Create, nucleic_acid_measurement,
-    utils::{BelongsToExt, DbJson, DefaultNowNaiveDateTime, JunctionStruct, Parent},
+    utils::{BelongsToExt, DefaultNowNaiveDateTime, JunctionStruct, Parent},
 };
 use crate::{
-    db::{
-        units::{MassUnit, VolumeUnit},
-        utils::ParentSet,
-    },
+    db::utils::ParentSet,
     schema,
 };
 

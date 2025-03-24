@@ -1,12 +1,4 @@
-use diesel::{
-    backend::Backend,
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{self, SqlType},
-};
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
@@ -16,8 +8,7 @@ use super::{
     Create,
     library_type_specification::{self, LibraryType, LibraryTypeGroup},
     nucleic_acid_measurement,
-    units::{MassUnit, VolumeUnit},
-    utils::{BelongsToExt, DbJson, DefaultNowNaiveDateTime, JunctionStruct, Parent},
+    utils::{BelongsToExt, DefaultNowNaiveDateTime, JunctionStruct, Parent},
 };
 use crate::{db::utils::ParentSet, schema};
 const N_MEASUREMENTS_PER_CDNA: usize = 2;
