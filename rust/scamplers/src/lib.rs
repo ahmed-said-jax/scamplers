@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-use std::{fs, sync::Arc};
+use std::{fs, intrinsics::unreachable, sync::Arc};
 
 use anyhow::Context;
 use axum::Router;
@@ -67,29 +67,47 @@ pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8Pat
     Ok(())
 }
 
-#[derive(Deserialize, Validate, Default)]
+#[derive(Deserialize, Validate)]
 #[garde(allow_unvalidated)]
 #[serde(tag = "build", rename_all = "snake_case")]
 pub enum AppConfig2 {
-    #[default]
-    Dev,
+    Dev {
+        #[serde(default = "AppConfig2::dev_server_address")]
+        address: String,
+    },
     Test {
-        auth: AuthConfig,
-        address: Option<String>,
+        db_name: String,
+        db_host: String,
+        db_port: u16,
+        db_login_user_password: String,
+        auth_url: Url,
+        #[serde(default = "AppConfig2::dev_server_address")]
+        address: String,
     },
     Prod {
         db_name: String,
         db_host: String,
         db_port: u16,
         db_login_user_password: String,
+        auth_url: Url,
         #[garde(dive)]
         index_set_file_urls: Vec<IndexSetFileUrl>,
-        auth: AuthConfig,
         address: String,
     },
 }
+impl Default for AppConfig2 {
+    fn default() -> Self {
+        Self::Dev {
+            address: Self::dev_server_address(),
+        }
+    }
+}
 
 impl AppConfig2 {
+    fn dev_server_address() -> String {
+        "localhost:8000".to_string()
+    }
+
     fn from_path(path: &Utf8Path) -> anyhow::Result<Self> {
         let contents = fs::read_to_string(path)?;
         let config: Self = toml::from_str(&contents)?;
@@ -101,20 +119,10 @@ impl AppConfig2 {
     fn server_address(&self) -> &str {
         use AppConfig2::*;
 
-        let dev_address = "localhost:8000";
-
         match self {
-            Dev => dev_address,
-            Test { address, .. } => address.as_ref().map(|s| s.as_str()).unwrap_or(dev_address),
-            Prod { address, .. } => address,
+            Dev { address, .. } | Test { address, .. } | Prod { address, .. } => address,
         }
     }
-}
-
-#[derive(Deserialize, Validate, Serialize)]
-#[garde(allow_unvalidated)]
-pub struct AuthConfig {
-    url: Url,
 }
 
 fn initialize_logging(app_config: &AppConfig2, log_dir: &Option<Utf8PathBuf>) -> anyhow::Result<()> {
@@ -128,7 +136,7 @@ fn initialize_logging(app_config: &AppConfig2, log_dir: &Option<Utf8PathBuf>) ->
         .with_target("tower_http", Level::DEBUG);
 
     match (app_config, log_dir) {
-        (Dev | Test { .. }, None) => {
+        (Dev { .. } | Test { .. }, None) => {
             let log_layer = log_layer.pretty().with_filter(dev_test_log_filter);
 
             tracing_subscriber::registry().with(log_layer).init();
@@ -168,7 +176,6 @@ enum AppState2 {
     },
     Test {
         db_pool: Pool<AsyncPgConnection>,
-        _pg_container: Arc<ContainerAsync<Postgres>>,
         auth_url: Url,
     },
     Prod {
@@ -181,6 +188,27 @@ enum AppState2 {
 #[derive(Deserialize)]
 struct DockerCompose {
     services: Services,
+}
+impl DockerCompose {
+    fn read() -> anyhow::Result<Self> {
+        serde_json::from_slice(DOCKER_COMPOSE)?
+    }
+    fn db_root(&self) -> anyhow::Result<(String, String)> {
+        let Self {
+            services:
+                Services {
+                    scamplers: ScamplersService { secrets, .. },
+                    ..
+                },
+            ..
+        } = Self::read()?;
+
+        let db_root_user_password = [secrets[1], secrets[2]];
+        let db_root_user_password =
+            db_root_user_password.map(|filename| fs::read_to_string(format!("/run/secrets/{filename}")));
+
+        Ok((db_root_user_password[0]?, db_root_user_password[1]?))
+    }
 }
 
 #[derive(Deserialize)]
@@ -199,26 +227,26 @@ struct ScamplersService {
     secrets: [String; 4],
 }
 
-trait DevTestContainer: Sized {
+trait DevContainer: Sized {
     async fn from_docker_compose() -> anyhow::Result<Self>;
     async fn host_spec(&self) -> anyhow::Result<String>;
 }
 
-impl DevTestContainer for ContainerAsync<Postgres> {
+impl DevContainer for ContainerAsync<Postgres> {
     async fn from_docker_compose() -> anyhow::Result<Self> {
         use anyhow::Error;
 
-        let docker_compose: DockerCompose = serde_json::from_slice(DOCKER_COMPOSE)?;
+        let DockerCompose {
+            services: Services {
+                db: DbService { image },
+                ..
+            },
+            ..
+        } = DockerCompose::read()?;
 
-        let e = "failed to parse postgres image tag specifier";
+        let err = "failed to parse postgres image tag specifier";
 
-        let postgres_version = docker_compose
-            .services
-            .db
-            .image
-            .split(":")
-            .nth(1)
-            .ok_or(Error::msg(e))?;
+        let postgres_version = image.split(":").nth(1).ok_or(Error::msg(err))?;
 
         Ok(Postgres::default()
             .with_host_auth()
@@ -243,16 +271,14 @@ impl AppState2 {
         let container_err = "failed to start postgres container instance";
         let migrations_err = "failed to run database migrations";
 
-        match app_config {
-            Dev => {
+        let state = match app_config {
+            Dev { .. } => {
                 let pg_container: ContainerAsync<Postgres> =
                     ContainerAsync::from_docker_compose().await.context(container_err)?;
                 let db_root_user_url = format!("postgres://postgres@{}/postgres", pg_container.host_spec().await?);
 
                 run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
-                // `run_migrations` takes ownership over the connection, so we have to make
-                // another so as to give the `superuser` to the dev user
                 let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
                 let user_id = Uuid::new_v4();
                 diesel::sql_query(format!(r#"create user "{user_id}" with superuser"#))
@@ -263,56 +289,34 @@ impl AppState2 {
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
                 let db_pool = Pool::builder(db_config).build()?;
 
-                Ok(Self::Dev {
+                Self::Dev {
                     db_pool,
                     _pg_container: Arc::new(pg_container),
                     user_id,
-                })
-            }
-            Test { auth, .. } => {
-                let pg_container = ContainerAsync::from_docker_compose().await.context(container_err)?;
-                let db_host_spec = pg_container.host_spec().await?;
-                let db_root_user_url = format!("postgres://postgres@{db_host_spec}/postgres");
-
-                run_migrations(&db_root_user_url).await.context(migrations_err)?;
-
-                // `run_migrations` takes ownership over the connection, so we have to make
-                // another so as to perform our slight hack of giving login_user `insert` on all
-                // tables
-                let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
-                sql_query("grant insert on all tables to login_user;")
-                    .execute(&mut db_conn)
-                    .await?;
-
-                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://{LOGIN_USER}@{db_host_spec}/postgres"
-                ));
-                let db_pool = Pool::builder(db_config).build()?;
-
-                Ok(Self::Test {
-                    db_pool,
-                    _pg_container: Arc::new(pg_container),
-                    auth_url: auth.url.clone(),
-                })
+                }
             }
             Prod {
                 db_name,
                 db_host,
                 db_port,
                 db_login_user_password,
-                auth,
+                auth_url,
+                ..
+            }
+            | Test {
+                db_name,
+                db_host,
+                db_port,
+                db_login_user_password,
+                auth_url,
                 ..
             } => {
-                let docker_compose: DockerCompose = serde_json::from_slice(DOCKER_COMPOSE)?;
-                let secrets: Result<Vec<_>, _> = docker_compose.services.scamplers.secrets[1..3]
-                    .iter()
-                    .map(|path| fs::read_to_string(format!("/run/secrets/{path}")))
-                    .collect();
-                let secrets = secrets?;
+                let docker_compose = DockerCompose::read()?;
 
-                let (db_root_username, db_root_password) = (&secrets[0], &secrets[1]);
+                let (db_root_user, db_root_password) = docker_compose.db_root()?;
+
                 let db_root_user_url =
-                    format!("postgres://{db_root_username}:{db_root_password}@{db_host}:{db_port}/{db_name}");
+                    format!("postgres://{db_root_user}:{db_root_password}@{db_host}:{db_port}/{db_name}");
                 run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
@@ -320,13 +324,19 @@ impl AppState2 {
                 ));
                 let db_pool = Pool::builder(db_config).build()?;
 
-                Ok(Self::Prod {
-                    db_pool,
-                    http_client: reqwest::Client::new(),
-                    auth_url: auth.url.clone(),
-                })
+                match app_config {
+                    Prod { .. } => Self::Prod {
+                        db_pool,
+                        http_client: reqwest::Client::new(),
+                        auth_url,
+                    },
+                    Test { .. } => Self::Test { db_pool, auth_url },
+                    _ => unreachable!("we already checked for the Dev configuration"),
+                }
             }
-        }
+        };
+
+        Ok(state)
     }
 
     async fn db_conn(&self) -> db::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> {

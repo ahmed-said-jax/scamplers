@@ -1,0 +1,17 @@
+[project]
+name = "scamplers-auth"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [{ name = "Ahmed Said", email = "ahmed.said@jax.org" }]
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1.0",
+    "gunicorn>=23.0.0",
+    "hypercorn>=0.17.3",
+    "ms-identity-python[flask]",
+    "pydantic-settings>=2.8.1",
+]
+
+[tool.uv.sources]
+ms-identity-python = { git = "https://github.com/azure-samples/ms-identity-python", rev = "0.9" }
