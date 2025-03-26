@@ -6,11 +6,10 @@ readme = "README.md"
 authors = [{ name = "Ahmed Said", email = "ahmed.said@jax.org" }]
 requires-python = ">=3.13"
 dependencies = [
-    "flask>=3.1.0",
-    "gunicorn>=23.0.0",
     "hypercorn>=0.17.3",
-    "ms-identity-python[flask]",
+    "ms-identity-python[quart]",
     "pydantic-settings>=2.8.1",
+    "quart>=0.20.0",
 ]
 
 [tool.uv.sources]

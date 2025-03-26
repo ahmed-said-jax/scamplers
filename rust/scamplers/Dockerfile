@@ -30,6 +30,8 @@ RUN apk add --no-cache clang lld musl-dev git
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    --mount=type=bind,source=.cargo,target=.cargo \
+    --mount=type=bind,source="../../compose.yaml",target="../../compose.yaml" \
     --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
@@ -69,4 +71,4 @@ COPY --from=build /bin/server /bin/
 EXPOSE 8000
 
 # What the container should run when it is started.
-CMD ["/bin/server", "--config-path", "/run/secrets/scamplers-config.toml", "--log-dir", "logs"]
+CMD ["/bin/server", "--config-path", "/run/secrets/scamplers-config", "--log-dir", "logs"]

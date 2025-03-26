@@ -6,14 +6,14 @@
           "image": "postgres:17",
           "restart": "always",
           "user": "postgres",
-          "secrets": ["db-root-password"],
+          "secrets": ["db-root-user", "db-root-password", "db-name"],
           "volumes": ["db-data:/var/lib/postgresql/data"],
           "environment":
             [
-              "POSTGRES_USER_FILE=/run/secrets/db-root-username",
+              "POSTGRES_USER_FILE=/run/secrets/db-root-user",
               "POSTGRES_PASSWORD_FILE=/run/secrets/db-root-password",
               "POSTGRES_DB_FILE=/run/secrets/db-name",
-              "POSTGRES_HOST_AUTH_METHOD=scram-sha-256",
+              "POSTGRES_HOST_AUTH_METHOD=scram-sha-256"
             ],
           "expose": [5432],
           "healthcheck":
@@ -21,8 +21,8 @@
               "test": ["CMD", "pg_isready"],
               "interval": "2s",
               "timeout": "5s",
-              "retries": 10,
-            },
+              "retries": 10
+            }
         },
       "scamplers":
         {
@@ -31,12 +31,12 @@
           "secrets":
             [
               "scamplers-config",
-              "db-root-username",
+              "db-root-user",
               "db-root-password",
-              "db-name",
+              "db-name"
             ],
           "volumes": ["logs:/logs"],
-          "depends_on": { "db": { "condition": "service_healthy" } },
+          "depends_on": { "db": { "condition": "service_healthy" } }
         },
       "scamplers-auth":
         {
@@ -44,16 +44,16 @@
           "ports": ["8001:8001"],
           "secrets": ["auth-config"],
           "volumes": ["logs:/logs"],
-          "depends_on": { "db": { "condition": "service_healthy" } },
-        },
+          "depends_on": { "db": { "condition": "service_healthy" } }
+        }
     },
   "volumes": { "db-data": null, "logs": null },
   "secrets":
     {
-      "auth-config": { "file": "${AUTH_CONFIG_PATH}" },
+      "auth-config": { "file": "${SCAMPLERS_AUTH_CONFIG_PATH}" },
       "scamplers-config": { "file": "${SCAMPLERS_CONFIG_PATH}" },
-      "db-root-username": { "environment": "SCAMPLERS_DB_ROOT_USERNAME" },
+      "db-root-user": { "environment": "SCAMPLERS_DB_ROOT_USER" },
       "db-root-password": { "environment": "SCAMPLERS_DB_ROOT_PASSWORD" },
-      "db-name": { "environment": "SCAMPLERS_DB_NAME" },
-    },
+      "db-name": { "environment": "SCAMPLERS_DB_NAME" }
+    }
 }

@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-use std::{fs, intrinsics::unreachable, sync::Arc};
+use std::{fs, sync::Arc};
 
 use anyhow::Context;
 use axum::Router;
@@ -69,6 +69,15 @@ pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8Pat
 
 #[derive(Deserialize, Validate)]
 #[garde(allow_unvalidated)]
+struct DbConfig {
+    name: String,
+    host: String,
+    port: u16,
+    login_user_password: String,
+}
+
+#[derive(Deserialize, Validate)]
+#[garde(allow_unvalidated)]
 #[serde(tag = "build", rename_all = "snake_case")]
 pub enum AppConfig2 {
     Dev {
@@ -76,19 +85,13 @@ pub enum AppConfig2 {
         address: String,
     },
     Test {
-        db_name: String,
-        db_host: String,
-        db_port: u16,
-        db_login_user_password: String,
+        db: DbConfig,
         auth_url: Url,
         #[serde(default = "AppConfig2::dev_server_address")]
         address: String,
     },
     Prod {
-        db_name: String,
-        db_host: String,
-        db_port: u16,
-        db_login_user_password: String,
+        db: DbConfig,
         auth_url: Url,
         #[garde(dive)]
         index_set_file_urls: Vec<IndexSetFileUrl>,
@@ -109,6 +112,7 @@ impl AppConfig2 {
     }
 
     fn from_path(path: &Utf8Path) -> anyhow::Result<Self> {
+        let iter = path.read_dir_utf8();
         let contents = fs::read_to_string(path)?;
         let config: Self = toml::from_str(&contents)?;
         config.validate()?;
@@ -191,7 +195,7 @@ struct DockerCompose {
 }
 impl DockerCompose {
     fn read() -> anyhow::Result<Self> {
-        serde_json::from_slice(DOCKER_COMPOSE)?
+        Ok(serde_json::from_slice(DOCKER_COMPOSE)?)
     }
     fn db_root(&self) -> anyhow::Result<(String, String)> {
         let Self {
@@ -201,13 +205,11 @@ impl DockerCompose {
                     ..
                 },
             ..
-        } = Self::read()?;
+        } = self;
 
-        let db_root_user_password = [secrets[1], secrets[2]];
-        let db_root_user_password =
-            db_root_user_password.map(|filename| fs::read_to_string(format!("/run/secrets/{filename}")));
+        let mut db_root = secrets[1..3].into_iter().map(|filename| fs::read_to_string(format!("/run/secrets/{filename}")));
 
-        Ok((db_root_user_password[0]?, db_root_user_password[1]?))
+        Ok((db_root.nth(0).unwrap()?, db_root.nth(1).unwrap()?))
     }
 }
 
@@ -296,18 +298,24 @@ impl AppState2 {
                 }
             }
             Prod {
-                db_name,
-                db_host,
-                db_port,
-                db_login_user_password,
+                db:
+                    DbConfig {
+                        name: db_name,
+                        host: db_host,
+                        port: db_port,
+                        login_user_password: db_login_user_password,
+                    },
                 auth_url,
                 ..
             }
             | Test {
-                db_name,
-                db_host,
-                db_port,
-                db_login_user_password,
+                db:
+                    DbConfig {
+                        name: db_name,
+                        host: db_host,
+                        port: db_port,
+                        login_user_password: db_login_user_password,
+                    },
                 auth_url,
                 ..
             } => {
@@ -328,9 +336,9 @@ impl AppState2 {
                     Prod { .. } => Self::Prod {
                         db_pool,
                         http_client: reqwest::Client::new(),
-                        auth_url,
+                        auth_url: auth_url.clone(),
                     },
-                    Test { .. } => Self::Test { db_pool, auth_url },
+                    Test { .. } => Self::Test { db_pool, auth_url: auth_url.clone() },
                     _ => unreachable!("we already checked for the Dev configuration"),
                 }
             }

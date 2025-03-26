@@ -1,4 +1,6 @@
-from identity.flask import Auth
+import json
+from typing import Any
+from identity.quart import Auth
 import flask
 from pydantic_settings import (
     BaseSettings,
@@ -7,12 +9,11 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-import msal_config
 
 
 # This application is generally only run in the context of a Docker container, so hardcoding the path of the config file is fine. However, this can be easily changed by dynamically instantiating this class with a CLI-provided config path
 class AppConfig(BaseSettings):
-    model_config = SettingsConfigDict(toml_file="/run/secrets/auth-config.toml")
+    model_config = SettingsConfigDict(toml_file="/Users/saida/.config/auth-config.toml")
 
     client_id: str
     client_credential: str
@@ -30,8 +31,7 @@ class AppConfig(BaseSettings):
         return (TomlConfigSettingsSource(settings_cls),)
 
 config = AppConfig() # type: ignore
-app = flask.Flask(__name__)
-app.config.from_object(msal_config)
+app = quart.Quart(__name__)
 
 auth = Auth(
     app,
@@ -41,12 +41,13 @@ auth = Auth(
     authority="https://login.microsoftonline.com/common",
 )
 
-@app.route("/")
+@app.route("/login")
 @auth.login_required
-def hello(*, context):
-    return f'you are: {context["user"]["name"]}'
+def hello(*, context: dict[str, Any]):
+    print(json.dumps(context, indent=2))
+    return json.dumps(context, indent=2)
 
-@app.route("/redirect")
-@auth.login_required
-def hello2(*, context):
-    return "hello"
+
+if __name__ == "__main__":
+    print(flask_session.__version__)
+    print("hello")

@@ -2,8 +2,8 @@
 
 # First, build the application in the `/app` directory.
 # See `Dockerfile` for details.
-ARG PYTHON_VERSION=3.13.2
-FROM ghcr.io/astral-sh/uv:${PYTHON_VERSION}-bookworm-slim AS builder
+ARG PYTHON_VERSION=3.13
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS build
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
@@ -21,6 +21,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
+# Install git because one of the python dependencies is only available on
+# github -_-
+RUN apt update --yes && apt install git --yes
+
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
@@ -32,7 +36,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 
 # Then, use a final image without uv
-FROM ${PYTHON_VERSION}-slim-bookworm
+FROM python:${PYTHON_VERSION}-slim-bookworm AS final
 # It is important to use the image that matches the builder, as the path to the
 # Python executable must be the same, e.g., using `python:3.11-slim-bookworm`
 # will fail.
@@ -53,7 +57,7 @@ RUN adduser \
 USER appuser
 
 # Copy the application from the builder
-COPY --from=builder --chown=app:app /app /app
+COPY --from=build --chown=app:app /app /app
 
 # Expose the port that the application listens on.
 EXPOSE 8001
