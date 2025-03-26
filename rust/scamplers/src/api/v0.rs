@@ -20,7 +20,6 @@ pub(super) fn router() -> Router<AppState2> {
 
     let router = Router::new()
         .route("/", get(|| async { Json(endpoints) }))
-        .route("/ms-auth", get(ms_entra_login))
         .route(
             "/institutions",
             get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>),
@@ -48,15 +47,6 @@ mod handlers {
         api::{self, User, ValidJson},
         db::{self, set_transaction_user},
     };
-
-    pub async fn ms_entra_login(
-        State(app_state): State<AppState2>,
-        axum::Json(data): axum::Json<serde_json::Value>,
-    ) -> String {
-        tracing::debug!("{}", serde_json::to_string_pretty(&data).unwrap());
-
-        serde_json::to_string_pretty(&data).unwrap()
-    }
 
     pub async fn by_id<T: db::Read + Send>(
         user: User,

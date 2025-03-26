@@ -1,7 +1,7 @@
 #![allow(async_fn_in_trait)]
-use std::{fs, sync::Arc};
+use std::{fs, str::FromStr, sync::Arc};
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};
 use db::index_sets::IndexSetFileUrl;
@@ -24,13 +24,14 @@ use url::Url;
 use uuid::Uuid;
 
 mod api;
+mod auth;
 pub mod db;
 pub mod schema;
 mod seed_data;
 mod web;
 
 const LOGIN_USER: &str = "login_user";
-const DOCKER_COMPOSE: &[u8] = include_bytes!("../../../compose.yaml");
+const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
 pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
     let app_config = match config_path {
@@ -79,7 +80,7 @@ struct DbConfig {
 #[derive(Deserialize, Validate)]
 #[garde(allow_unvalidated)]
 #[serde(tag = "build", rename_all = "snake_case")]
-pub enum AppConfig2 {
+enum AppConfig2 {
     Dev {
         #[serde(default = "AppConfig2::dev_server_address")]
         address: String,
@@ -112,7 +113,6 @@ impl AppConfig2 {
     }
 
     fn from_path(path: &Utf8Path) -> anyhow::Result<Self> {
-        let iter = path.read_dir_utf8();
         let contents = fs::read_to_string(path)?;
         let config: Self = toml::from_str(&contents)?;
         config.validate()?;
@@ -162,8 +162,8 @@ fn initialize_logging(app_config: &AppConfig2, log_dir: &Option<Utf8PathBuf>) ->
             tracing_subscriber::registry().with(log_layer).init();
         }
         _ => {
-            return Err(anyhow::Error::msg(
-                "this combination of configuration and 'log_dir' is not supported",
+            return Err(anyhow!(
+                "this combination of configuration and 'log_dir' is not supported"
             ));
         }
     };
@@ -195,7 +195,9 @@ struct DockerCompose {
 }
 impl DockerCompose {
     fn read() -> anyhow::Result<Self> {
-        Ok(serde_json::from_slice(DOCKER_COMPOSE)?)
+        let manifest_dir = Utf8PathBuf::from_str(MANIFEST_DIR)?;
+        let compose_path = manifest_dir.parent().unwrap().parent().unwrap().join("compose.yaml");
+        Ok(serde_json::from_slice(&fs::read(&compose_path)?)?)
     }
     fn db_root(&self) -> anyhow::Result<(String, String)> {
         let Self {
@@ -207,7 +209,9 @@ impl DockerCompose {
             ..
         } = self;
 
-        let mut db_root = secrets[1..3].into_iter().map(|filename| fs::read_to_string(format!("/run/secrets/{filename}")));
+        let mut db_root = secrets[1..3]
+            .into_iter()
+            .map(|filename| fs::read_to_string(format!("/run/secrets/{filename}")));
 
         Ok((db_root.nth(0).unwrap()?, db_root.nth(1).unwrap()?))
     }
@@ -248,7 +252,7 @@ impl DevContainer for ContainerAsync<Postgres> {
 
         let err = "failed to parse postgres image tag specifier";
 
-        let postgres_version = image.split(":").nth(1).ok_or(Error::msg(err))?;
+        let postgres_version = image.split(":").nth(1).ok_or(anyhow!(err))?;
 
         Ok(Postgres::default()
             .with_host_auth()
@@ -319,12 +323,14 @@ impl AppState2 {
                 auth_url,
                 ..
             } => {
-                let docker_compose = DockerCompose::read()?;
+                let db_root_info = ["db-root-user", "db-root-password"];
+                let [db_root_user, db_root_password] =
+                    db_root_info.map(|p| fs::read_to_string(Utf8PathBuf::from_str("/run/secrets").unwrap().join(p)));
 
-                let (db_root_user, db_root_password) = docker_compose.db_root()?;
-
-                let db_root_user_url =
-                    format!("postgres://{db_root_user}:{db_root_password}@{db_host}:{db_port}/{db_name}");
+                let db_root_user_url = format!(
+                    "postgres://{}:{}@{db_host}:{db_port}/{db_name}",
+                    db_root_user?, db_root_password?
+                );
                 run_migrations(&db_root_user_url).await.context(migrations_err)?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
@@ -338,7 +344,10 @@ impl AppState2 {
                         http_client: reqwest::Client::new(),
                         auth_url: auth_url.clone(),
                     },
-                    Test { .. } => Self::Test { db_pool, auth_url: auth_url.clone() },
+                    Test { .. } => Self::Test {
+                        db_pool,
+                        auth_url: auth_url.clone(),
+                    },
                     _ => unreachable!("we already checked for the Dev configuration"),
                 }
             }
@@ -384,7 +393,10 @@ async fn insert_seed_data(app_state: AppState2, app_config: &AppConfig2) -> anyh
 }
 
 fn app(app_state: AppState2) -> Router {
-    Router::new().nest("/api", api::router()).with_state(app_state)
+    Router::new()
+        .nest("/api", api::router())
+        .nest("/auth", auth::router())
+        .with_state(app_state)
 }
 
 // I don't entirely understand why I need to manually call `drop` here
