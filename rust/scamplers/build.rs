@@ -6,19 +6,37 @@ use serde::Serialize;
 use similar::TextDiff;
 use testcontainers_modules::{
     postgres::Postgres,
-    testcontainers::{Container, ImageExt, runners::SyncRunner},
+    testcontainers::{runners::SyncRunner, ImageExt},
 };
 
 fn main() {
-    println!("cargo::rerun-if-changed=../../migrations");
+    println!("cargo::rerun-if-changed=migrations");
 
     // Start a temporary container for diesel to run migrations against
-    let postgres_instance = postgres_container();
-    let connection_string = format!(
-        "postgres://postgres@{}:{}/postgres",
-        postgres_instance.get_host().unwrap(),
-        postgres_instance.get_host_port_ipv4(5432).unwrap()
-    );
+    let postgres_instance = Postgres::default()
+        .with_host_auth()
+        .with_tag("17")
+        .start()
+        .ok();
+
+    // let Some(postgres_instance) = postgres_instance else {
+    //     // Create a config with no patch file
+    //     let mut diesel_config = DieselConfig::new();
+    //     diesel_config.write();
+
+    //     patch_schema();
+
+    //     // Put the patch file in the config
+    //     diesel_config = diesel_config.with_patch_file();
+    //     diesel_config.write();
+
+    //     return;
+    // };
+
+    let connection_string = match &postgres_instance {
+        Some(postgres_instance) => format!("postgres://postgres@{}:{}/postgres",postgres_instance.get_host().unwrap(),postgres_instance.get_host_port_ipv4(5432).unwrap()),
+        _ => "postgres://postgres@build-db:5432/postgres".to_string()
+    };
 
     // Create a config with no patch file
     let mut diesel_config = DieselConfig::new();
@@ -42,27 +60,9 @@ fn main() {
     drop(postgres_instance)
 }
 
-fn postgres_container() -> Container<Postgres> {
-    let docker_compose = include_bytes!("../../compose.yaml");
-    let docker_compose: serde_json::Value = serde_json::from_slice(docker_compose).unwrap();
-
-    let postgres_version = docker_compose["services"]["db"]["image"]
-        .as_str()
-        .unwrap()
-        .split(":")
-        .nth(1)
-        .unwrap();
-
-    Postgres::default()
-        .with_host_auth()
-        .with_tag(postgres_version)
-        .start()
-        .expect("Failed to start Postgres container. Is the Docker daemon running?")
-}
-
 fn generate_schema(connection_string: &str) {
     let mut diesel_cmd = Command::new("diesel");
-    let args = ["migration", "run", "--database-url", &format!("{connection_string}")];
+    let args = ["migration", "run", "--database-url", connection_string];
     diesel_cmd.args(args);
 
     let output = diesel_cmd.output().unwrap();
@@ -135,9 +135,7 @@ impl<'a> DieselConfig<'a> {
                 custom_type_derives: ["diesel::query_builder::QueryId", "Clone"],
                 patch_file: None,
             },
-            migrations_directory: MigrationsDirectory {
-                dir: "../../migrations",
-            },
+            migrations_directory: MigrationsDirectory { dir: "migrations" },
         }
     }
 

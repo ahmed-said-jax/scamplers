@@ -234,29 +234,15 @@ struct ScamplersService {
 }
 
 trait DevContainer: Sized {
-    async fn from_docker_compose() -> anyhow::Result<Self>;
+    async fn new() -> anyhow::Result<Self>;
     async fn host_spec(&self) -> anyhow::Result<String>;
 }
 
 impl DevContainer for ContainerAsync<Postgres> {
-    async fn from_docker_compose() -> anyhow::Result<Self> {
-        use anyhow::Error;
-
-        let DockerCompose {
-            services: Services {
-                db: DbService { image },
-                ..
-            },
-            ..
-        } = DockerCompose::read()?;
-
-        let err = "failed to parse postgres image tag specifier";
-
-        let postgres_version = image.split(":").nth(1).ok_or(anyhow!(err))?;
-
+    async fn new() -> anyhow::Result<Self> {
         Ok(Postgres::default()
             .with_host_auth()
-            .with_tag(postgres_version)
+            .with_tag("17")
             .start()
             .await?)
     }
@@ -279,11 +265,12 @@ impl AppState2 {
 
         let state = match app_config {
             Dev { .. } => {
-                let pg_container: ContainerAsync<Postgres> =
-                    ContainerAsync::from_docker_compose().await.context(container_err)?;
+                let pg_container: ContainerAsync<Postgres> = ContainerAsync::new().await.context(container_err)?;
                 let db_root_user_url = format!("postgres://postgres@{}/postgres", pg_container.host_spec().await?);
 
-                run_migrations(&db_root_user_url).await.context(migrations_err)?;
+                run_migrations(&db_root_user_url, &Uuid::new_v4().to_string())
+                    .await
+                    .context(migrations_err)?;
 
                 let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
                 let user_id = Uuid::new_v4();
@@ -307,7 +294,7 @@ impl AppState2 {
                         name: db_name,
                         host: db_host,
                         port: db_port,
-                        login_user_password: db_login_user_password,
+                        login_user_password,
                     },
                 auth_url,
                 ..
@@ -318,7 +305,7 @@ impl AppState2 {
                         name: db_name,
                         host: db_host,
                         port: db_port,
-                        login_user_password: db_login_user_password,
+                        login_user_password,
                     },
                 auth_url,
                 ..
@@ -331,10 +318,12 @@ impl AppState2 {
                     "postgres://{}:{}@{db_host}:{db_port}/{db_name}",
                     db_root_user?, db_root_password?
                 );
-                run_migrations(&db_root_user_url).await.context(migrations_err)?;
+                run_migrations(&db_root_user_url, login_user_password)
+                    .await
+                    .context(migrations_err)?;
 
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://{LOGIN_USER}:{db_login_user_password}@{db_host}:{db_port}/{db_name}"
+                    "postgres://{LOGIN_USER}:{login_user_password}@{db_host}:{db_port}/{db_name}"
                 ));
                 let db_pool = Pool::builder(db_config).build()?;
 
@@ -365,7 +354,7 @@ impl AppState2 {
     }
 }
 
-async fn run_migrations(db_url: &str) -> anyhow::Result<()> {
+async fn run_migrations(db_url: &str, db_login_user_password: &str) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
     let db_conn = AsyncPgConnection::establish(db_url).await?;
@@ -376,6 +365,12 @@ async fn run_migrations(db_url: &str) -> anyhow::Result<()> {
         wrapper.run_pending_migrations(MIGRATIONS).unwrap();
     })
     .await?;
+
+    // After running migrations, set the password for "login_user"
+    let mut db_conn = AsyncPgConnection::establish(db_url).await?;
+    diesel::sql_query(format!(r#"alter user login_user password '{db_login_user_password}'"#))
+        .execute(&mut db_conn)
+        .await?;
 
     Ok(())
 }

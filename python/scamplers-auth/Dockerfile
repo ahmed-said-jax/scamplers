@@ -21,10 +21,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
-# Install git because one of the python dependencies is only available on
-# github -_-
-RUN apt update --yes && apt install git --yes
-
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
@@ -66,4 +62,4 @@ EXPOSE 8001
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Run the application.
-CMD hypercorn main:app --bind=0.0.0.0:8001
+CMD python3 /app/main.py

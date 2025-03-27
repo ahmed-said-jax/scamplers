@@ -16,6 +16,7 @@
 --
 -- SELECT diesel_manage_updated_at('users');
 -- ```
+
 create or replace function diesel_manage_updated_at(_tbl regclass) returns void as $$
 BEGIN
     EXECUTE format('CREATE TRIGGER set_updated_at BEFORE UPDATE ON %s
@@ -35,13 +36,11 @@ BEGIN
 END;
 $$ language plpgsql;
 
--- We will do something with these roles later
 create role app_admin;
 create role biology_staff;
 create role computational_staff;
 
-create role login_user;
-create role auth;
+create user login_user;
 
 create function user_exists(user_id uuid) returns boolean language plpgsql volatile strict as $$
     declare user_exists boolean;
@@ -100,5 +99,3 @@ create function get_user_roles(
         return roles;
     end;
 $$;
-
--- TODO: create roles here from the enum above

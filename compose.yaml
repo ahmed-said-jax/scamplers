@@ -3,7 +3,7 @@
     {
       "db":
         {
-          "image": "postgres:17",
+          "image": "postgres:${SCAMPLERS_POSTGRES_VERSION}",
           "restart": "always",
           "user": "postgres",
           "secrets": ["db-root-user", "db-root-password", "db-name"],
@@ -13,7 +13,7 @@
               "POSTGRES_USER_FILE=/run/secrets/db-root-user",
               "POSTGRES_PASSWORD_FILE=/run/secrets/db-root-password",
               "POSTGRES_DB_FILE=/run/secrets/db-name",
-              "POSTGRES_HOST_AUTH_METHOD=scram-sha-256"
+              "POSTGRES_HOST_AUTH_METHOD=scram-sha-256",
             ],
           "expose": [5432],
           "healthcheck":
@@ -21,39 +21,49 @@
               "test": ["CMD", "pg_isready"],
               "interval": "2s",
               "timeout": "5s",
-              "retries": 10
-            }
+              "retries": 10,
+            },
+        },
+      "build-db":
+        {
+          "image": "postgres:${SCAMPLERS_POSTGRES_VERSION}",
+          "restart": "always",
+          "user": "postgres",
+          "environment": ["POSTGRES_HOST_AUTH_METHOD=trust"],
+          "expose": [5432],
+          "healthcheck":
+            {
+              "test": ["CMD", "pg_isready"],
+              "interval": "2s",
+              "timeout": "5s",
+              "retries": 10,
+            },
         },
       "scamplers":
         {
           "build": { "context": "rust/scamplers", "target": "final" },
           "ports": ["8000:8000"],
           "secrets":
-            [
-              "scamplers-config",
-              "db-root-user",
-              "db-root-password",
-              "db-name"
-            ],
+            ["scamplers_config", "db-root-user", "db-root-password", "db-name"],
           "volumes": ["logs:/logs"],
-          "depends_on": { "db": { "condition": "service_healthy" } }
+          "depends_on": { "db": { "condition": "service_healthy" }, "build-db": { "condition": "service_healthy" } },
         },
       "scamplers-auth":
         {
           "build": { "context": "python/scamplers-auth", "target": "final" },
           "ports": ["8001:8001"],
-          "secrets": ["auth-config"],
+          "secrets": ["scamplers-auth_config"],
           "volumes": ["logs:/logs"],
-          "depends_on": { "db": { "condition": "service_healthy" } }
-        }
+          "depends_on": { "db": { "condition": "service_healthy" } },
+        },
     },
   "volumes": { "db-data": null, "logs": null },
   "secrets":
     {
-      "auth-config": { "file": "${SCAMPLERS_AUTH_CONFIG_PATH}" },
-      "scamplers-config": { "file": "${SCAMPLERS_CONFIG_PATH}" },
+      "scamplers-auth_config": { "file": "${SCAMPLERS_AUTH_CONFIG_PATH}" },
+      "scamplers_config": { "file": "${SCAMPLERS_CONFIG_PATH}" },
       "db-root-user": { "environment": "SCAMPLERS_DB_ROOT_USER" },
       "db-root-password": { "environment": "SCAMPLERS_DB_ROOT_PASSWORD" },
-      "db-name": { "environment": "SCAMPLERS_DB_NAME" }
-    }
+      "db-name": { "environment": "SCAMPLERS_DB_NAME" },
+    },
 }

@@ -12,12 +12,16 @@ ARG APP_NAME=scamplers
 ################################################################################
 # Create a stage for building the application.
 
-FROM rust:${RUST_VERSION}-alpine AS build
+FROM rust:${RUST_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
 # Install host build dependencies.
-RUN apk add --no-cache clang lld musl-dev git
+RUN apt update && apt install --yes postgresql
+# RUN apk add clang lld musl-dev git
+# RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/diesel-rs/diesel/releases/latest/download/diesel_cli-installer.sh | sh
+RUN cargo install diesel_cli --no-default-features --features postgres
+# RUN diesel migration run --database-url postgres://postgres@build-db:5432/postgres
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
@@ -28,6 +32,7 @@ RUN apk add --no-cache clang lld musl-dev git
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
 RUN --mount=type=bind,source=src,target=src \
+    --mount=type=bind,source=build.rs,target=build.rs \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
     --mount=type=bind,source=.cargo,target=.cargo \
@@ -35,6 +40,7 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
+    # --mount=type=cache,target=~/diesel \
     cargo build --locked --release && \
     cp ./target/release/$APP_NAME /bin/server
 
@@ -71,4 +77,4 @@ COPY --from=build /bin/server /bin/
 EXPOSE 8000
 
 # What the container should run when it is started.
-CMD ["/bin/server", "--config-path", "/run/secrets/scamplers-config", "--log-dir", "logs"]
+CMD ["/bin/server", "serve", "--config-path", "/run/secrets/scamplers_config", "--log-dir", "logs"]
