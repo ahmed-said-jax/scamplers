@@ -1,69 +1,89 @@
-{
-  "services":
-    {
-      "db":
-        {
-          "image": "postgres:${SCAMPLERS_POSTGRES_VERSION}",
-          "restart": "always",
-          "user": "postgres",
-          "secrets": ["db-root-user", "db-root-password", "db-name"],
-          "volumes": ["db-data:/var/lib/postgresql/data"],
-          "environment":
-            [
-              "POSTGRES_USER_FILE=/run/secrets/db-root-user",
-              "POSTGRES_PASSWORD_FILE=/run/secrets/db-root-password",
-              "POSTGRES_DB_FILE=/run/secrets/db-name",
-              "POSTGRES_HOST_AUTH_METHOD=scram-sha-256",
-            ],
-          "expose": [5432],
-          "healthcheck":
-            {
-              "test": ["CMD", "pg_isready"],
-              "interval": "2s",
-              "timeout": "5s",
-              "retries": 10,
-            },
-        },
-      "build-db":
-        {
-          "image": "postgres:${SCAMPLERS_POSTGRES_VERSION}",
-          "restart": "always",
-          "user": "postgres",
-          "environment": ["POSTGRES_HOST_AUTH_METHOD=trust"],
-          "expose": [5432],
-          "healthcheck":
-            {
-              "test": ["CMD", "pg_isready"],
-              "interval": "2s",
-              "timeout": "5s",
-              "retries": 10,
-            },
-        },
-      "scamplers":
-        {
-          "build": { "context": "rust/scamplers", "target": "final" },
-          "ports": ["8000:8000"],
-          "secrets":
-            ["scamplers_config", "db-root-user", "db-root-password", "db-name"],
-          "volumes": ["logs:/logs"],
-          "depends_on": { "db": { "condition": "service_healthy" }, "build-db": { "condition": "service_healthy" } },
-        },
-      "scamplers-auth":
-        {
-          "build": { "context": "python/scamplers-auth", "target": "final" },
-          "ports": ["8001:8001"],
-          "secrets": ["scamplers-auth_config"],
-          "volumes": ["logs:/logs"],
-          "depends_on": { "db": { "condition": "service_healthy" } },
-        },
-    },
-  "volumes": { "db-data": null, "logs": null },
-  "secrets":
-    {
-      "scamplers-auth_config": { "file": "${SCAMPLERS_AUTH_CONFIG_PATH}" },
-      "scamplers_config": { "file": "${SCAMPLERS_CONFIG_PATH}" },
-      "db-root-user": { "environment": "SCAMPLERS_DB_ROOT_USER" },
-      "db-root-password": { "environment": "SCAMPLERS_DB_ROOT_PASSWORD" },
-      "db-name": { "environment": "SCAMPLERS_DB_NAME" },
-    },
-}
+services:
+  db:
+    image: postgres:${SCAMPLERS_POSTGRES_VERSION}
+    restart: always
+    user: postgres
+    secrets:
+      - db_root_user
+      - db_root_password
+      - db_name
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER_FILE=/run/secrets/db_root_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_root_password
+      - POSTGRES_DB_FILE=/run/secrets/db_name
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+    expose:
+      - 5432
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+      interval: 2s
+      timeout: 5s
+      retries: 10
+  scamplers:
+    build:
+      context: rust/scamplers
+      target: final
+    ports:
+      - ${SCAMPLERS_APP_HOST}:${SCAMPLERS_APP_PORT}
+    secrets:
+      - db_root_user
+      - db_root_password
+      - db_name
+      - auth_host
+      - auth_port
+      - app_host
+      - app_port
+      - seed_data
+    volumes:
+      - logs:/logs
+    depends_on:
+      db:
+        condition: service_healthy
+  scamplers-auth:
+    build:
+      context: python/scamplers-auth
+      target: final
+    ports:
+      - ${SCAMPLERS_AUTH_HOST}:${SCAMPLERS_AUTH_PORT}
+    secrets:
+      - auth_host
+      - auth_port
+      - ms_auth_client_id
+      - ms_auth_client_credential
+      - ms_auth_redirect_uri
+    volumes:
+      - logs:/logs
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  db-data:
+  logs:
+# For simplicity, our entire configuration is loaded as secrets. That way, we don't have to grab some values from the environment and others from the secrets dir
+secrets:
+  db_root_user:
+    environment: SCAMPLERS_DB_ROOT_USER
+  db_root_password:
+    environment: SCAMPLERS_DB_ROOT_PASSWORD
+  db_name:
+    environment: SCAMPLERS_DB_NAME
+  auth_host:
+    environment: SCAMPLERS_AUTH_HOST
+  auth_port:
+    environment: SCAMPLERS_AUTH_PORT
+  ms_auth_client_id:
+    environment: SCAMPLERS_MS_AUTH_CLIENT_ID
+  ms_auth_client_credential:
+    environment: SCAMPLERS_MS_AUTH_CLIENT_CREDENTIAL
+  ms_auth_redirect_uri:
+    environment: SCAMPLERS_MS_AUTH_REDIRECT_URI
+  app_host:
+    environment: SCAMPLERS_APP_HOST
+  app_port:
+    environment: SCAMPLERS_APP_PORT
+  seed_data:
+    file: ${SCAMPLERS_SEED_DATA}

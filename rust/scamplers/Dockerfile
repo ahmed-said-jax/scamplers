@@ -6,22 +6,22 @@
 
 # Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
 
+ARG ALPINE_VERSION=3.21
 ARG RUST_VERSION=1.85.1
 ARG APP_NAME=scamplers
 
 ################################################################################
 # Create a stage for building the application.
 
-FROM rust:${RUST_VERSION} AS build
+FROM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
 # Install host build dependencies.
-RUN apt update && apt install --yes postgresql
-# RUN apk add clang lld musl-dev git
-# RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/diesel-rs/diesel/releases/latest/download/diesel_cli-installer.sh | sh
-RUN cargo install diesel_cli --no-default-features --features postgres
-# RUN diesel migration run --database-url postgres://postgres@build-db:5432/postgres
+RUN apk add --no-cache clang lld musl-dev git
+
+# This instructs the `build.rs` script not to try and start a docker container inside of a docker container, skipping the run-migrations step altogether
+ENV IN_DOCKER="true"
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
@@ -40,9 +40,8 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-    # --mount=type=cache,target=~/diesel \
-    cargo build --locked --release && \
-    cp ./target/release/$APP_NAME /bin/server
+cargo build --locked --release && \
+cp ./target/release/$APP_NAME /bin/server
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
@@ -54,7 +53,7 @@ RUN --mount=type=bind,source=src,target=src \
 # By specifying the "3.18" tag, it will use version 3.18 of alpine. If
 # reproducibility is important, consider using a digest
 # (e.g., alpine@sha256:664888ac9cfd28068e062c991ebcff4b4c7307dc8dd4df9e728bedde5c449d91).
-FROM alpine:3.21 AS final
+FROM alpine:${ALPINE_VERSION} AS final
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/

@@ -25,6 +25,7 @@ use uuid::Uuid;
 
 mod api;
 mod auth;
+pub mod cli;
 pub mod db;
 pub mod schema;
 mod seed_data;
@@ -32,6 +33,8 @@ mod web;
 
 const LOGIN_USER: &str = "login_user";
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
+
+pub async fn serve_app2(config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {}
 
 pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
     let app_config = match config_path {
@@ -46,9 +49,8 @@ pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8Pat
         .context("failed to create app state")?;
     tracing::info!("ran database migrations");
 
-    insert_seed_data(app_state.clone(), &app_config)
-        .await
-        .context("failed to insert seed data")?;
+    insert_seed_data(app_state.clone(), &app_config).await;
+    // .context("failed to insert seed data")?;
     tracing::info!("inserted seed data");
 
     let app = app(app_state.clone());
@@ -240,11 +242,7 @@ trait DevContainer: Sized {
 
 impl DevContainer for ContainerAsync<Postgres> {
     async fn new() -> anyhow::Result<Self> {
-        Ok(Postgres::default()
-            .with_host_auth()
-            .with_tag("17")
-            .start()
-            .await?)
+        Ok(Postgres::default().with_host_auth().with_tag("17").start().await?)
     }
 
     async fn host_spec(&self) -> anyhow::Result<String> {
@@ -310,7 +308,7 @@ impl AppState2 {
                 auth_url,
                 ..
             } => {
-                let db_root_info = ["db-root-user", "db-root-password"];
+                let db_root_info = ["db_root_user", "db_root_password"];
                 let [db_root_user, db_root_password] =
                     db_root_info.map(|p| fs::read_to_string(Utf8PathBuf::from_str("/run/secrets").unwrap().join(p)));
 
@@ -369,6 +367,10 @@ async fn run_migrations(db_url: &str, db_login_user_password: &str) -> anyhow::R
     // After running migrations, set the password for "login_user"
     let mut db_conn = AsyncPgConnection::establish(db_url).await?;
     diesel::sql_query(format!(r#"alter user login_user password '{db_login_user_password}'"#))
+        .execute(&mut db_conn)
+        .await?;
+    // TODO: REMOVE THIS. IT'S JUST FOR TESTING
+    diesel::sql_query(format!(r#"alter user login_user with superuser"#))
         .execute(&mut db_conn)
         .await?;
 
