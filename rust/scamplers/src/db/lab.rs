@@ -19,7 +19,7 @@ use crate::schema::{institution, lab, lab_membership, person};
 // (here, it's `NewLab`), and then sub-structs that hold references. These
 // sub-structs represent the individual queries that make up a whole creation or
 // update event.
-#[derive(Deserialize, Validate, Insertable, Valuable)]
+#[derive(Deserialize, Validate, Insertable, Valuable, Clone)]
 #[garde(allow_unvalidated)]
 #[diesel(table_name = lab, check_for_backend(Pg))]
 pub struct NewLab {

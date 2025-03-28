@@ -139,7 +139,7 @@ impl Create for Vec<NewCommitteeApproval> {
     }
 }
 
-#[derive(Deserialize, Validate, Insertable)]
+#[derive(Deserialize, Validate, Insertable, Clone)]
 #[garde(allow_unvalidated)]
 #[diesel(table_name = schema::sample_metadata, check_for_backend(Pg))]
 pub struct NewSampleMetadata {

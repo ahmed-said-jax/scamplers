@@ -21,7 +21,7 @@ use crate::{
     db::{
         self, AsDieselExpression, BoxedDieselExpression, Create, Read,
         person::PersonStub,
-        utils::{BelongsToExt, DbEnum, DbJson, DefaultNowNaiveDateTime, Parent, ParentSet},
+        utils::{BelongsToExt, DbEnum, DbJson, DefaultNowNaiveDateTime, Parent, ParentSet, QueryLimit},
     },
     schema::{
         self, lab, person,
@@ -120,7 +120,7 @@ fn is_block_preservation_method(preservation_method: &PreservationMethod, _: &()
     }
 }
 
-#[derive(Deserialize, Serialize, Validate, FromSqlRow, Default, Debug, AsExpression, JsonSchema)]
+#[derive(Deserialize, Serialize, Validate, FromSqlRow, Default, Debug, AsExpression, JsonSchema, Clone)]
 #[diesel(sql_type = sql_types::Jsonb)]
 #[serde(rename_all = "UPPERCASE", tag = "quantity")]
 #[garde(allow_unvalidated)]
@@ -156,7 +156,7 @@ impl ToSql<sql_types::Jsonb, Pg> for MeasurementData {
     }
 }
 
-#[derive(Insertable, Deserialize, Validate, Associations)]
+#[derive(Insertable, Deserialize, Validate, Associations, Clone)]
 #[garde(allow_unvalidated)]
 #[diesel(table_name = schema::specimen_measurement, belongs_to(SpecimenCore, foreign_key = specimen_id))]
 pub struct NewSpecimenMeasurement {
@@ -182,7 +182,7 @@ impl Create for Vec<NewSpecimenMeasurement> {
 }
 
 // Common fields could be factored out of these enum variants, but it becomes a bit confusing
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, Clone)]
 #[serde(tag = "type")]
 #[garde(allow_unvalidated)]
 pub enum NewSpecimen {
@@ -330,7 +330,7 @@ impl Create for Vec<NewSpecimen> {
 
         let query = SpecimenQuery {
             ids: specimen_ids,
-            limit: n_specimens as i64,
+            limit: n_specimens.into(),
             ..Default::default()
         };
 
@@ -395,8 +395,8 @@ pub struct SpecimenQuery {
     preserved_with: Option<PreservationMethod>,
     #[serde(alias = "type")]
     type_: Option<SpecimenType>,
-    #[serde(default = "crate::db::utils::default_query_limit")]
-    limit: i64,
+    #[serde(default)]
+    limit: QueryLimit,
     #[serde(default)]
     offset: i64,
     #[serde(default)]
@@ -508,7 +508,7 @@ impl Read for Specimen {
 
         let mut specimens_statement = Self::base_query()
             .select(SpecimenCore::as_select())
-            .limit(*limit)
+            .limit(limit.into())
             .offset(*offset)
             .into_boxed();
 

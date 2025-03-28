@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Deref, str::FromStr};
 
 use chrono::{NaiveDateTime, Utc};
 use diesel::{
@@ -12,11 +12,42 @@ use diesel::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
+use valuable::Valuable;
 
-const DEFAULT_QUERY_LIMIT: i64 = 500;
-
-pub fn default_query_limit() -> i64 {
-    DEFAULT_QUERY_LIMIT
+#[derive(Deserialize, Valuable)]
+#[serde(transparent)]
+#[valuable(transparent)]
+pub struct QueryLimit(i64);
+impl Default for QueryLimit {
+    fn default() -> Self {
+        const DEFAULT_QUERY_LIMIT: i64 = 500;
+        Self(500)
+    }
+}
+impl From<QueryLimit> for i64 {
+    fn from(value: QueryLimit) -> Self {
+        value.0
+    }
+}
+impl From<&QueryLimit> for i64 {
+    fn from(value: &QueryLimit) -> Self {
+        value.0
+    }
+}
+impl From<i64> for QueryLimit {
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+impl From<i32> for QueryLimit {
+    fn from(value: i32) -> Self {
+        Self(value as i64)
+    }
+}
+impl From<usize> for QueryLimit {
+    fn from(value: usize) -> Self {
+        Self(value as i64)
+    }
 }
 
 pub trait BelongsToExt<Parent> {

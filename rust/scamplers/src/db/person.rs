@@ -70,7 +70,7 @@ define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid, roles:
 define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Uuid)}
 define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -> sql_types::Array<sql_types::Text>}
 
-#[derive(Insertable, Validate, Deserialize, Valuable)]
+#[derive(Insertable, Validate, Deserialize, Valuable, Clone)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewPerson {

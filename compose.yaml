@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:${SCAMPLERS_POSTGRES_VERSION}
+    image: postgres:${SCAMPLERS_POSTGRES_VERSION}-alpine${SCAMPLERS_ALPINE_VERSION}
     restart: always
     user: postgres
     secrets:
@@ -69,6 +69,8 @@ secrets:
     environment: SCAMPLERS_DB_ROOT_USER
   db_root_password:
     environment: SCAMPLERS_DB_ROOT_PASSWORD
+  db_login_user_password:
+    environment: SCAMPLERS_DB_LOGIN_USER_PASSWORD
   db_name:
     environment: SCAMPLERS_DB_NAME
   auth_host:

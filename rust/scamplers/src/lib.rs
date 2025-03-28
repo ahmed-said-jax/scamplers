@@ -4,6 +4,7 @@ use std::{fs, str::FromStr, sync::Arc};
 use anyhow::{Context, anyhow};
 use axum::Router;
 use camino::{Utf8Path, Utf8PathBuf};
+use cli::Config;
 use db::index_sets::IndexSetFileUrl;
 use diesel::sql_query;
 use diesel_async::{
@@ -34,7 +35,18 @@ mod web;
 const LOGIN_USER: &str = "login_user";
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
-pub async fn serve_app2(config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {}
+pub async fn serve_app2(config: Option<Config>, log_dir: Option<&Utf8Path>) -> anyhow::Result<()> {
+    initialize_logging(log_dir);
+
+    let app_state = AppState2::new(config.as_ref())
+        .await
+        .context("failed to initialize app state");
+    tracing::info!("initialized app state");
+
+    match config {}
+
+    Ok(())
+}
 
 pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
     let app_config = match config_path {
@@ -70,69 +82,7 @@ pub async fn serve_app(config_path: Option<Utf8PathBuf>, log_dir: Option<Utf8Pat
     Ok(())
 }
 
-#[derive(Deserialize, Validate)]
-#[garde(allow_unvalidated)]
-struct DbConfig {
-    name: String,
-    host: String,
-    port: u16,
-    login_user_password: String,
-}
-
-#[derive(Deserialize, Validate)]
-#[garde(allow_unvalidated)]
-#[serde(tag = "build", rename_all = "snake_case")]
-enum AppConfig2 {
-    Dev {
-        #[serde(default = "AppConfig2::dev_server_address")]
-        address: String,
-    },
-    Test {
-        db: DbConfig,
-        auth_url: Url,
-        #[serde(default = "AppConfig2::dev_server_address")]
-        address: String,
-    },
-    Prod {
-        db: DbConfig,
-        auth_url: Url,
-        #[garde(dive)]
-        index_set_file_urls: Vec<IndexSetFileUrl>,
-        address: String,
-    },
-}
-impl Default for AppConfig2 {
-    fn default() -> Self {
-        Self::Dev {
-            address: Self::dev_server_address(),
-        }
-    }
-}
-
-impl AppConfig2 {
-    fn dev_server_address() -> String {
-        "localhost:8000".to_string()
-    }
-
-    fn from_path(path: &Utf8Path) -> anyhow::Result<Self> {
-        let contents = fs::read_to_string(path)?;
-        let config: Self = toml::from_str(&contents)?;
-        config.validate()?;
-
-        Ok(config)
-    }
-
-    fn server_address(&self) -> &str {
-        use AppConfig2::*;
-
-        match self {
-            Dev { address, .. } | Test { address, .. } | Prod { address, .. } => address,
-        }
-    }
-}
-
-fn initialize_logging(app_config: &AppConfig2, log_dir: &Option<Utf8PathBuf>) -> anyhow::Result<()> {
-    use AppConfig2::*;
+fn initialize_logging(log_dir: Option<&Utf8Path>) {
     use tracing::Level;
     use tracing_subscriber::{filter::Targets, prelude::*};
 
@@ -141,36 +91,20 @@ fn initialize_logging(app_config: &AppConfig2, log_dir: &Option<Utf8PathBuf>) ->
         .with_target(env!("CARGO_PKG_NAME"), Level::DEBUG)
         .with_target("tower_http", Level::DEBUG);
 
-    match (app_config, log_dir) {
-        (Dev { .. } | Test { .. }, None) => {
+    match log_dir {
+        None => {
             let log_layer = log_layer.pretty().with_filter(dev_test_log_filter);
 
             tracing_subscriber::registry().with(log_layer).init();
         }
-        (Test { .. }, Some(path)) => {
-            let log_writer = tracing_appender::rolling::daily(path, "scamplers.log");
-            let log_layer = log_layer
-                .json()
-                .with_writer(log_writer)
-                .with_filter(dev_test_log_filter);
-
-            tracing_subscriber::registry().with(log_layer).init();
-        }
-        (Prod { .. }, Some(path)) => {
+        Some(path) => {
             let log_writer = tracing_appender::rolling::daily(path, "scamplers.log");
             let prod_log_filter = Targets::new().with_target("scamplers", Level::INFO);
             let log_layer = log_layer.json().with_writer(log_writer).with_filter(prod_log_filter);
 
             tracing_subscriber::registry().with(log_layer).init();
         }
-        _ => {
-            return Err(anyhow!(
-                "this combination of configuration and 'log_dir' is not supported"
-            ));
-        }
-    };
-
-    Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -180,10 +114,6 @@ enum AppState2 {
         _pg_container: Arc<ContainerAsync<Postgres>>,
         user_id: Uuid,
     },
-    Test {
-        db_pool: Pool<AsyncPgConnection>,
-        auth_url: Url,
-    },
     Prod {
         db_pool: Pool<AsyncPgConnection>,
         http_client: reqwest::Client,
@@ -191,63 +121,24 @@ enum AppState2 {
     },
 }
 
-#[derive(Deserialize)]
-struct DockerCompose {
-    services: Services,
-}
-impl DockerCompose {
-    fn read() -> anyhow::Result<Self> {
-        let manifest_dir = Utf8PathBuf::from_str(MANIFEST_DIR)?;
-        let compose_path = manifest_dir.parent().unwrap().parent().unwrap().join("compose.yaml");
-        Ok(serde_json::from_slice(&fs::read(&compose_path)?)?)
-    }
-    fn db_root(&self) -> anyhow::Result<(String, String)> {
-        let Self {
-            services:
-                Services {
-                    scamplers: ScamplersService { secrets, .. },
-                    ..
-                },
-            ..
-        } = self;
-
-        let mut db_root = secrets[1..3]
-            .into_iter()
-            .map(|filename| fs::read_to_string(format!("/run/secrets/{filename}")));
-
-        Ok((db_root.nth(0).unwrap()?, db_root.nth(1).unwrap()?))
-    }
-}
-
-#[derive(Deserialize)]
-struct Services {
-    db: DbService,
-    scamplers: ScamplersService,
-}
-
-#[derive(Deserialize)]
-struct DbService {
-    image: String,
-}
-
-#[derive(Deserialize)]
-struct ScamplersService {
-    secrets: [String; 4],
-}
-
 trait DevContainer: Sized {
     async fn new() -> anyhow::Result<Self>;
-    async fn host_spec(&self) -> anyhow::Result<String>;
+    async fn db_url(&self) -> anyhow::Result<String>;
 }
 
 impl DevContainer for ContainerAsync<Postgres> {
     async fn new() -> anyhow::Result<Self> {
-        Ok(Postgres::default().with_host_auth().with_tag("17").start().await?)
+        let postgres_version = option_env!("SCAMPLERS_POSTGRES_VERSION").unwrap_or("17");
+        Ok(Postgres::default()
+            .with_host_auth()
+            .with_tag(postgres_version)
+            .start()
+            .await?)
     }
 
-    async fn host_spec(&self) -> anyhow::Result<String> {
+    async fn db_url(&self) -> anyhow::Result<String> {
         Ok(format!(
-            "{}:{}",
+            "postgres://{}:{}",
             self.get_host().await?,
             self.get_host_port_ipv4(5432).await?
         ))
@@ -255,30 +146,34 @@ impl DevContainer for ContainerAsync<Postgres> {
 }
 
 impl AppState2 {
-    async fn new(app_config: &AppConfig2) -> anyhow::Result<Self> {
-        use AppConfig2::*;
-
+    async fn new(config: Option<&Config>) -> anyhow::Result<Self> {
         let container_err = "failed to start postgres container instance";
         let migrations_err = "failed to run database migrations";
 
-        let state = match app_config {
-            Dev { .. } => {
+        match config {
+            None => {
                 let pg_container: ContainerAsync<Postgres> = ContainerAsync::new().await.context(container_err)?;
-                let db_root_user_url = format!("postgres://postgres@{}/postgres", pg_container.host_spec().await?);
+                let db_root_url = pg_container.db_url();
 
-                run_migrations(&db_root_user_url, &Uuid::new_v4().to_string())
+                run_migrations(&db_root_url, &Uuid::new_v4().to_string())
                     .await
                     .context(migrations_err)?;
 
-                let mut db_conn = AsyncPgConnection::establish(&db_root_user_url).await?;
+                let mut db_conn = AsyncPgConnection::establish(&db_root_url).await?;
                 let user_id = Uuid::new_v4();
                 diesel::sql_query(format!(r#"create user "{user_id}" with superuser"#))
                     .execute(&mut db_conn)
                     .await
                     .context("failed to create dev superuser")?;
 
-                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_user_url);
+                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_url);
                 let db_pool = Pool::builder(db_config).build()?;
+
+                let state = Self::Dev {
+                    db_pool,
+                    _pg_container,
+                    user_id,
+                };
 
                 Self::Dev {
                     db_pool,
@@ -286,68 +181,27 @@ impl AppState2 {
                     user_id,
                 }
             }
-            Prod {
-                db:
-                    DbConfig {
-                        name: db_name,
-                        host: db_host,
-                        port: db_port,
-                        login_user_password,
-                    },
-                auth_url,
-                ..
-            }
-            | Test {
-                db:
-                    DbConfig {
-                        name: db_name,
-                        host: db_host,
-                        port: db_port,
-                        login_user_password,
-                    },
-                auth_url,
-                ..
-            } => {
-                let db_root_info = ["db_root_user", "db_root_password"];
-                let [db_root_user, db_root_password] =
-                    db_root_info.map(|p| fs::read_to_string(Utf8PathBuf::from_str("/run/secrets").unwrap().join(p)));
+            Some(config) => {
+                let db_root_url = config.db_root_url();
+                run_migrations(db_url, config.db_login_user_password()).await?;
 
-                let db_root_user_url = format!(
-                    "postgres://{}:{}@{db_host}:{db_port}/{db_name}",
-                    db_root_user?, db_root_password?
-                );
-                run_migrations(&db_root_user_url, login_user_password)
-                    .await
-                    .context(migrations_err)?;
-
-                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(format!(
-                    "postgres://{LOGIN_USER}:{login_user_password}@{db_host}:{db_port}/{db_name}"
-                ));
+                let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_login_url());
                 let db_pool = Pool::builder(db_config).build()?;
 
-                match app_config {
-                    Prod { .. } => Self::Prod {
-                        db_pool,
-                        http_client: reqwest::Client::new(),
-                        auth_url: auth_url.clone(),
-                    },
-                    Test { .. } => Self::Test {
-                        db_pool,
-                        auth_url: auth_url.clone(),
-                    },
-                    _ => unreachable!("we already checked for the Dev configuration"),
+                Self::Prod {
+                    db_pool,
+                    http_client: reqwest::Client::new(),
+                    auth_url: config.auth_url(),
                 }
             }
-        };
-
-        Ok(state)
+        }
     }
 
     async fn db_conn(&self) -> db::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> {
         use AppState2::*;
 
         match self {
-            Dev { db_pool, .. } | Test { db_pool, .. } | Prod { db_pool, .. } => Ok(db_pool.get().await?),
+            Dev { db_pool, .. } | Prod { db_pool, .. } => Ok(db_pool.get().await?),
         }
     }
 }
@@ -367,10 +221,6 @@ async fn run_migrations(db_url: &str, db_login_user_password: &str) -> anyhow::R
     // After running migrations, set the password for "login_user"
     let mut db_conn = AsyncPgConnection::establish(db_url).await?;
     diesel::sql_query(format!(r#"alter user login_user password '{db_login_user_password}'"#))
-        .execute(&mut db_conn)
-        .await?;
-    // TODO: REMOVE THIS. IT'S JUST FOR TESTING
-    diesel::sql_query(format!(r#"alter user login_user with superuser"#))
         .execute(&mut db_conn)
         .await?;
 
