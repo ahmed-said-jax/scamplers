@@ -76,4 +76,4 @@ COPY --from=build /bin/server /bin/
 EXPOSE 8000
 
 # What the container should run when it is started.
-CMD ["/bin/server", "serve", "--config-path", "/run/secrets/scamplers_config", "--log-dir", "logs"]
+CMD ["/bin/server", "prod", "--log-dir", "logs"]
