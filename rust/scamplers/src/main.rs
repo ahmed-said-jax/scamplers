@@ -8,7 +8,7 @@ use scamplers::{
         institution::{Institution, NewInstitution, UpdatedInstitution},
         sample::specimen::Specimen,
     },
-    serve_app, serve_app2,
+    serve_dev_app, serve_prod_app,
 };
 use schemars::schema_for;
 
@@ -18,10 +18,10 @@ async fn main() -> anyhow::Result<()> {
     let Cli { command } = Cli::parse();
 
     match command {
-        cli::Command::Dev => serve_app2(None, None)?,
-        cli::Command::Test { config, log_dir } => serve_app2(Some(config), log_dir.as_ref())?,
+        cli::Command::Dev { host, port } => serve_dev_app(host, port).await?,
+        cli::Command::Test { config, log_dir } => serve_prod_app(config, log_dir).await?,
         cli::Command::Prod { secrets_dir, log_dir } => {
-            serve_app2(Some(Config::from_secrets_dir(&secrets_dir)?), Some(&log_dir))
+            serve_prod_app(Config::from_secrets_dir(&secrets_dir)?, Some(log_dir)).await?
         }
         _ => todo!(),
     }

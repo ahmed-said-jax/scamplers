@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs, str::FromStr};
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand};
 
@@ -29,7 +29,9 @@ pub struct Config {
     #[arg(long, env)]
     app_port: u16,
     #[arg(skip)]
-    seed_data: SeedData,
+    seed_data: Option<SeedData>,
+    #[arg(long, env)]
+    seed_data_path: Option<Utf8PathBuf>,
 }
 impl Config {
     pub fn from_secrets_dir(dir: &Utf8Path) -> anyhow::Result<Self> {
@@ -42,18 +44,20 @@ impl Config {
             db_root_password: read_secret("db_root_password")?,
             db_login_user_password: read_secret("db_login_user_password")?,
             db_host: read_secret("db_host")?,
-            db_port: read_secret("db_port")?,
+            db_port: read_secret("db_port")?.parse()?,
             db_name: read_secret("db_name")?,
             auth_host: read_secret("auth_host")?,
             auth_port: read_secret("auth_port")?.parse()?,
             app_host: read_secret("app_host")?,
             app_port: read_secret("app_port")?.parse()?,
             seed_data: serde_json::from_str(&read_secret("seed_data")?)?,
+            seed_data_path: None,
         };
 
         Ok(config)
     }
-    pub fn auth_url(&self) -> String {
+
+    pub fn auth_address(&self) -> String {
         let Self {
             auth_host, auth_port, ..
         } = self;
@@ -61,7 +65,7 @@ impl Config {
         format!("{auth_host}:{auth_port}")
     }
 
-    pub fn app_url(&self) -> String {
+    pub fn app_address(&self) -> String {
         let Self { app_host, app_port, .. } = self;
 
         format!("{app_host}:{app_port}")
@@ -87,9 +91,9 @@ impl Config {
         let db_spec = format!("{db_host}:{db_port}/{db_name}");
 
         if root {
-            format!("{base}{db_root_user}:{db_root_password}}@{db_spec}")
+            format!("{base}{db_root_user}:{db_root_password}@{db_spec}")
         } else {
-            format!("{base}{LOGIN_USER}:{db_login_user_password}}@{db_spec}")
+            format!("{base}{LOGIN_USER}:{db_login_user_password}@{db_spec}")
         }
     }
 
@@ -100,11 +104,33 @@ impl Config {
     pub fn db_login_url(&self) -> String {
         self.db_url(false)
     }
+
+    pub fn seed_data(&self) -> anyhow::Result<Option<SeedData>> {
+        let Self {
+            seed_data,
+            seed_data_path,
+            ..
+        } = self;
+
+        match (seed_data, seed_data_path) {
+            (None, None) => Ok(None),
+            (Some(seed_data), None) => Ok(Some(seed_data.clone())),
+            (None, Some(seed_data_path)) => Ok(Some(serde_json::from_str(&fs::read_to_string(seed_data_path)?)?)),
+            (Some(_), Some(_)) => Err(anyhow!(
+                "seed_data_path should not be set alongside seed data read from secrets dir"
+            )),
+        }
+    }
 }
 
 #[derive(Subcommand)]
 pub enum Command {
-    Dev,
+    Dev {
+        #[arg(default_value_t = String::from("localhost"))]
+        host: String,
+        #[arg(default_value_t = 8000)]
+        port: u16,
+    },
     Test {
         #[command(flatten)]
         config: Config,

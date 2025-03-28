@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "build-scamplers"
-path = "../build.rs"
+path = "../scamplers/build.rs"
 
 [dependencies]
 testcontainers-modules = { workspace = true, features = ["blocking"] }

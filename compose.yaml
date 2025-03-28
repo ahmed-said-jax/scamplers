@@ -25,13 +25,19 @@ services:
       retries: 10
   scamplers:
     build:
-      context: rust/scamplers
+      args:
+        ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
+        RUST_VERSION: ${SCAMPLERS_RUST_VERSION}
+      context: rust
       target: final
     ports:
-      - ${SCAMPLERS_APP_HOST}:${SCAMPLERS_APP_PORT}
+      - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
     secrets:
       - db_root_user
       - db_root_password
+      - db_login_user_password
+      - db_host
+      - db_port
       - db_name
       - auth_host
       - auth_port
@@ -45,10 +51,12 @@ services:
         condition: service_healthy
   scamplers-auth:
     build:
+      args:
+        PYTHON_VERSION: ${SCAMPLERS_PYTHON_VERSION}
       context: python/scamplers-auth
       target: final
     ports:
-      - ${SCAMPLERS_AUTH_HOST}:${SCAMPLERS_AUTH_PORT}
+      - ${SCAMPLERS_AUTH_PORT}:${SCAMPLERS_AUTH_PORT}
     secrets:
       - auth_host
       - auth_port
@@ -71,6 +79,10 @@ secrets:
     environment: SCAMPLERS_DB_ROOT_PASSWORD
   db_login_user_password:
     environment: SCAMPLERS_DB_LOGIN_USER_PASSWORD
+  db_host:
+    environment: SCAMPLERS_DB_HOST
+  db_port:
+    environment: SCAMPLERS_DB_PORT
   db_name:
     environment: SCAMPLERS_DB_NAME
   auth_host:

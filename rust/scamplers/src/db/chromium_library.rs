@@ -8,10 +8,7 @@ use super::{
     Create, nucleic_acid_measurement,
     utils::{BelongsToExt, DefaultNowNaiveDateTime, JunctionStruct, Parent},
 };
-use crate::{
-    db::utils::ParentSet,
-    schema,
-};
+use crate::{db::utils::ParentSet, schema};
 
 #[derive(Deserialize, Insertable, Validate)]
 #[diesel(table_name = schema::chromium_library_measurement, check_for_backend(Pg))]

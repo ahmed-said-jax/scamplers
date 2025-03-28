@@ -26,25 +26,21 @@ use crate::{
     },
 };
 
-#[derive(Clone, Deserialize, Default)]
+#[derive(Clone, Deserialize)]
 #[serde(tag = "build")]
 pub enum SeedData {
-    #[default]
     Dev,
-    Prod {
-        index_set_urls: Vec<IndexSetFileUrl>,
-    },
+    Prod { index_set_urls: Vec<IndexSetFileUrl> },
 }
 impl SeedData {
-    pub async fn insert(self, app_state: AppState2) -> anyhow::Result<()> {
-        let mut conn = app_state.db_conn().await?;
-        let conn = &mut conn;
-
+    pub async fn insert(&self, db_conn: &mut AsyncPgConnection, http_client: reqwest::Client) -> anyhow::Result<()> {
         match self {
-            Self::Dev => create_random_data(conn)
+            Self::Dev => create_random_data(db_conn)
                 .await
                 .context("failed to create and insert random data")?,
-            Self::Prod { index_set_urls } => download_and_insert_index_sets(app_state, &index_set_urls).await?,
+            Self::Prod { index_set_urls } => {
+                download_and_insert_index_sets(db_conn, http_client, &index_set_urls).await?
+            }
         }
 
         Ok(())
@@ -53,13 +49,11 @@ impl SeedData {
 
 // We use anyhow::Result here because we just want to know what went wrong, we
 // don't care about serializing structured errors to a client
-async fn download_and_insert_index_sets(app_state: AppState2, file_urls: &[IndexSetFileUrl]) -> anyhow::Result<()> {
-    // Clone is fine here because everything in AppState is meant to be cloned
-    // (cheaply clonable)
-    let AppState2::Prod { http_client, .. } = app_state.clone() else {
-        return Err(anyhow!("index sets should only be downloaded in production builds"));
-    };
-
+async fn download_and_insert_index_sets(
+    db_conn: &mut AsyncPgConnection,
+    http_client: reqwest::Client,
+    file_urls: &[IndexSetFileUrl],
+) -> anyhow::Result<()> {
     let downloads = file_urls
         .into_iter()
         .map(|url| url.clone().download(http_client.clone()));
@@ -69,9 +63,8 @@ async fn download_and_insert_index_sets(app_state: AppState2, file_urls: &[Index
 
     // A for-loop is fine because this is like 10 URLs max, and each of these is a
     // bulk insert
-    let mut conn = app_state.db_conn().await?;
     for sets in index_sets {
-        sets.create(&mut conn)
+        sets.create(db_conn)
             .await
             .context("failed to insert index sets into database")?;
     }

@@ -55,7 +55,7 @@ tracing-subscriber = { version = "0.3.19", features = ["json"] }
 valuable = { version = "0.1.1", features = ["derive"] }
 argon2 = "0.5.3"
 garde = { version = "0.22.0", features = ["derive", "email", "serde", "regex"] }
-toml = { version = "0.8.20", default-features = false, features = ["parse"] }
+toml = { version = "0.8.20" }
 testcontainers-modules = { version = "0.11.6", features = ["postgres"] }
 schemars = { version = "0.8.22", features = ["chrono", "uuid1"] }
 tower-http = { version = "0.6.2", features = ["trace"] }

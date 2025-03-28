@@ -21,7 +21,7 @@ pub struct QueryLimit(i64);
 impl Default for QueryLimit {
     fn default() -> Self {
         const DEFAULT_QUERY_LIMIT: i64 = 500;
-        Self(500)
+        Self(DEFAULT_QUERY_LIMIT)
     }
 }
 impl From<QueryLimit> for i64 {

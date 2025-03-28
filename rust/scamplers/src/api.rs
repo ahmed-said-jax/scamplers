@@ -138,6 +138,8 @@ impl FromRequestParts<AppState2> for User {
             web: bool,
         }
 
+        let x = app_state.db_root_url();
+
         if let AppState2::Dev { user_id, .. } = app_state {
             return Ok(User::Web {
                 user_id: *user_id,
@@ -169,13 +171,13 @@ impl FromRequestParts<AppState2> for User {
             return Ok(user);
         }
 
-        let (AppState2::Test { auth_url, .. } | AppState2::Prod { auth_url, .. }) = app_state else {
-            unreachable!("we already tested for the only other variant")
+        let AppState2::Prod { config, .. } = app_state else {
+            unreachable!("we already tested for the only other variant");
         };
 
-        let err = InvalidSessionId {
-            auth_url: auth_url.to_string(),
-        };
+        let auth_address = config.auth_address();
+
+        let err = InvalidSessionId { auth_address };
 
         let Ok(cookies) = parts.extract::<TypedHeader<headers::Cookie>>().await else {
             return Err(err);
@@ -216,7 +218,7 @@ pub enum Error {
     #[error("simple invalid data")]
     SimpleData { reason: String },
     #[error("invalid session ID")]
-    InvalidSessionId { auth_url: String },
+    InvalidSessionId { auth_address: String },
     #[error("malformed request")]
     MalformedRequest {
         #[serde(skip)]
@@ -336,7 +338,7 @@ impl IntoResponse for Error {
         }
 
         match self {
-            Self::InvalidSessionId { auth_url } => Redirect::temporary(&auth_url).into_response(),
+            Self::InvalidSessionId { auth_address: auth_url } => Redirect::temporary(&auth_url).into_response(),
             _ => (
                 status,
                 axum::Json(ErrorResponse {
