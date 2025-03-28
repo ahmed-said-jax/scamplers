@@ -1,27 +1,22 @@
 #![allow(async_fn_in_trait)]
-use std::{fs, str::FromStr, sync::Arc};
+use std::sync::Arc;
 
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 use axum::Router;
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use cli::Config;
-use db::index_sets::IndexSetFileUrl;
-use diesel::sql_query;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection, RunQueryDsl,
     async_connection_wrapper::AsyncConnectionWrapper,
     pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use garde::Validate;
 use seed_data::SeedData;
-use serde::{Deserialize, Serialize};
 use testcontainers_modules::{
     postgres::Postgres,
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
 use tokio::{net::TcpListener, signal};
-use url::Url;
 use uuid::Uuid;
 
 mod api;

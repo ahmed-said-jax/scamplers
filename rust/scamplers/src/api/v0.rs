@@ -35,7 +35,7 @@ pub(super) fn router() -> Router<AppState2> {
 }
 
 mod handlers {
-    use std::collections::HashMap;
+    
 
     use axum::extract::{Path, State};
     use axum_extra::extract::Query;

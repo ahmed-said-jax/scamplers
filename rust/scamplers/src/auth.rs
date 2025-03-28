@@ -1,4 +1,3 @@
-use std::ops::Deref;
 
 use axum::{Router, extract::State, routing::get};
 

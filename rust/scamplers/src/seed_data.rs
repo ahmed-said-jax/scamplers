@@ -1,4 +1,4 @@
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use diesel_async::AsyncPgConnection;
 use futures::FutureExt;
@@ -10,12 +10,10 @@ use rand::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::{
-    AppState2,
-    db::{
+use crate::db::{
         Create, Read,
         index_sets::IndexSetFileUrl,
-        institution::{Institution, NewInstitution},
+        institution::NewInstitution,
         lab::NewLab,
         person::NewPerson,
         sample::{
@@ -23,8 +21,7 @@ use crate::{
             specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, Specimen},
         },
         utils::DefaultNowNaiveDateTime,
-    },
-};
+    };
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "build")]

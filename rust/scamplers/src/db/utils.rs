@@ -1,4 +1,4 @@
-use std::{ops::Deref, str::FromStr};
+use std::str::FromStr;
 
 use chrono::{NaiveDateTime, Utc};
 use diesel::{

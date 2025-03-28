@@ -1,16 +1,9 @@
-use std::fs;
 
-use camino::Utf8PathBuf;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use scamplers::{
     cli::{self, Cli, Config},
-    db::{
-        institution::{Institution, NewInstitution, UpdatedInstitution},
-        sample::specimen::Specimen,
-    },
     serve_dev_app, serve_prod_app,
 };
-use schemars::schema_for;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
