@@ -1,4 +1,3 @@
-
 use clap::Parser;
 use scamplers::{
     cli::{self, Cli, Config},

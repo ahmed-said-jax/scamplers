@@ -209,6 +209,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    ms_auth_flow (state) {
+        state -> Text,
+        flow -> Jsonb,
+        expires_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     multiplexed_suspension (id) {
         id -> Uuid,
         link -> Text,
@@ -426,6 +434,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     lab,
     lab_membership,
     library_type_specification,
+    ms_auth_flow,
     multiplexed_suspension,
     multiplexed_suspension_measurement,
     multiplexed_suspension_preparers,

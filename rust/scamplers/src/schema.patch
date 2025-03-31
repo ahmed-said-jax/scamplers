@@ -91,7 +91,7 @@
  
  diesel::table! {
      committee_approval (institution_id, committee_type, sample_id) {
-@@ -212,13 +212,13 @@
+@@ -220,13 +220,13 @@
      multiplexed_suspension (id) {
          id -> Uuid,
          link -> Text,
@@ -106,7 +106,7 @@
  diesel::table! {
      multiplexed_suspension_measurement (id) {
          id -> Uuid,
-@@ -263,37 +263,37 @@
+@@ -271,37 +271,37 @@
      sample_metadata (id) {
          id -> Uuid,
          name -> Text,
@@ -148,7 +148,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -301,14 +301,14 @@
+@@ -309,14 +309,14 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
@@ -165,7 +165,7 @@
  diesel::table! {
      specimen_measurement (id) {
          id -> Uuid,
-@@ -330,13 +330,13 @@
+@@ -338,13 +338,13 @@
          created_at -> Timestamp,
          pooled_into_id -> Nullable<Uuid>,
          multiplexing_tag_id -> Nullable<Uuid>,

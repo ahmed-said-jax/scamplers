@@ -5,3 +5,9 @@ create unlogged table cache (
     data jsonb,
     inserted_at timestamp not null
 );
+
+create unlogged table ms_auth_flow (
+    state text primary key,
+    flow jsonb not null,
+    expires_at timestamp not null
+);

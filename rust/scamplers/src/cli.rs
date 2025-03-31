@@ -25,6 +25,8 @@ pub struct Config {
     #[arg(long, env)]
     auth_port: u16,
     #[arg(long, env)]
+    ms_auth_path: String,
+    #[arg(long, env)]
     app_host: String,
     #[arg(long, env)]
     app_port: u16,
@@ -48,6 +50,7 @@ impl Config {
             db_name: read_secret("db_name")?,
             auth_host: read_secret("auth_host")?,
             auth_port: read_secret("auth_port")?.parse()?,
+            ms_auth_path: read_secret("ms_auth_path")?,
             app_host: read_secret("app_host")?,
             app_port: read_secret("app_port")?.parse()?,
             seed_data: serde_json::from_str(&read_secret("seed_data")?)?,
@@ -57,12 +60,15 @@ impl Config {
         Ok(config)
     }
 
-    pub fn auth_address(&self) -> String {
+    pub fn ms_auth_address(&self) -> String {
         let Self {
-            auth_host, auth_port, ..
+            auth_host,
+            auth_port,
+            ms_auth_path,
+            ..
         } = self;
 
-        format!("{auth_host}:{auth_port}")
+        format!("{auth_host}:{auth_port}/{ms_auth_path}")
     }
 
     pub fn app_address(&self) -> String {

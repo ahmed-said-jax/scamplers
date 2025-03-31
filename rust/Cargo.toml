@@ -25,7 +25,7 @@ reqwest = { version = "0.12.14", default-features = false, features = [
 url = { version = "2.5.4", features = ["serde"] }
 clap = { version = "4.5.32", features = ["derive", "env"] }
 anyhow = "1.0.97"
-axum = { version = "0.8.1", default-features = false, features = [
+axum = { version = "0.8.3", default-features = false, features = [
     "http2",
     "json",
     "macros",
@@ -58,7 +58,7 @@ garde = { version = "0.22.0", features = ["derive", "email", "serde", "regex"] }
 toml = { version = "0.8.20" }
 testcontainers-modules = { version = "0.11.6", features = ["postgres"] }
 schemars = { version = "0.8.22", features = ["chrono", "uuid1"] }
-tower-http = { version = "0.6.2", features = ["trace"] }
+tower-http = { version = "0.6.2", features = ["trace", "fs"] }
 rand = "0.9.0"
 strum = { version = "0.27.1", features = ["derive"] }
 heck = "0.5.0"

@@ -27,7 +27,7 @@ pub fn router() -> Router<AppState2> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
-    v0::router().layer(TraceLayer::new_for_http())
+    v0::router()
 }
 
 struct ValidJson<T>(T);
@@ -175,7 +175,7 @@ impl FromRequestParts<AppState2> for User {
             unreachable!("we already tested for the only other variant");
         };
 
-        let auth_address = config.auth_address();
+        let auth_address = config.ms_auth_address();
 
         let err = InvalidSessionId { auth_address };
 

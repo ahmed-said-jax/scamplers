@@ -73,14 +73,7 @@ impl BuildDbContainer for Container<Postgres> {
 fn generate_schema(connection_string: &str) {
     let mut diesel_cmd = Command::new("diesel");
 
-    let args = [
-        "migration",
-        "run",
-        "--database-url",
-        connection_string,
-        "--migration-dir",
-        "../migrations",
-    ];
+    let args = ["migration", "run", "--database-url", connection_string];
     diesel_cmd.args(args);
 
     let output = diesel_cmd.output().unwrap();

@@ -41,6 +41,7 @@ services:
       - db_name
       - auth_host
       - auth_port
+      - ms_auth_path
       - app_host
       - app_port
       - seed_data
@@ -60,6 +61,7 @@ services:
     secrets:
       - auth_host
       - auth_port
+      - ms_auth_path
       - ms_auth_client_id
       - ms_auth_client_credential
       - ms_auth_redirect_uri
@@ -89,6 +91,8 @@ secrets:
     environment: SCAMPLERS_AUTH_HOST
   auth_port:
     environment: SCAMPLERS_AUTH_PORT
+  ms_auth_path:
+    environment: SCAMPLERS_MS_AUTH_PATH
   ms_auth_client_id:
     environment: SCAMPLERS_MS_AUTH_CLIENT_ID
   ms_auth_client_credential:

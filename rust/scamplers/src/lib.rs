@@ -1,7 +1,7 @@
 #![allow(async_fn_in_trait)]
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use axum::Router;
 use camino::Utf8PathBuf;
 use cli::Config;
@@ -17,6 +17,8 @@ use testcontainers_modules::{
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
 use tokio::{net::TcpListener, signal};
+use tower_http::{services::fs::ServeDir, trace::TraceLayer};
+use utils::{DevContainer, ToAddress};
 use uuid::Uuid;
 
 mod api;
@@ -25,59 +27,40 @@ pub mod cli;
 pub mod db;
 pub mod schema;
 mod seed_data;
+mod utils;
 mod web;
 
-const LOGIN_USER: &str = "login_user";
-const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
-
-// TODO: need to figure out how to make these two functions less repetetive
-
 pub async fn serve_dev_app(host: String, port: u16) -> anyhow::Result<()> {
-    initialize_logging(None);
-
-    let app_addr = format!("{host}:{port}");
-
-    let app_state = AppState2::new(None).await.context("failed to initialize app state")?;
-    tracing::info!("initialized app state");
-
-    run_migrations(&app_state.db_root_url().await?, &Uuid::new_v4().to_string())
-        .await
-        .context("failed to run database migrations")?;
-    tracing::info!("ran database migrations");
-
-    app_state
-        .insert_seed_data()
-        .await
-        .context("failed to insert seed data")?;
-    tracing::info!("inserted seed data");
-
-    let app = app(app_state.clone());
-
-    let listener = TcpListener::bind(&app_addr)
-        .await
-        .context(format!("failed ot listen on {app_addr}"))?;
-    tracing::info!("scamplers listening on {app_addr}");
-
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal(app_state))
-        .await
-        .context("failed to serve app")?;
-
-    Ok(())
+    serve(None, None, Some((host, port))).await
 }
 
 pub async fn serve_prod_app(config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
+    serve(log_dir, Some(config), None).await
+}
+
+async fn serve(
+    log_dir: Option<Utf8PathBuf>,
+    config: Option<Config>,
+    app_addr: Option<(String, u16)>,
+) -> anyhow::Result<()> {
     initialize_logging(log_dir);
 
-    let app_addr = config.app_address();
-    let db_login_user_password = config.db_login_user_password().to_string();
+    let app_addr = match (&config, app_addr) {
+        (Some(config), None) => config.app_address(),
+        (None, Some(host_port)) => host_port.to_address(),
+        _ => {
+            return Err(anyhow!("exactly one of `config` or `app_addr` must be supplied"));
+        }
+    };
 
-    let app_state = AppState2::new(Some(config))
-        .await
-        .context("failed to initialize app state")?;
+    let app_state = AppState2::new(config).await.context("failed to initialize app state")?;
     tracing::info!("initialized app state");
 
-    run_migrations(&app_state.db_root_url().await?, &db_login_user_password)
+    let db_conn = AsyncPgConnection::establish(&app_state.db_root_url().await?)
+        .await
+        .context("failed to log into database as root user")?;
+
+    run_migrations(db_conn)
         .await
         .context("failed to run database migrations")?;
     tracing::info!("ran database migrations");
@@ -220,34 +203,8 @@ impl AppState2 {
     }
 }
 
-pub trait DevContainer: Sized {
-    async fn new() -> anyhow::Result<Self>;
-    async fn db_url(&self) -> anyhow::Result<String>;
-}
-
-impl DevContainer for ContainerAsync<Postgres> {
-    async fn new() -> anyhow::Result<Self> {
-        let postgres_version = option_env!("SCAMPLERS_POSTGRES_VERSION").unwrap_or("17");
-        Ok(Postgres::default()
-            .with_host_auth()
-            .with_tag(postgres_version)
-            .start()
-            .await?)
-    }
-
-    async fn db_url(&self) -> anyhow::Result<String> {
-        Ok(format!(
-            "postgres://postgres@{}:{}",
-            self.get_host().await?,
-            self.get_host_port_ipv4(5432).await?
-        ))
-    }
-}
-
-async fn run_migrations(db_url: &str, db_login_user_password: &str) -> anyhow::Result<()> {
+async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-
-    let db_conn = AsyncPgConnection::establish(db_url).await?;
 
     let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = AsyncConnectionWrapper::from(db_conn);
 
@@ -256,20 +213,15 @@ async fn run_migrations(db_url: &str, db_login_user_password: &str) -> anyhow::R
     })
     .await?;
 
-    // After running migrations, set the password for "login_user"
-    let mut db_conn = AsyncPgConnection::establish(db_url).await?;
-    diesel::sql_query(format!(r#"alter user login_user password '{db_login_user_password}'"#))
-        .execute(&mut db_conn)
-        .await?;
-
     Ok(())
 }
 
 fn app(app_state: AppState2) -> Router {
     Router::new()
+        .nest("/web", ServeDir::new("../../typescript/scamplers-web/build"))
         .nest("/api", api::router())
-        .nest("/auth", auth::router())
         .with_state(app_state)
+        .layer(TraceLayer::new_for_http())
 }
 
 // I don't entirely understand why I need to manually call `drop` here
