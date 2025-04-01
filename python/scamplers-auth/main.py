@@ -1,34 +1,39 @@
 #! /usr/bin/env python3
+from dataclasses import dataclass
+import datetime
+import json
 from pydantic_settings import (
     BaseSettings,
+    CliSettingsSource,
+    DotEnvSettingsSource,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
     TomlConfigSettingsSource,
+    SecretsSettingsSource,
+
 )
 from sanic import Sanic, redirect
 from sanic.response import text
 import sanic
 import msal
+import asyncpg
+from datetime import datetime, timedelta
 
+@dataclass
+class ConfigContainer(sanic.Config):
+    class Config(BaseSettings):
+        model_config = SettingsConfigDict(cli_parse_args=True, secrets_dir="/run/secrets", env_prefix="SCAMPLERS_AUTH_", env_file=".env")
 
-class Cli(BaseSettings):
-    model_config = SettingsConfigDict(
-        cli_parse_args=True, env_prefix="SCAMPLERS_AUTH_", env_file=".env"
-    )
-
-    config_path: str = "/run/secrets/scamplers-auth_config"
-
-
-cli = Cli()  # type: ignore
-
-
-class AppConfig(sanic.Config):
-    class AppConfigInner(BaseSettings):
-        model_config = SettingsConfigDict(toml_file=cli.config_path)
-
+        db_host: str
+        db_port: int
+        db_auth_user_password: str
+        auth_host: str
+        auth_port: int
+        ms_auth_path: str
         ms_auth_client_id: str
         ms_auth_client_credential: str
         ms_auth_redirect_uri: str
+        ms_auth_flow_expiration: datetime
 
         @classmethod
         def settings_customise_sources(
@@ -39,39 +44,34 @@ class AppConfig(sanic.Config):
             dotenv_settings: PydanticBaseSettingsSource,
             file_secret_settings: PydanticBaseSettingsSource,
         ) -> tuple[PydanticBaseSettingsSource, ...]:
-            return (TomlConfigSettingsSource(settings_cls),)
+            return init_settings, CliSettingsSource(settings_cls), env_settings, dotenv_settings, file_secret_settings
 
-    inner: AppConfigInner
+    app_config: Config
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.inner = self.AppConfigInner()  # type: ignore
-
-
-class AppContext:
+class Context:
     ms_auth_client: msal.ConfidentialClientApplication
+    db_pool: asyncpg.Pool
 
+config = ConfigContainer()  # type: ignore
 
-config = AppConfig()  # type: ignore
-app = Sanic("scamplers-auth", config=config, ctx=AppContext)
-
-type App = Sanic[AppConfig, AppContext]
-
-AUTH_FLOWS = {}
-
+type App = Sanic[ConfigContainer, type[Context]]
+app: App = Sanic("scamplers-auth", config=config, ctx=Context)
 
 @app.before_server_start
 async def attach_msal_auth_client(app: App, loop):
     app.ctx.ms_auth_client = msal.ConfidentialClientApplication(
-        app.config.inner.ms_auth_client_id,
+        client_id=app.config.app_config.ms_auth_client_id,
         authority="https://login.microsoftonline.com/common",
-        client_credential=app.config.inner.ms_auth_client_credential,
+        client_credential=app.config.app_config.ms_auth_client_credential,
     )
 
+    app_config = app.config.app_config
 
-@app.route("/login")
-async def login(request: sanic.Request):
-    request.get_args()
+    app.ctx.db_pool = await asyncpg.create_pool(user="auth_user", password=app_config.db_auth_user_password, host=app_config.db_host, port=app_config.db_port)
+
+
+@app.route(app.config.app_config.ms_auth_path)
+async def ms_login(request: sanic.Request):
     auth_client = app.ctx.ms_auth_client
     redirect_uri = app.config.inner.ms_auth_redirect_uri
 
@@ -79,14 +79,17 @@ async def login(request: sanic.Request):
         scopes=[], redirect_uri=redirect_uri
     )
 
-    AUTH_FLOWS[auth_flow["state"]] = auth_flow
+    redirected_from = request.args.get("redirected_from", "/")
+
+    db_pool = app.ctx.db_pool
+    await db_pool.execute("insert into ms_auth_flow (state, flow, redirected_from, expires_at) values ($1, $2::jsonb, $3, $4)", auth_flow["state"], json.dumps(auth_flow), redirected_from, datetime.utcnow() + timedelta(minutes=10))
 
     response = redirect(auth_flow["auth_uri"])
 
     return response
 
 
-@app.route("/auth/ms")
+@app.route("/auth/ms-redirect")
 async def ms_auth(request: sanic.Request):
     received_auth_flow = request.args
     stored_auth_flow = AUTH_FLOWS.pop(received_auth_flow["state"][0])
@@ -99,12 +102,6 @@ async def ms_auth(request: sanic.Request):
     print(result)
 
     return text("logged tf in")
-
-
-@app.route("/")
-async def hello(request: sanic.Request):
-    return text("hi")
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8001)

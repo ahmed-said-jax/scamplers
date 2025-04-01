@@ -2,5 +2,5 @@
 
 set -euxo pipefail
 
-cd rust/build-scamplers && cargo run --release
+cd rust && cargo run --release --bin build-scamplers
 docker compose up --build --detach

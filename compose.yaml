@@ -28,7 +28,9 @@ services:
       args:
         ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
         RUST_VERSION: ${SCAMPLERS_RUST_VERSION}
-      context: rust
+        BUN_VERSION: ${SCAMPLERS_BUN_VERSION}
+      context: .
+      dockerfile: rust/Dockerfile
       target: final
     ports:
       - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
@@ -59,6 +61,10 @@ services:
     ports:
       - ${SCAMPLERS_AUTH_PORT}:${SCAMPLERS_AUTH_PORT}
     secrets:
+      - db_auth_user_password
+      - db_host
+      - db_port
+      - db_name
       - auth_host
       - auth_port
       - ms_auth_path
@@ -81,6 +87,8 @@ secrets:
     environment: SCAMPLERS_DB_ROOT_PASSWORD
   db_login_user_password:
     environment: SCAMPLERS_DB_LOGIN_USER_PASSWORD
+  db_auth_user_password:
+    environment: SCAMPLERS_DB_AUTH_USER_PASSWORD
   db_host:
     environment: SCAMPLERS_DB_HOST
   db_port:

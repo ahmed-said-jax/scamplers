@@ -15,6 +15,8 @@ create table multiplexed_suspension_measurement (
     data jsonb not null
 );
 
+create index idx_multiplexed_suspension_measurement on multiplexed_suspension_measurement(suspension_id);
+
 create table multiplexed_suspension_preparers (
     suspension_id uuid references multiplexed_suspension on delete restrict on update restrict not null,
     prepared_by uuid references person on delete restrict on update restrict not null,

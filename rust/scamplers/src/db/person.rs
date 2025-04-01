@@ -22,7 +22,7 @@ use crate::{
         institution,
         person::{
             self,
-            dsl::{email as email_col, full_name as name_col, id as id_col},
+            dsl::{email as email_col, id as id_col, name as name_col},
         },
     },
 };
@@ -75,9 +75,7 @@ define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -
 #[garde(allow_unvalidated)]
 pub struct NewPerson {
     #[garde(length(min = 1))]
-    pub first_name: String,
-    #[garde(length(min = 1))]
-    pub last_name: String,
+    pub name: String,
     #[garde(email)]
     pub email: String,
     pub orcid: Option<String>,

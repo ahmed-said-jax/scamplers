@@ -217,11 +217,15 @@ async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {
 }
 
 fn app(app_state: AppState2) -> Router {
-    Router::new()
-        .nest("/web", ServeDir::new("../../typescript/scamplers-web/build"))
+    let router = Router::new()
         .nest("/api", api::router())
         .with_state(app_state)
-        .layer(TraceLayer::new_for_http())
+        .layer(TraceLayer::new_for_http());
+
+    match &app_state {
+        AppState2::Dev { .. } => router,
+        AppState2::Prod { .. } => router.nest_service("/", ServeDir::new("/opt/scamplers-web")),
+    }
 }
 
 // I don't entirely understand why I need to manually call `drop` here

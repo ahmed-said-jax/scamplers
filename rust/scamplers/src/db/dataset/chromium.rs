@@ -123,6 +123,48 @@ enum NewChromiumDataset {
         metrics: SingleRowCsv,
     },
 }
+impl NewChromiumDataset {
+    async fn validate_chemistry_and_n_samples(
+        &self,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> crate::db::Result<()> {
+        use crate::schema::{chemistry, gems};
+
+        let (gems_id, n_metrics_files) = match self {
+            Self::CellrangerarcCount { core, metrics }
+            | Self::CellrangeratacCount { core, .. }
+            | Self::CellrangerCount { core, metrics }
+            | Self::CellrangerVdj { core, metrics } => (core.gems_id, 1),
+            Self::CellrangerMulti { core, metrics } => (core.gems_id, metrics.len()),
+        };
+
+        let (n_samples, chemistry_name, expected_cmdline) = gems::table
+            .left_join(chemistry::table)
+            .filter(gems::id.eq(gems_id))
+            .select((gems::n_samples, chemistry::name, chemistry::cmdline))
+            .first(conn)
+            .await?;
+
+        if n_samples != n_metrics_files {
+            return Err(super::Error::NMetricsFiles {
+                expected_n_metrics_files: n_samples.into(),
+                found_n_metrics_files: n_metrics_files.into(),
+            });
+        }
+
+        let found_cmdline: &str = self.into();
+        if expected_cmdline != found_cmdline {
+            return Err(super::Error::InvalidCmdline {
+                chemistry: chemistry_name,
+                expected_cmdline,
+                found_cmdline: found_cmdline.to_string(),
+            }
+            .into());
+        }
+
+        Ok(())
+    }
+}
 impl Create for Vec<NewChromiumDataset> {
     type Returns = ();
 
@@ -139,6 +181,8 @@ impl Create for Vec<NewChromiumDataset> {
         let mut insertions = Vec::with_capacity(self.len());
 
         for ds in self {
+            // TODO: We shouldn't be making calls to the database in a loop. We should actually fetch all these records at once, transform them into a `HashMap` from `gems_id` to the data, and then validate.
+            ds.validate_chemistry_and_n_samples(conn).await?;
             let (core, metrics) = match ds {
                 CellrangerarcCount { core, metrics }
                 | CellrangerCount { core, metrics }

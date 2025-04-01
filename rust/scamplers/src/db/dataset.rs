@@ -140,3 +140,19 @@ where
         Some(query)
     }
 }
+
+#[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Error {
+    #[error("invalid cmdline for dataset")]
+    InvalidCmdline {
+        chemistry: String,
+        expected_cmdline: String,
+        found_cmdline: String,
+    },
+    #[error("mismatching ")]
+    NMetricsFiles {
+        expected_n_metrics_files: u8,
+        found_n_metrics_files: u8,
+    },
+}

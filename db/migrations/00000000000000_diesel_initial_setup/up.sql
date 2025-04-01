@@ -36,34 +36,28 @@ BEGIN
 END;
 $$ language plpgsql;
 
-create role app_admin;
-create role biology_staff;
-create role computational_staff;
-
-create user login_user;
-
-create function user_exists(user_id uuid) returns boolean language plpgsql volatile strict as $$
+create function user_exists(user_id text) returns boolean language plpgsql volatile strict as $$
     declare user_exists boolean;
     begin
-        select exists (select 1 from pg_roles where rolname = user_id::text) into user_exists;
+        select exists (select 1 from pg_roles where rolname = user_id) into user_exists;
         return user_exists;
     end;
 $$;
 
-create function grant_roles_to_user(
-    user_id uuid,
+create function grant_roles_to_role(
+    user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
     declare r text;
     begin
         foreach r in array roles loop
-            execute format('grant "%I" to "%I"', r, user_id::text);
+            execute format('grant "%I" to "%I"', r, user_id);
         end loop;
     end;
 $$;
 
-create function revoke_roles_from_user(
-    user_id uuid,
+create function revoke_roles_from_role(
+    user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
     declare r text;
@@ -73,29 +67,39 @@ create function revoke_roles_from_user(
         end if;
 
         foreach r in array roles loop
-            execute format('revoke "%I" from "%I"', r, user_id::text);
+            execute format('revoke "%I" from "%I"', r, user_id);
         end loop;
     end;
 $$;
 
-create function create_user_if_not_exists(
-    user_id uuid,
+create function create_role_if_not_exists(
+    user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
     begin
         if not user_exists(user_id) then
-            execute format('create role "%I"', user_id::text);
+            execute format('create role "%I"', user_id);
         end if;
         select grant_roles_to_user(user_id, roles);
     end;
 $$;
 
-create function get_user_roles(
-    user_id uuid
+create function get_role_roles(
+    user_id text
 ) returns text [] language plpgsql volatile strict as $$
     declare roles text [];
     begin
-        select array_agg(pg_roles.rolname) from pg_roles inner join pg_auth_members on pg_roles.oid = pg_auth_members.roleid and pg_auth_members.member = (select usesysid from pg_user where usename = user_id::text) into roles;
+        select array_agg(pg_roles.rolname) from pg_roles inner join pg_auth_members on pg_roles.oid = pg_auth_members.roleid and pg_auth_members.member = (select usesysid from pg_user where usename = user_id) into roles;
         return roles;
     end;
 $$;
+
+select create_role_if_not_exists('app_admin', '{}');
+select create_role_if_not_exists('biology_staff', '{}');
+select create_role_if_not_exists('computational_staff', '{}');
+
+-- These two operations are no-ops, as both these users exists and already have passwords
+select create_role_if_not_exists('login_user', '{}');
+select create_role_if_not_exists('auth_user', '{}')
+
+grant insert

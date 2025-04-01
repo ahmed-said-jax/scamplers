@@ -19,9 +19,12 @@ WORKDIR /app
 
 # Install host build dependencies.
 RUN apk add --no-cache clang lld musl-dev git
+RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
 # This instructs the `build.rs` script not to try and start a docker container inside of a docker container, skipping the run-migrations step altogether
 ENV IN_DOCKER="true"
+
+RUN --mount=type=bind,source=typescript
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
@@ -31,17 +34,16 @@ ENV IN_DOCKER="true"
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
-RUN --mount=type=bind,source=scamplers,target=scamplers \
-    --mount=type=bind,source=build-scamplers,target=build-scamplers \
-    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=bind,source=.cargo,target=.cargo \
-    --mount=type=bind,source=migrations,target=migrations \
-    --mount=type=cache,target=/app/target/ \
-    --mount=type=cache,target=/usr/local/cargo/git/db \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
+
+RUN --mount=type=bind,source=rust,target=rust \
+    --mount=type=bind,source=db,target=db \
+    --mount=type=bind,source=typescript,target=typescript \
+    cd typescript/scamplers-web && \
+    bun --bun run build && \
+    cp build /opt/scamplers-web && \
+    cd ../../rust && \
     cargo build --locked --release && \
-    cp ./target/release/$APP_NAME /bin/server
+    cp ./target/release${APP_NAME} /bin/server
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
@@ -70,7 +72,8 @@ RUN mkdir logs && chown appuser logs
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/server /bin/
+COPY --from=build /bin/server /bin/ \
+    --from=build /opt/scamplers-web /opt/
 
 # Expose the port that the application listens on.
 EXPOSE 8000

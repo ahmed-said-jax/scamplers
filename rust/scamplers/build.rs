@@ -143,7 +143,9 @@ impl<'a> DieselConfig<'a> {
                 custom_type_derives: ["diesel::query_builder::QueryId", "Clone"],
                 patch_file: None,
             },
-            migrations_directory: MigrationsDirectory { dir: "../migrations" },
+            migrations_directory: MigrationsDirectory {
+                dir: "../db/migrations",
+            },
         }
     }
 

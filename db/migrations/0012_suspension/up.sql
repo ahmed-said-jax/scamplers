@@ -30,12 +30,16 @@ create table suspension (
     constraint pooling_is_correctly_specified check ((pooled_into_id is null) = (multiplexing_tag_id is null))
 );
 
+create index idx_suspension_multiplexed_suspension on suspension(pooled_into_id);
+
 create table suspension_measurement (
     id uuid primary key default gen_random_uuid(),
     suspension_id uuid references suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
     data jsonb not null
 );
+
+create index idx_suspension_measurement on suspension_measurement(suspension_id);
 
 create table suspension_preparers (
     suspension_id uuid references suspension on delete restrict on update restrict not null,

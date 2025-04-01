@@ -19,3 +19,5 @@ create table specimen_measurement (
     measured_by uuid not null references person on delete restrict on update restrict,
     data jsonb not null
 );
+
+create index idx_specimen_measurement on specimen_measurement(specimen_id);

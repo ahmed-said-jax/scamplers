@@ -115,6 +115,8 @@ pub async fn set_transaction_user(user_id: &Uuid, conn: &mut AsyncPgConnection) 
 #[serde(untagged)]
 pub enum DataError {
     #[error(transparent)]
+    Dataset(#[from] dataset::Error),
+    #[error(transparent)]
     Sample(#[from] sample::Error),
     #[error(transparent)]
     Library(#[from] library_type_specification::Error),
@@ -151,6 +153,12 @@ impl Error {
         Self::Other {
             message: format!("{err:?}"),
         }
+    }
+}
+
+impl From<dataset::Error> for Error {
+    fn from(err: dataset::Error) -> Self {
+        Self::Data(DataError::from(err))
     }
 }
 
