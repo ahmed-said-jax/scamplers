@@ -201,6 +201,15 @@ impl AppState2 {
             Dev { db_pool, .. } | Prod { db_pool, .. } => Ok(db_pool.get().await?),
         }
     }
+
+    async fn session_id_salt_string(&self) -> &str {
+        use AppState2::*;
+
+        match self {
+            Dev { .. } => "0000",
+            Prod { config, .. } => config.session_id_salt_string(),
+        }
+    }
 }
 
 async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {

@@ -11,23 +11,27 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::db::{
-        Create, Read,
-        index_sets::IndexSetFileUrl,
-        institution::NewInstitution,
-        lab::NewLab,
-        person::NewPerson,
-        sample::{
-            NewSampleMetadata,
-            specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, Specimen},
-        },
-        utils::DefaultNowNaiveDateTime,
-    };
+    Create, Read,
+    index_sets::IndexSetFileUrl,
+    institution::NewInstitution,
+    lab::NewLab,
+    person::NewPerson,
+    sample::{
+        NewSampleMetadata,
+        specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, Specimen},
+    },
+    utils::DefaultNowNaiveDateTime,
+};
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "build")]
 pub enum SeedData {
     Dev,
-    Prod { index_set_urls: Vec<IndexSetFileUrl> },
+    Prod {
+        institutions: Vec<NewInstitution>,
+        people: Vec<NewPerson>,
+        index_set_urls: Vec<IndexSetFileUrl>,
+    },
 }
 impl SeedData {
     pub async fn insert(&self, db_conn: &mut AsyncPgConnection, http_client: reqwest::Client) -> anyhow::Result<()> {
@@ -35,7 +39,13 @@ impl SeedData {
             Self::Dev => create_random_data(db_conn)
                 .await
                 .context("failed to create and insert random data")?,
-            Self::Prod { index_set_urls } => {
+            Self::Prod {
+                institutions,
+                people,
+                index_set_urls,
+            } => {
+                institutions.create(db_conn).await?;
+                people.create(db_conn).await?;
                 download_and_insert_index_sets(db_conn, http_client, &index_set_urls).await?
             }
         }
@@ -114,17 +124,17 @@ async fn create_random_data(conn: &mut AsyncPgConnection) -> anyhow::Result<()> 
     let random_institution_id = || institutions.choose(&mut rng.clone()).unwrap().id;
 
     let people = [
-        ("Peter", "Parker", "spiderman@example.com"),
-        ("Thomas", "Anderson", "neo@example.com"),
+        ("Peter Parker", "spiderman@example.com"),
+        ("Thomas Anderson", "neo@example.com"),
     ];
     let people: Vec<_> = people
         .iter()
-        .map(|(first_name, last_name, email)| NewPerson {
-            first_name: first_name.to_string(),
-            last_name: last_name.to_string(),
+        .map(|(name, email)| NewPerson {
+            name: name.to_string(),
             email: email.to_string(),
             orcid: None,
             institution_id: random_institution_id(),
+            roles: vec![random_enum_choice(rng.clone())],
         })
         .collect();
 

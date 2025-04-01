@@ -65,10 +65,10 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
     }
 }
 
-define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Uuid, roles: sql_types::Array<sql_types::Text>)}
-define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Uuid, roles: sql_types::Array<sql_types::Text>)}
-define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Uuid)}
-define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Uuid) -> sql_types::Array<sql_types::Text>}
+define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
+define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
+define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
+define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Text) -> sql_types::Array<sql_types::Text>}
 
 #[derive(Insertable, Validate, Deserialize, Valuable, Clone)]
 #[diesel(table_name = person, check_for_backend(Pg))]
@@ -81,6 +81,9 @@ pub struct NewPerson {
     pub orcid: Option<String>,
     #[valuable(skip)]
     pub institution_id: Uuid,
+    #[serde(default)]
+    #[diesel(skip_insertion)]
+    pub roles: Vec<UserRole>,
 }
 
 impl Create for Vec<NewPerson> {
@@ -92,10 +95,19 @@ impl Create for Vec<NewPerson> {
         // This can be improved by doing the join on the insertion rather than two
         // queries
         let inserted_people_ids: Vec<Uuid> = diesel::insert_into(person::table)
-            .values(self)
+            .values(&self)
             .returning(id)
             .get_results(conn)
             .await?;
+
+        // TODO: we should probably define a function that takes a list of users and a list of lists of roles, so we only have to make this network trip once
+        for (role_set, id) in self
+            .iter()
+            .map(|NewPerson { roles, .. }| roles)
+            .zip(&inserted_people_ids)
+        {
+            create_user_if_not_exists(id, role_set).execute(conn).await?;
+        }
 
         let filter = PersonQuery {
             ids: inserted_people_ids,

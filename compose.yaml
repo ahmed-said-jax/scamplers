@@ -113,3 +113,5 @@ secrets:
     environment: SCAMPLERS_APP_PORT
   seed_data:
     file: ${SCAMPLERS_SEED_DATA}
+  session_id_salt_string:
+    environment: ${SCAMPLERS_SESSION_ID_SALT_STRING}

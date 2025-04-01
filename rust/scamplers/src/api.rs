@@ -55,16 +55,15 @@ impl<T: Serialize> IntoResponse for ValidJson<T> {
 }
 
 trait SessionIdOrApiKey {
-    fn hash(&self) -> String;
+    fn hash(&self, salt_string: &str) -> String;
 }
 
 impl SessionIdOrApiKey for Uuid {
-    fn hash(&self) -> String {
+    fn hash(&self, salt_string: &str) -> String {
         let hasher = argon2::Argon2::default();
         let bytes = self.as_bytes();
 
-        // We don't care about salting because it's already highly random, being a UUID
-        let salt = SaltString::from_b64("0000").unwrap();
+        let salt = SaltString::from_b64(salt_string).unwrap();
 
         let hash = hasher.hash_password(bytes, &salt).unwrap().to_string();
 
@@ -90,23 +89,27 @@ impl User {
         }
     }
 
-    async fn fetch_by_api_key(api_key: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+    async fn fetch_by_api_key(api_key: &Uuid, salt_string: &str, conn: &mut AsyncPgConnection) -> db::Result<Self> {
         use crate::schema::person::dsl::*;
 
-        let hash = api_key.hash();
+        let hash = api_key.hash(salt_string);
 
         let user_id = person.filter(api_key_hash.eq(hash)).select(id).first(conn).await?;
 
         Ok(Self::Api { user_id })
     }
 
-    async fn fetch_by_session_id(session_id: &Uuid, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+    async fn fetch_by_session_id(
+        session_id: &Uuid,
+        salt_string: &str,
+        conn: &mut AsyncPgConnection,
+    ) -> db::Result<Self> {
         use crate::schema::{
             cache::dsl::{cache, session_id_hash},
             person::dsl::{first_name as person_first_name, id as person_id, person},
         };
 
-        let hash = session_id.hash();
+        let hash = session_id.hash(salt_string);
 
         let (user_id, user_first_name) = cache
             .inner_join(person)
@@ -156,7 +159,7 @@ impl FromRequestParts<AppState2> for User {
             let raw_api_key = parts.headers.get("X-API-Key").ok_or(ApiKeyNotFound)?.as_bytes();
 
             let api_key = Uuid::from_slice(raw_api_key).map_err(|_| InvalidApiKey)?;
-            let result = User::fetch_by_api_key(&api_key, &mut conn).await;
+            let result = User::fetch_by_api_key(&api_key, app_state.session_id_salt_string(), &mut conn).await;
 
             let Ok(user) = result else {
                 let err = match result {
@@ -189,7 +192,7 @@ impl FromRequestParts<AppState2> for User {
             .parse()
             .map_err(|_| err.clone())?;
 
-        let result = User::fetch_by_session_id(&session_id, &mut conn).await;
+        let result = User::fetch_by_session_id(&session_id, app_state.session_id_salt_string(), &mut conn).await;
         let Ok(user) = result else {
             let err = match result {
                 Err(db::Error::RecordNotFound) => Err(err),

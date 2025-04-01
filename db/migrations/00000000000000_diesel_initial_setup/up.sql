@@ -44,7 +44,7 @@ create function user_exists(user_id text) returns boolean language plpgsql volat
     end;
 $$;
 
-create function grant_roles_to_role(
+create function grant_roles_to_user(
     user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
@@ -56,7 +56,7 @@ create function grant_roles_to_role(
     end;
 $$;
 
-create function revoke_roles_from_role(
+create function revoke_roles_from_user(
     user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
@@ -72,7 +72,7 @@ create function revoke_roles_from_role(
     end;
 $$;
 
-create function create_role_if_not_exists(
+create function create_user_if_not_exists(
     user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
@@ -84,7 +84,7 @@ create function create_role_if_not_exists(
     end;
 $$;
 
-create function get_role_roles(
+create function get_user_roles(
     user_id text
 ) returns text [] language plpgsql volatile strict as $$
     declare roles text [];
@@ -101,5 +101,3 @@ select create_role_if_not_exists('computational_staff', '{}');
 -- These two operations are no-ops, as both these users exists and already have passwords
 select create_role_if_not_exists('login_user', '{}');
 select create_role_if_not_exists('auth_user', '{}')
-
-grant insert
