@@ -38,6 +38,7 @@ use crate::{
     Serialize,
     Copy,
     Default,
+    Valuable,
     strum::IntoStaticStr,
     strum::EnumString,
 )]
@@ -68,7 +69,7 @@ impl ToSql<sql_types::Text, diesel::pg::Pg> for UserRole {
 define_sql_function! {fn grant_roles_to_user(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
 define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
 define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
-define_sql_function! {#[aggregate] fn get_user_roles(user_id: sql_types::Text) -> sql_types::Array<sql_types::Text>}
+define_sql_function! {fn get_user_roles(user_id: sql_types::Text) -> sql_types::Array<sql_types::Text>}
 
 #[derive(Insertable, Validate, Deserialize, Valuable, Clone)]
 #[diesel(table_name = person, check_for_backend(Pg))]
@@ -101,13 +102,15 @@ impl Create for Vec<NewPerson> {
             .await?;
 
         // TODO: we should probably define a function that takes a list of users and a list of lists of roles, so we only have to make this network trip once
-        for (role_set, id) in self
-            .iter()
-            .map(|NewPerson { roles, .. }| roles)
-            .zip(&inserted_people_ids)
-        {
-            create_user_if_not_exists(id, role_set).execute(conn).await?;
-        }
+        // for (role_set, new_id) in self
+        //     .iter()
+        //     .map(|NewPerson { roles, .. }| roles)
+        //     .zip(&inserted_people_ids)
+        // {
+        //     create_user_if_not_exists(new_id.to_string(), role_set)
+        //         .execute(conn)
+        //         .await?;
+        // }
 
         let filter = PersonQuery {
             ids: inserted_people_ids,
@@ -210,7 +213,6 @@ pub struct Person {
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct PersonStub {
     pub id: Uuid,
-    #[diesel(column_name = full_name)]
     name: String,
     link: String,
 }

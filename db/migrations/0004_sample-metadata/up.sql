@@ -12,7 +12,7 @@ create table sample_metadata (
     returned_by uuid references person on delete restrict on update restrict
 );
 
-create index idx_sample_lab on sample_metadata(lab_id);
+create index idx_sample_lab on sample_metadata (lab_id);
 
 create table committee_approval (
     institution_id uuid references institution on delete restrict on update restrict not null,

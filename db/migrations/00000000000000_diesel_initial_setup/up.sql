@@ -80,7 +80,7 @@ create function create_user_if_not_exists(
         if not user_exists(user_id) then
             execute format('create role "%I"', user_id);
         end if;
-        select grant_roles_to_user(user_id, roles);
+        perform grant_roles_to_user(user_id, roles);
     end;
 $$;
 
@@ -94,10 +94,8 @@ create function get_user_roles(
     end;
 $$;
 
-select create_role_if_not_exists('app_admin', '{}');
-select create_role_if_not_exists('biology_staff', '{}');
-select create_role_if_not_exists('computational_staff', '{}');
-
--- These two operations are no-ops, as both these users exists and already have passwords
-select create_role_if_not_exists('login_user', '{}');
-select create_role_if_not_exists('auth_user', '{}')
+select create_user_if_not_exists('app_admin', '{}');
+select create_user_if_not_exists('biology_staff', '{}');
+select create_user_if_not_exists('computational_staff', '{}');
+select create_user_if_not_exists('login_user', '{}');
+select create_user_if_not_exists('auth_user', '{}');

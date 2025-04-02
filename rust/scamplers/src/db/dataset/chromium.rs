@@ -131,28 +131,44 @@ impl NewChromiumDataset {
         use crate::schema::{chemistry, gems};
 
         let (gems_id, n_metrics_files) = match self {
-            Self::CellrangerarcCount { core, metrics }
+            Self::CellrangerarcCount { core, .. }
             | Self::CellrangeratacCount { core, .. }
-            | Self::CellrangerCount { core, metrics }
-            | Self::CellrangerVdj { core, metrics } => (core.gems_id, 1),
+            | Self::CellrangerCount { core, .. }
+            | Self::CellrangerVdj { core, .. } => (core.gems_id, 1),
             Self::CellrangerMulti { core, metrics } => (core.gems_id, metrics.len()),
         };
 
-        let (n_samples, chemistry_name, expected_cmdline) = gems::table
+        let (n_samples, chemistry_name, expected_cmdline): (i32, Option<String>, Option<String>) = gems::table
             .left_join(chemistry::table)
             .filter(gems::id.eq(gems_id))
-            .select((gems::n_samples, chemistry::name, chemistry::cmdline))
+            .select((
+                gems::n_samples,
+                chemistry::name.nullable(),
+                chemistry::cmdline.nullable(),
+            ))
             .first(conn)
             .await?;
 
-        if n_samples != n_metrics_files {
+        if n_samples as usize != n_metrics_files {
             return Err(super::Error::NMetricsFiles {
-                expected_n_metrics_files: n_samples.into(),
-                found_n_metrics_files: n_metrics_files.into(),
-            });
+                expected_n_metrics_files: n_samples,
+                found_n_metrics_files: n_metrics_files as i32,
+            }
+            .into());
         }
 
         let found_cmdline: &str = self.into();
+        let Some(expected_cmdline) = expected_cmdline else {
+            if found_cmdline != "cellranger atac" {
+                return Err(super::Error::InvalidCmdline {
+                    chemistry: chemistry_name,
+                    expected_cmdline: "cellranger atac".to_string(),
+                    found_cmdline: found_cmdline.to_string(),
+                }
+                .into());
+            }
+            return Ok(());
+        };
         if expected_cmdline != found_cmdline {
             return Err(super::Error::InvalidCmdline {
                 chemistry: chemistry_name,

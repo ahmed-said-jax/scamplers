@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table person (
-    id uuid primary key default gen_random_uuid (),
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/people/' || id) stored not null,
     name text not null,
     email text unique not null,
@@ -9,3 +9,5 @@ create table person (
     ms_user_id uuid unique,
     api_key_hash text unique
 );
+
+grant insert (name, email, institution_id, ms_user_id) on person to auth_user;

@@ -1,0 +1,6 @@
+ARG POSTGRES_VERSION
+ARG ALPINE_VERSION
+
+FROM postgres:${POSTGRES_VERSION}-alpine${ALPINE_VERSION}
+
+COPY docker-entrypoint-initdb.d /

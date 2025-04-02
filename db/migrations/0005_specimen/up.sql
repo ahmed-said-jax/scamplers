@@ -9,7 +9,7 @@ create table specimen (
     type text not null,
     embedded_in text,
     preserved_with text,
-    measurements jsonb[],
+    measurements jsonb [],
     notes text []
 );
 
@@ -20,4 +20,4 @@ create table specimen_measurement (
     data jsonb not null
 );
 
-create index idx_specimen_measurement on specimen_measurement(specimen_id);
+create index idx_specimen_measurement on specimen_measurement (specimen_id);

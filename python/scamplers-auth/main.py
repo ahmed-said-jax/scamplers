@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 from dataclasses import dataclass
 import json
-from uuid import UUID
+from uuid import UUID, uuid4
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
@@ -16,6 +16,7 @@ import sanic
 import msal
 import asyncpg
 from datetime import datetime, timedelta
+from argon2 import PasswordHasher
 
 
 @dataclass
@@ -109,9 +110,7 @@ async def ms_login(request: sanic.Request):
         datetime.utcnow() + timedelta(minutes=10),
     )
 
-    response = redirect(auth_flow["auth_uri"])
-
-    return response
+    return redirect(auth_flow["auth_uri"])
 
 
 @app.route("/auth/microsoft-redirect")
@@ -119,7 +118,8 @@ async def ms_auth(request: sanic.Request[App]):
     received_auth_flow = request.args
 
     db_pool = request.app.ctx.db_pool
-    auth_flow = await db_pool.fetchrow("select flow, redirected_from where state = $1", received_auth_flow["state"])
+    auth_flow = await db_pool.fetchrow("select flow, redirected_from from ms_auth_flow where state = $1", received_auth_flow["state"])
+    await db_pool.execute("delete from auth_flow where state = $1", received_auth_flow["state"])
 
     stored_auth_flow = auth_flow["flow"]
 
@@ -127,18 +127,30 @@ async def ms_auth(request: sanic.Request[App]):
     user = auth_client.acquire_token_by_auth_code_flow(
         stored_auth_flow, received_auth_flow
     )
+    print(user)
 
     institution_id: UUID = await db_pool.fetchval("select id from institution where ms_tenant_id = $1", UUID(user["tid"]))
 
-    base_insert_query = "insert into person (name, email, ms_user_id, institution_id) values ($1, $2, $3, $4) on conflict"
+    query = "insert into person (name, email, ms_user_id, institution_id) values ($1, $2, $3, $4) on conflict (ms_user_id) do update set name = $1, email = $2, institution_id = $4 returning id"
     params = (user["name"], user["email"], UUID(user["oid"]), institution_id)
-    result = await db_pool.execute(f"{base_insert_query} (email) do update set name = $1, ms_user_id = $3, institution_id = $4", *params)
-    result = await db_pool.execute(f"{base_insert_query} (ms_user_id) do update set name = $1, email = $2, institution_id = $4", *params)
+    user_id: UUID = await db_pool.fetchval(query, *params)
 
-    # TODO: save a session to the database and store session key in cookie
+    session_id = str(uuid4())
+    salt_string = app.config.app_config.session_id_salt_string
+    session_id_hash = PasswordHasher().hash(session_id, salt=bytes(salt_string, encoding="utf-8"))
 
-    return redirect(auth_flow["redirected_from"])
+    query = "insert into session (id_hash, user_id) values ($1, $2)"
+    params = (session_id_hash, user_id)
+    await db_pool.execute(query, *params)
 
+    response = redirect(auth_flow["redirected_from"])
+    response.add_cookie("SESSION", session_id, samesite="strict", httponly=True)
+
+    return response
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8001)
+    config = app.config.app_config
+    host = config.auth_host
+    port = config.auth_port
+
+    app.run(host=host, port=port)

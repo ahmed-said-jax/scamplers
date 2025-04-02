@@ -1,0 +1,14 @@
+{
+  "build": "prod",
+  "institutions": [
+    {
+      "name": "Jackson Laboratory for Genomic Medicine",
+      "ms_tenant_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "app_admin": {
+    "name": "Ahmed Said",
+    "email": "scamplers-test@outlook.com",
+    "institution_name": "Jackson Laboratory for Genomic Medicine"
+  }
+}

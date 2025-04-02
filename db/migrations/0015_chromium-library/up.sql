@@ -30,7 +30,7 @@ create table chromium_library_preparers (
 create table chromium_sequencing_submissions (
     library_id uuid references chromium_library on delete restrict on update restrict not null,
     sequencing_run_id uuid references sequencing_run on delete restrict on update restrict not null,
-    fastq_paths text[], -- validated on Rust side
+    fastq_paths text [], -- validated on Rust side
     submitted_at timestamp not null,
     primary key (library_id, sequencing_run_id)
 );

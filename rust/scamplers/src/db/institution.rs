@@ -65,7 +65,7 @@ impl Update for UpdatedInstitution {
 #[diesel(table_name = schema::institution, check_for_backend(Pg))]
 pub struct Institution {
     pub id: Uuid,
-    name: String,
+    pub name: String,
     link: String,
 }
 

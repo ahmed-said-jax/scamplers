@@ -1,15 +1,6 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    cache (session_id_hash) {
-        session_id_hash -> Text,
-        user_id -> Uuid,
-        data -> Nullable<Jsonb>,
-        inserted_at -> Timestamp,
-    }
-}
-
-diesel::table! {
     cdna (id) {
         id -> Uuid,
         link -> Text,
@@ -212,6 +203,7 @@ diesel::table! {
     ms_auth_flow (state) {
         state -> Text,
         flow -> Jsonb,
+        redirected_from -> Text,
         expires_at -> Timestamp,
     }
 }
@@ -256,9 +248,7 @@ diesel::table! {
     person (id) {
         id -> Uuid,
         link -> Text,
-        first_name -> Text,
-        last_name -> Text,
-        full_name -> Text,
+        name -> Text,
         email -> Text,
         institution_id -> Uuid,
         orcid -> Nullable<Text>,
@@ -290,6 +280,14 @@ diesel::table! {
         begun_at -> Timestamp,
         finished_at -> Nullable<Timestamp>,
         notes -> Nullable<Array<Text>>,
+    }
+}
+
+diesel::table! {
+    session (id_hash) {
+        id_hash -> Text,
+        user_id -> Uuid,
+        data -> Nullable<Jsonb>,
     }
 }
 
@@ -361,7 +359,6 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(cache -> person (user_id));
 diesel::joinable!(cdna -> gems (gems_id));
 diesel::joinable!(cdna_measurement -> cdna (cdna_id));
 diesel::joinable!(cdna_measurement -> person (measured_by));
@@ -399,6 +396,7 @@ diesel::joinable!(multiplexed_suspension_preparers -> multiplexed_suspension (su
 diesel::joinable!(multiplexed_suspension_preparers -> person (prepared_by));
 diesel::joinable!(person -> institution (institution_id));
 diesel::joinable!(sample_metadata -> lab (lab_id));
+diesel::joinable!(session -> person (user_id));
 diesel::joinable!(single_index_set -> index_kit (kit));
 diesel::joinable!(specimen -> sample_metadata (metadata_id));
 diesel::joinable!(specimen_measurement -> person (measured_by));
@@ -413,7 +411,6 @@ diesel::joinable!(suspension_preparers -> person (prepared_by));
 diesel::joinable!(suspension_preparers -> suspension (suspension_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    cache,
     cdna,
     cdna_measurement,
     cdna_preparers,
@@ -442,6 +439,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     person,
     sample_metadata,
     sequencing_run,
+    session,
     single_index_set,
     specimen,
     specimen_measurement,

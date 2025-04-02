@@ -1,11 +1,18 @@
 services:
   db:
-    image: postgres:${SCAMPLERS_POSTGRES_VERSION}-alpine${SCAMPLERS_ALPINE_VERSION}
+    build:
+      context: db
+      args:
+        ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
+        POSTGRES_VERSION: ${SCAMPLERS_POSTGRES_VERSION}
+    # image: postgres:${SCAMPLERS_POSTGRES_VERSION}-alpine${SCAMPLERS_ALPINE_VERSION}
     restart: always
     user: postgres
     secrets:
       - db_root_user
       - db_root_password
+      - db_login_user_password
+      - db_auth_user_password
       - db_name
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -23,12 +30,17 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+  scamplers-web:
+    build:
+      context: typescript/scamplers-web
+      args:
+        NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
+      target: final
   scamplers:
     build:
       args:
         ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
         RUST_VERSION: ${SCAMPLERS_RUST_VERSION}
-        BUN_VERSION: ${SCAMPLERS_BUN_VERSION}
       context: .
       dockerfile: rust/Dockerfile
       target: final
@@ -52,6 +64,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      scamplers-web:
+        condition: service_completed_successfully
+
   scamplers-auth:
     build:
       args:

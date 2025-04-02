@@ -144,7 +144,7 @@ impl<'a> DieselConfig<'a> {
                 patch_file: None,
             },
             migrations_directory: MigrationsDirectory {
-                dir: "../db/migrations",
+                dir: "../../db/migrations",
             },
         }
     }

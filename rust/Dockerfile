@@ -1,64 +1,33 @@
-# syntax=docker/dockerfile:1
-
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
 ARG ALPINE_VERSION
 ARG RUST_VERSION
 ARG APP_NAME=scamplers
-
-################################################################################
-# Create a stage for building the application.
 
 FROM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
-# Install host build dependencies.
 RUN apk add --no-cache clang lld musl-dev git
-RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
-# This instructs the `build.rs` script not to try and start a docker container inside of a docker container, skipping the run-migrations step altogether
 ENV IN_DOCKER="true"
 
-RUN --mount=type=bind,source=typescript
-
-# Build the application.
-# Leverage a cache mount to /usr/local/cargo/registry/
-# for downloaded dependencies, a cache mount to /usr/local/cargo/git/db
-# for git repository dependencies, and a cache mount to /app/target/ for
-# compiled dependencies which will speed up subsequent builds.
-# Leverage a bind mount to the src directory to avoid having to copy the
-# source code into the container. Once built, copy the executable to an
-# output directory before the cache mounted /app/target is unmounted.
-
-RUN --mount=type=bind,source=rust,target=rust \
-    --mount=type=bind,source=db,target=db \
-    --mount=type=bind,source=typescript,target=typescript \
-    cd typescript/scamplers-web && \
-    bun --bun run build && \
-    cp build /opt/scamplers-web && \
-    cd ../../rust && \
+RUN --mount=type=bind,source=rust/Cargo.toml,target=rust/Cargo.toml \
+    --mount=type=bind,source=rust/Cargo.lock,target=rust/Cargo.lock \
+    --mount=type=bind,source=rust/.cargo,target=rust/.cargo \
+    --mount=type=bind,source=rust/diesel.toml,target=rust/diesel.toml \
+    --mount=type=bind,source=rust/scamplers/src,target=rust/scamplers/src \
+    --mount=type=bind,source=rust/scamplers/Cargo.toml,target=rust/scamplers/Cargo.toml \
+    --mount=type=bind,source=rust/scamplers/diesel.toml,target=rust/scamplers/diesel.toml \
+    --mount=type=bind,source=rust/build-scamplers/Cargo.toml,target=rust/build-scamplers/Cargo.toml \
+    --mount=type=bind,source=db/migrations,target=db/migrations \
+    --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    cd rust && \
     cargo build --locked --release && \
-    cp ./target/release${APP_NAME} /bin/server
+    cp ./target/release/${APP_NAME} /bin/server
 
-################################################################################
-# Create a new stage for running the application that contains the minimal
-# runtime dependencies for the application. This often uses a different base
-# image from the build stage where the necessary files are copied from the build
-# stage.
-#
-# The example below uses the alpine image as the foundation for running the app.
-# By specifying the "3.18" tag, it will use version 3.18 of alpine. If
-# reproducibility is important, consider using a digest
-# (e.g., alpine@sha256:664888ac9cfd28068e062c991ebcff4b4c7307dc8dd4df9e728bedde5c449d91).
 FROM alpine:${ALPINE_VERSION} AS final
 
-# Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
 RUN adduser \
     --disabled-password \
@@ -71,12 +40,9 @@ RUN adduser \
 RUN mkdir logs && chown appuser logs
 USER appuser
 
-# Copy the executable from the "build" stage.
-COPY --from=build /bin/server /bin/ \
-    --from=build /opt/scamplers-web /opt/
+COPY --from=build /bin/server /bin/
+COPY --from=scamplers-web /opt/scamplers-web /opt/scamplers-web
 
-# Expose the port that the application listens on.
 EXPOSE 8000
 
-# What the container should run when it is started.
 CMD ["/bin/server", "prod", "--log-dir", "logs"]

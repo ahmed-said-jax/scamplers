@@ -57,7 +57,7 @@ impl Config {
             app_port: read_secret("app_port")?.parse()?,
             seed_data: serde_json::from_str(&read_secret("seed_data")?)?,
             seed_data_path: None,
-            session_id_salt_string: read_secret("session_id_salt_string"),
+            session_id_salt_string: read_secret("session_id_salt_string")?,
         };
 
         Ok(config)

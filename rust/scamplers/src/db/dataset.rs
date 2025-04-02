@@ -146,13 +146,13 @@ where
 pub enum Error {
     #[error("invalid cmdline for dataset")]
     InvalidCmdline {
-        chemistry: String,
+        chemistry: Option<String>,
         expected_cmdline: String,
         found_cmdline: String,
     },
     #[error("mismatching ")]
     NMetricsFiles {
-        expected_n_metrics_files: u8,
-        found_n_metrics_files: u8,
+        expected_n_metrics_files: i32,
+        found_n_metrics_files: i32,
     },
 }

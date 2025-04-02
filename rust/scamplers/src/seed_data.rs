@@ -1,7 +1,9 @@
 use anyhow::Context;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use diesel_async::AsyncPgConnection;
+use diesel::prelude::*;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
+use garde::Validate;
 use rand::{
     Rng,
     distr::uniform::SampleRange,
@@ -9,19 +11,64 @@ use rand::{
 };
 use serde::Deserialize;
 use uuid::Uuid;
+use valuable::Valuable;
 
 use crate::db::{
     Create, Read,
     index_sets::IndexSetFileUrl,
-    institution::NewInstitution,
+    institution::{Institution, NewInstitution},
     lab::NewLab,
-    person::NewPerson,
+    person::{NewPerson, UserRole, create_user_if_not_exists},
     sample::{
         NewSampleMetadata,
         specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, Specimen},
     },
     utils::DefaultNowNaiveDateTime,
 };
+use crate::schema;
+
+#[derive(Insertable, Validate, Deserialize, Clone)]
+#[diesel(table_name = schema::person, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
+struct NewAdmin {
+    #[garde(length(min = 1))]
+    name: String,
+    #[garde(email)]
+    email: String,
+    orcid: Option<String>,
+    #[diesel(skip_insertion)]
+    institution_name: String,
+    #[serde(skip)]
+    institution_id: Uuid,
+}
+impl Create for NewAdmin {
+    type Returns = ();
+
+    async fn create(mut self, conn: &mut AsyncPgConnection) -> crate::db::Result<Self::Returns> {
+        use schema::{institution, person};
+
+        let institution_id = institution::table
+            .select(institution::id)
+            .filter(institution::name.eq(&self.institution_name))
+            .first(conn)
+            .await?;
+
+        self.institution_id = institution_id;
+
+        let admin_id: Uuid = diesel::insert_into(person::table)
+            .values(self)
+            .returning(person::id)
+            .on_conflict_do_nothing()
+            .get_result(conn)
+            .await?;
+
+        create_user_if_not_exists(admin_id.to_string(), vec![UserRole::AppAdmin])
+            .execute(conn)
+            .await?;
+
+        Ok(())
+    }
+}
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "build")]
@@ -29,23 +76,30 @@ pub enum SeedData {
     Dev,
     Prod {
         institutions: Vec<NewInstitution>,
-        people: Vec<NewPerson>,
+        app_admin: NewAdmin,
         index_set_urls: Vec<IndexSetFileUrl>,
     },
 }
 impl SeedData {
-    pub async fn insert(&self, db_conn: &mut AsyncPgConnection, http_client: reqwest::Client) -> anyhow::Result<()> {
+    pub async fn insert(self, db_conn: &mut AsyncPgConnection, http_client: reqwest::Client) -> anyhow::Result<()> {
         match self {
             Self::Dev => create_random_data(db_conn)
                 .await
                 .context("failed to create and insert random data")?,
             Self::Prod {
                 institutions,
-                people,
+                app_admin,
                 index_set_urls,
             } => {
-                institutions.create(db_conn).await?;
-                people.create(db_conn).await?;
+                let institutions_result = institutions.create(db_conn).await;
+                if !matches!(
+                    institutions_result,
+                    Err(crate::db::Error::DuplicateRecord { .. }) | Ok(_)
+                ) {
+                    institutions_result?;
+                }
+
+                app_admin.create(db_conn).await?;
                 download_and_insert_index_sets(db_conn, http_client, &index_set_urls).await?
             }
         }

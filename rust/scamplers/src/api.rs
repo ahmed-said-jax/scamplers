@@ -19,7 +19,10 @@ use uuid::Uuid;
 
 use crate::{
     AppState2,
-    db::{self, person::UserRole},
+    db::{
+        self,
+        person::{UserRole, get_user_roles},
+    },
 };
 mod v0;
 
@@ -105,24 +108,24 @@ impl User {
         conn: &mut AsyncPgConnection,
     ) -> db::Result<Self> {
         use crate::schema::{
-            cache::dsl::{cache, session_id_hash},
-            person::dsl::{first_name as person_first_name, id as person_id, person},
+            person::dsl::{id as person_id, name as person_name, person},
+            session::dsl::{id_hash, session},
         };
 
         let hash = session_id.hash(salt_string);
 
-        let (user_id, user_first_name) = cache
+        let (user_id, first_name): (Uuid, String) = session
             .inner_join(person)
-            .filter(session_id_hash.eq(hash))
-            .select((person_id, person_first_name))
+            .filter(id_hash.eq(hash))
+            .select((person_id, person_name))
             .first(conn)
             .await?;
-        let roles = Vec::with_capacity(0); // TODO: actually get user_roles
+        // let roles = get_user_roles(user_id.to_string()).execute(conn).await?;
 
         Ok(Self::Web {
             user_id,
-            first_name: user_first_name,
-            roles,
+            first_name,
+            roles: Default::default(),
         })
     }
 }
@@ -150,12 +153,12 @@ impl FromRequestParts<AppState2> for User {
                 roles: UserRole::VARIANTS.to_vec(),
             });
         }
-
-        let Query(Web { web }): Query<Web> = parts.extract().await.unwrap_or_default();
+        let requested_resource = parts.uri.path();
+        let is_web_request = requested_resource.contains("/web");
 
         let mut conn = app_state.db_conn().await?;
 
-        if !web {
+        if !is_web_request {
             let raw_api_key = parts.headers.get("X-API-Key").ok_or(ApiKeyNotFound)?.as_bytes();
 
             let api_key = Uuid::from_slice(raw_api_key).map_err(|_| InvalidApiKey)?;
@@ -178,12 +181,12 @@ impl FromRequestParts<AppState2> for User {
             unreachable!("we already tested for the only other variant");
         };
 
-        let auth_address = config.ms_auth_address();
-
-        let err = InvalidSessionId { auth_address };
+        let err = InvalidSessionId {
+            redirected_from: requested_resource.to_string(),
+        };
 
         let Ok(cookies) = parts.extract::<TypedHeader<headers::Cookie>>().await else {
-            return Err(err);
+            return Err(err.clone());
         };
 
         let session_id = cookies
@@ -221,7 +224,7 @@ pub enum Error {
     #[error("simple invalid data")]
     SimpleData { reason: String },
     #[error("invalid session ID")]
-    InvalidSessionId { auth_address: String },
+    InvalidSessionId { redirected_from: String },
     #[error("malformed request")]
     MalformedRequest {
         #[serde(skip)]
@@ -341,7 +344,9 @@ impl IntoResponse for Error {
         }
 
         match self {
-            Self::InvalidSessionId { auth_address: auth_url } => Redirect::temporary(&auth_url).into_response(),
+            Self::InvalidSessionId { redirected_from } => {
+                Redirect::temporary(&format!("/auth?redirected_from={redirected_from}")).into_response()
+            }
             _ => (
                 status,
                 axum::Json(ErrorResponse {

@@ -22,13 +22,11 @@ use utils::{DevContainer, ToAddress};
 use uuid::Uuid;
 
 mod api;
-mod auth;
 pub mod cli;
 pub mod db;
 pub mod schema;
 mod seed_data;
 mod utils;
-mod web;
 
 pub async fn serve_dev_app(host: String, port: u16) -> anyhow::Result<()> {
     serve(None, None, Some((host, port))).await
@@ -202,7 +200,7 @@ impl AppState2 {
         }
     }
 
-    async fn session_id_salt_string(&self) -> &str {
+    fn session_id_salt_string(&self) -> &str {
         use AppState2::*;
 
         match self {
@@ -213,7 +211,7 @@ impl AppState2 {
 }
 
 async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {
-    const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+    const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../db/migrations");
 
     let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = AsyncConnectionWrapper::from(db_conn);
 
@@ -228,7 +226,8 @@ async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {
 fn app(app_state: AppState2) -> Router {
     let router = Router::new()
         .nest("/api", api::router())
-        .with_state(app_state)
+        .nest("/web/api", api::router())
+        .with_state(app_state.clone())
         .layer(TraceLayer::new_for_http());
 
     match &app_state {
