@@ -197,7 +197,8 @@ impl Create for Vec<NewChromiumDataset> {
         let mut insertions = Vec::with_capacity(self.len());
 
         for ds in self {
-            // TODO: We shouldn't be making calls to the database in a loop. We should actually fetch all these records at once, transform them into a `HashMap` from `gems_id` to the data, and then validate.
+            // TODO: We shouldn't be making calls to the database in a loop. We should actually fetch all these records
+            // at once, transform them into a `HashMap` from `gems_id` to the data, and then validate.
             ds.validate_chemistry_and_n_samples(conn).await?;
             let (core, metrics) = match ds {
                 CellrangerarcCount { core, metrics }

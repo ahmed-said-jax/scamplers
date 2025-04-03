@@ -1,6 +1,6 @@
 use anyhow::Context;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use diesel::prelude::*;
+use diesel::{OptionalExtension, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::FutureExt;
 use garde::Validate;
@@ -13,19 +13,21 @@ use serde::Deserialize;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use crate::db::{
-    Create, Read,
-    index_sets::IndexSetFileUrl,
-    institution::{Institution, NewInstitution},
-    lab::NewLab,
-    person::{NewPerson, UserRole, create_user_if_not_exists},
-    sample::{
-        NewSampleMetadata,
-        specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, Specimen},
+use crate::{
+    db::{
+        Create, Read,
+        index_sets::IndexSetFileUrl,
+        institution::{Institution, NewInstitution},
+        lab::NewLab,
+        person::{NewPerson, UserRole, create_user_if_not_exists},
+        sample::{
+            NewSampleMetadata,
+            specimen::{MeasurementData, NewSpecimen, NewSpecimenMeasurement, Specimen},
+        },
+        utils::DefaultNowNaiveDateTime,
     },
-    utils::DefaultNowNaiveDateTime,
+    schema,
 };
-use crate::schema;
 
 #[derive(Insertable, Validate, Deserialize, Clone)]
 #[diesel(table_name = schema::person, check_for_backend(Pg))]
@@ -55,16 +57,22 @@ impl Create for NewAdmin {
 
         self.institution_id = institution_id;
 
-        let admin_id: Uuid = diesel::insert_into(person::table)
+        let admin_id: Option<Uuid> = diesel::insert_into(person::table)
             .values(self)
             .returning(person::id)
             .on_conflict_do_nothing()
             .get_result(conn)
-            .await?;
+            .await
+            .optional()?;
 
-        create_user_if_not_exists(admin_id.to_string(), vec![UserRole::AppAdmin])
+        if let Some(admin_id) = admin_id {
+            diesel::select(create_user_if_not_exists(
+                admin_id.to_string(),
+                vec![UserRole::AppAdmin],
+            ))
             .execute(conn)
             .await?;
+        };
 
         Ok(())
     }

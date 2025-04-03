@@ -88,7 +88,7 @@ pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {
     ) -> impl Future<Output = Result<Vec<T>>> + Send;
 }
 
-#[derive(Debug, Serialize, Default, Valuable, Clone, strum::EnumString)]
+#[derive(Debug, Serialize, Default, Valuable, Clone, strum::EnumString, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum Entity {
@@ -129,13 +129,13 @@ pub enum DataError {
 pub enum Error {
     #[error(transparent)]
     Data(#[from] DataError),
-    #[error("duplicate record")]
+    #[error("{entity} with {} = {} already exists", field.clone().unwrap_or_default(), value.clone().unwrap_or_default())]
     DuplicateRecord {
         entity: Entity,
         field: Option<String>,
         value: Option<String>,
     },
-    #[error("referenced record not found")]
+    #[error("unable to create reference between {entity} and {referenced_entity} with value {} not found", value.clone().unwrap_or_default())]
     ReferenceNotFound {
         entity: Entity,
         referenced_entity: Entity,
@@ -143,7 +143,7 @@ pub enum Error {
     },
     #[error("record not found")]
     RecordNotFound,
-    #[error("other error")]
+    #[error("{message}")]
     Other { message: String },
 }
 pub type Result<T> = std::result::Result<T, Error>;

@@ -144,13 +144,13 @@ where
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Error {
-    #[error("invalid cmdline for dataset")]
+    #[error("expected cmdline {expected_cmdline} for chemistry {}, found {found_cmdline}", chemistry.clone().unwrap_or_default())]
     InvalidCmdline {
         chemistry: Option<String>,
         expected_cmdline: String,
         found_cmdline: String,
     },
-    #[error("mismatching ")]
+    #[error("expected {expected_n_metrics_files}, found {found_n_metrics_files}")]
     NMetricsFiles {
         expected_n_metrics_files: i32,
         found_n_metrics_files: i32,

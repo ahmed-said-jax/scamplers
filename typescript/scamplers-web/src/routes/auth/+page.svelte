@@ -1,0 +1,1 @@
+<a href="http://localhost:8001/auth/microsoft">login with microsoft</a>

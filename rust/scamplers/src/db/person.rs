@@ -101,8 +101,8 @@ impl Create for Vec<NewPerson> {
             .get_results(conn)
             .await?;
 
-        // TODO: we should probably define a function that takes a list of users and a list of lists of roles, so we only have to make this network trip once
-        // for (role_set, new_id) in self
+        // TODO: we should probably define a function that takes a list of users and a list of lists of roles, so we
+        // only have to make this network trip once for (role_set, new_id) in self
         //     .iter()
         //     .map(|NewPerson { roles, .. }| roles)
         //     .zip(&inserted_people_ids)

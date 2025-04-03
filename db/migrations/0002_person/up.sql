@@ -13,3 +13,4 @@ create table person (
 grant insert (name, email, institution_id, ms_user_id) on person to auth_user;
 grant update (name, email, institution_id) on person to auth_user;
 grant select (id) on person to auth_user;
+grant select(id, name) on person to login_user;

@@ -15,6 +15,8 @@ pub struct Config {
     #[arg(long, env)]
     db_login_user_password: String,
     #[arg(long, env)]
+    db_auth_user_password: String,
+    #[arg(long, env)]
     db_host: String,
     #[arg(long, env)]
     db_port: u16,
@@ -47,6 +49,7 @@ impl Config {
             db_root_user: read_secret("db_root_user")?,
             db_root_password: read_secret("db_root_password")?,
             db_login_user_password: read_secret("db_login_user_password")?,
+            db_auth_user_password: read_secret("db_auth_user_password")?,
             db_host: read_secret("db_host")?,
             db_port: read_secret("db_port")?.parse()?,
             db_name: read_secret("db_name")?,
@@ -82,6 +85,10 @@ impl Config {
 
     pub fn db_login_user_password(&self) -> &str {
         &self.db_login_user_password
+    }
+
+    pub fn db_auth_user_password(&self) -> &str {
+        &self.db_auth_user_password
     }
 
     fn db_url(&self, root: bool) -> String {

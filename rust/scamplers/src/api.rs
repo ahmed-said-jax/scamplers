@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use strum::VariantArray;
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
+use valuable::Valuable;
 
 use crate::{
     AppState2,
@@ -144,8 +145,6 @@ impl FromRequestParts<AppState2> for User {
             web: bool,
         }
 
-        let x = app_state.db_root_url();
-
         if let AppState2::Dev { user_id, .. } = app_state {
             return Ok(User::Web {
                 user_id: *user_id,
@@ -153,16 +152,21 @@ impl FromRequestParts<AppState2> for User {
                 roles: UserRole::VARIANTS.to_vec(),
             });
         }
-        let requested_resource = parts.uri.path();
-        let is_web_request = requested_resource.contains("/web");
+        let requested_resource = parts.uri.path().to_string();
+        let Query(Web{web}) = parts.extract().await.unwrap_or_default();
 
         let mut conn = app_state.db_conn().await?;
 
-        if !is_web_request {
+        let session_id_salt_string = match app_state {
+            AppState2::Dev { .. } => "00000000",
+            AppState2::Prod { config, .. } => config.session_id_salt_string(),
+        };
+
+        if !web {
             let raw_api_key = parts.headers.get("X-API-Key").ok_or(ApiKeyNotFound)?.as_bytes();
 
             let api_key = Uuid::from_slice(raw_api_key).map_err(|_| InvalidApiKey)?;
-            let result = User::fetch_by_api_key(&api_key, app_state.session_id_salt_string(), &mut conn).await;
+            let result = User::fetch_by_api_key(&api_key, session_id_salt_string, &mut conn).await;
 
             let Ok(user) = result else {
                 let err = match result {
@@ -176,10 +180,6 @@ impl FromRequestParts<AppState2> for User {
 
             return Ok(user);
         }
-
-        let AppState2::Prod { config, .. } = app_state else {
-            unreachable!("we already tested for the only other variant");
-        };
 
         let err = InvalidSessionId {
             redirected_from: requested_resource.to_string(),
@@ -195,7 +195,7 @@ impl FromRequestParts<AppState2> for User {
             .parse()
             .map_err(|_| err.clone())?;
 
-        let result = User::fetch_by_session_id(&session_id, app_state.session_id_salt_string(), &mut conn).await;
+        let result = User::fetch_by_session_id(&session_id, session_id_salt_string, &mut conn).await;
         let Ok(user) = result else {
             let err = match result {
                 Err(db::Error::RecordNotFound) => Err(err),
@@ -210,7 +210,7 @@ impl FromRequestParts<AppState2> for User {
     }
 }
 
-#[derive(thiserror::Error, Serialize, Debug, Clone)]
+#[derive(thiserror::Error, Serialize, Debug, Clone, Valuable)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
     #[error("failed to generate API key")]
@@ -228,6 +228,7 @@ pub enum Error {
     #[error("malformed request")]
     MalformedRequest {
         #[serde(skip)]
+        #[valuable(skip)]
         status: StatusCode,
         message: String,
     },
@@ -323,6 +324,8 @@ impl From<garde::Report> for Error {
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         use axum::http::StatusCode;
+
+        tracing::error!(error = self.as_value());
 
         #[derive(Serialize)]
         struct ErrorResponse {

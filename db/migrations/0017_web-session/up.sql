@@ -6,6 +6,7 @@ create unlogged table session (
 );
 
 grant insert (id_hash, user_id) on session to auth_user;
+grant select on session to login_user;
 
 create unlogged table ms_auth_flow (
     state text primary key,

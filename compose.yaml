@@ -1,17 +1,11 @@
 services:
   db:
-    build:
-      context: db
-      args:
-        POSTGRES_VERSION: ${SCAMPLERS_POSTGRES_VERSION}
-        ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
+    image: postgres:${SCAMPLERS_POSTGRES_VERSION}-alpine${SCAMPLERS_ALPINE_VERSION}
     restart: always
     user: root
     secrets:
       - db_root_user
       - db_root_password
-      - db_login_user_password
-      - db_auth_user_password
       - db_name
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -23,10 +17,8 @@ services:
     expose:
       - 5432
     healthcheck:
-      test:
-        - CMD
-        - pg_isready
-      interval: 2s
+      test: pg_isready --dbname $(cat /run/secrets/db_name) || exit 1
+      interval: 5s
       timeout: 5s
       retries: 10
   scamplers-web:
@@ -51,12 +43,20 @@ services:
       test:
         - CMD
         - curl
+        - http://localhost:8000/
+      interval: 60s
+      start_period: 5s
+      start_interval: 1s
+      timeout: 1s
+      retries: 5
     secrets:
       - source: db_root_user
         uid: "10001"
       - source: db_root_password
         uid: "10001"
       - source: db_login_user_password
+        uid: "10001"
+      - source: db_auth_user_password
         uid: "10001"
       - source: db_host
         uid: "10001"
@@ -122,9 +122,6 @@ services:
         uid: "10001"
     volumes:
       - logs:/logs
-    depends_on:
-      db:
-        condition: service_healthy
 volumes:
   db-data:
   logs:

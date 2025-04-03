@@ -51,7 +51,7 @@ create function grant_roles_to_user(
     declare r text;
     begin
         foreach r in array roles loop
-            execute format('grant "%I" to "%I"', r, user_id);
+            execute format('grant %I to %I', r, user_id);
         end loop;
     end;
 $$;
@@ -67,7 +67,7 @@ create function revoke_roles_from_user(
         end if;
 
         foreach r in array roles loop
-            execute format('revoke "%I" from "%I"', r, user_id);
+            execute format('revoke %I from %I', r, user_id);
         end loop;
     end;
 $$;
@@ -78,7 +78,7 @@ create function create_user_if_not_exists(
 ) returns void language plpgsql volatile strict as $$
     begin
         if not user_exists(user_id) then
-            execute format('create role "%I"', user_id);
+            execute format('create role %I', user_id);
         end if;
         perform grant_roles_to_user(user_id, roles);
     end;
@@ -97,5 +97,9 @@ $$;
 select create_user_if_not_exists('app_admin', '{}');
 select create_user_if_not_exists('biology_staff', '{}');
 select create_user_if_not_exists('computational_staff', '{}');
+
 select create_user_if_not_exists('login_user', '{}');
+alter user login_user with login;
+
 select create_user_if_not_exists('auth_user', '{}');
+alter user auth_user with login;

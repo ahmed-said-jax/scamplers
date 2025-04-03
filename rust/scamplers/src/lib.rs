@@ -16,7 +16,7 @@ use testcontainers_modules::{
     postgres::Postgres,
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
-use tokio::{net::TcpListener, signal};
+use tokio::{net::TcpListener, signal, sync::Mutex};
 use tower_http::{services::fs::ServeDir, trace::TraceLayer};
 use utils::{DevContainer, ToAddress};
 use uuid::Uuid;
@@ -51,23 +51,31 @@ async fn serve(
         }
     };
 
-    let app_state = AppState2::new(config).await.context("failed to initialize app state")?;
+    let mut app_state = AppState2::new(config).await.context("failed to initialize app state")?;
     tracing::info!("initialized app state");
 
-    let db_conn = AsyncPgConnection::establish(&app_state.db_root_url().await?)
+    let db_root_conn = app_state
+        .db_root_conn()
         .await
-        .context("failed to log into database as root user")?;
+        .context("failed to connect to database as root")?;
 
-    run_migrations(db_conn)
+    run_migrations(db_root_conn)
         .await
         .context("failed to run database migrations")?;
     tracing::info!("ran database migrations");
+
+    app_state
+        .set_login_and_auth_user_passwords()
+        .await
+        .context("failed to set password for login_user and/or auth_user")?;
 
     app_state
         .insert_seed_data()
         .await
         .context("failed to insert seed data")?;
     tracing::info!("inserted seed data");
+
+    app_state.drop_db_root_pool();
 
     let app = app(app_state.clone());
 
@@ -113,11 +121,12 @@ fn initialize_logging(log_dir: Option<Utf8PathBuf>) {
 enum AppState2 {
     Dev {
         db_pool: Pool<AsyncPgConnection>,
-        pg_container: Arc<ContainerAsync<Postgres>>,
+        _pg_container: Arc<ContainerAsync<Postgres>>,
         user_id: Uuid,
     },
     Prod {
         db_pool: Pool<AsyncPgConnection>,
+        db_root_pool: Option<Pool<AsyncPgConnection>>,
         http_client: reqwest::Client,
         config: Arc<Config>,
     },
@@ -143,7 +152,7 @@ impl AppState2 {
 
                 Self::Dev {
                     db_pool,
-                    pg_container: Arc::new(pg_container),
+                    _pg_container: Arc::new(pg_container),
                     user_id,
                 }
             }
@@ -151,8 +160,12 @@ impl AppState2 {
                 let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_login_url());
                 let db_pool = Pool::builder(db_config).build()?;
 
+                let db_root_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_root_url());
+                let db_root_pool = Some(Pool::builder(db_root_config).max_size(1).build()?);
+
                 Self::Prod {
                     db_pool,
+                    db_root_pool,
                     http_client: reqwest::Client::new(),
                     config: Arc::new(config),
                 }
@@ -160,36 +173,6 @@ impl AppState2 {
         };
 
         Ok(state)
-    }
-
-    async fn db_root_url(&self) -> anyhow::Result<String> {
-        use AppState2::*;
-
-        let db_root_url = match self {
-            Dev { pg_container, .. } => pg_container.db_url().await?,
-            Prod { config, .. } => config.db_root_url(),
-        };
-
-        Ok(db_root_url)
-    }
-
-    async fn insert_seed_data(&self) -> anyhow::Result<()> {
-        use AppState2::*;
-        let mut db_conn = self.db_conn().await?;
-        let db_conn = &mut db_conn;
-
-        match self {
-            Dev { .. } => SeedData::Dev.insert(db_conn, reqwest::Client::new()).await,
-            Prod {
-                http_client, config, ..
-            } => {
-                let seed_data = config.seed_data()?;
-                match seed_data {
-                    Some(seed_data) => seed_data.insert(db_conn, http_client.clone()).await,
-                    None => Ok(()),
-                }
-            }
-        }
     }
 
     async fn db_conn(&self) -> db::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> {
@@ -200,20 +183,85 @@ impl AppState2 {
         }
     }
 
-    fn session_id_salt_string(&self) -> &str {
+    async fn db_root_conn(&self) -> db::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> {
+        use AppState2::*;
+
+        let Prod { db_root_pool, .. } = self else {
+            return self.db_conn().await;
+        };
+
+        let Some(db_root_pool) = db_root_pool else {
+            return Err(db::Error::Other {
+                message: "root user connection to database should not be required at this stage".to_string(),
+            });
+        };
+
+        Ok(db_root_pool.get().await?)
+    }
+
+    // In theory, this should be two separate functions - one that actually does the password setting, and one that
+    // constructs the arguments. This is the only time this sequence of events happens, so we can keep it as is
+    async fn set_login_and_auth_user_passwords(&self) -> anyhow::Result<()> {
+        let user_passwords = match self {
+            AppState2::Dev { .. } => [
+                ("login_user", Uuid::new_v4().to_string()),
+                ("auth_user", Uuid::new_v4().to_string()),
+            ],
+            AppState2::Prod { config, .. } => [
+                ("login_user", config.db_login_user_password().to_string()),
+                ("auth_user", config.db_auth_user_password().to_string()),
+            ],
+        };
+
+        let mut db_conn = self.db_root_conn().await?;
+
+        for (user, password) in user_passwords {
+            diesel::sql_query(format!(r#"alter user "{user}" with password '{password}'"#))
+                .execute(&mut db_conn)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn insert_seed_data(&self) -> anyhow::Result<()> {
+        use AppState2::*;
+
+        let mut db_conn = self.db_root_conn().await?;
+
+        match self {
+            Dev { .. } => SeedData::Dev.insert(&mut db_conn, reqwest::Client::new()).await,
+            Prod {
+                http_client, config, ..
+            } => {
+                let seed_data = config.seed_data()?;
+                match seed_data {
+                    Some(seed_data) => seed_data.insert(&mut db_conn, http_client.clone()).await,
+                    None => Ok(()),
+                }
+            }
+        }
+    }
+
+    fn drop_db_root_pool(&mut self) {
         use AppState2::*;
 
         match self {
-            Dev { .. } => "0000",
-            Prod { config, .. } => config.session_id_salt_string(),
+            Dev { .. } => (),
+            Prod { db_root_pool, .. } => {
+                *db_root_pool = None;
+            }
         }
     }
 }
 
-async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {
+async fn run_migrations(
+    db_conn: diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>,
+) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../db/migrations");
 
-    let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = AsyncConnectionWrapper::from(db_conn);
+    let mut wrapper: AsyncConnectionWrapper<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>> =
+        AsyncConnectionWrapper::from(db_conn);
 
     tokio::task::spawn_blocking(move || {
         wrapper.run_pending_migrations(MIGRATIONS).unwrap();
@@ -226,13 +274,12 @@ async fn run_migrations(db_conn: AsyncPgConnection) -> anyhow::Result<()> {
 fn app(app_state: AppState2) -> Router {
     let router = Router::new()
         .nest("/api", api::router())
-        .nest("/web/api", api::router())
         .with_state(app_state.clone())
         .layer(TraceLayer::new_for_http());
 
     match &app_state {
         AppState2::Dev { .. } => router,
-        AppState2::Prod { .. } => router.nest_service("/", ServeDir::new("/opt/scamplers-web")),
+        AppState2::Prod { .. } => router.fallback_service(ServeDir::new("/opt/scamplers-web")),
     }
 }
 
