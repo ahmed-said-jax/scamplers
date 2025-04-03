@@ -3,11 +3,10 @@ services:
     build:
       context: db
       args:
-        ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
         POSTGRES_VERSION: ${SCAMPLERS_POSTGRES_VERSION}
-    # image: postgres:${SCAMPLERS_POSTGRES_VERSION}-alpine${SCAMPLERS_ALPINE_VERSION}
+        ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
     restart: always
-    user: postgres
+    user: root
     secrets:
       - db_root_user
       - db_root_password
@@ -30,12 +29,14 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
-  # scamplers-web:
-  #   build:
-  #     context: typescript/scamplers-web
-  #     args:
-  #       NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
-  #     target: final
+  scamplers-web:
+    build:
+      context: typescript/scamplers-web
+      args:
+        NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
+      target: build
+    volumes:
+      - scamplers-web_build:/opt/scamplers-web
   scamplers:
     build:
       args:
@@ -46,46 +47,79 @@ services:
       target: final
     ports:
       - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
+    healthcheck:
+      test:
+        - CMD
+        - curl
     secrets:
-      - db_root_user
-      - db_root_password
-      - db_login_user_password
-      - db_host
-      - db_port
-      - db_name
-      - auth_host
-      - auth_port
-      - ms_auth_path
-      - app_host
-      - app_port
-      - seed_data
+      - source: db_root_user
+        uid: "10001"
+      - source: db_root_password
+        uid: "10001"
+      - source: db_login_user_password
+        uid: "10001"
+      - source: db_host
+        uid: "10001"
+      - source: db_port
+        uid: "10001"
+      - source: db_name
+        uid: "10001"
+      - source: auth_host
+        uid: "10001"
+      - source: auth_port
+        uid: "10001"
+      - source: ms_auth_path
+        uid: "10001"
+      - source: app_host
+        uid: "10001"
+      - source: app_port
+        uid: "10001"
+      - source: seed_data
+        uid: "10001"
+      - source: session_id_salt_string
+        uid: "10001"
     volumes:
       - logs:/logs
+      - scamplers-web_build:/opt/scamplers-web
     depends_on:
       db:
         condition: service_healthy
       scamplers-web:
         condition: service_completed_successfully
-
   scamplers-auth:
     build:
       args:
         PYTHON_VERSION: ${SCAMPLERS_PYTHON_VERSION}
       context: python/scamplers-auth
       target: final
+    depends_on:
+      scamplers:
+        condition: service_healthy
     ports:
       - ${SCAMPLERS_AUTH_PORT}:${SCAMPLERS_AUTH_PORT}
     secrets:
-      - db_auth_user_password
-      - db_host
-      - db_port
-      - db_name
-      - auth_host
-      - auth_port
-      - ms_auth_path
-      - ms_auth_client_id
-      - ms_auth_client_credential
-      - ms_auth_redirect_uri
+      - source: db_auth_user_password
+        uid: "10001"
+      - source: db_host
+        uid: "10001"
+      - source: db_port
+        uid: "10001"
+      - source: db_name
+        uid: "10001"
+      - source: auth_host
+        uid: "10001"
+      - source: auth_port
+        uid: "10001"
+      - source: ms_auth_path
+        uid: "10001"
+      - source: ms_auth_client_id
+        uid: "10001"
+      - source: ms_auth_client_credential
+        uid: "10001"
+      - source: ms_auth_redirect_url
+        uid: "10001"
+      - source: session_id_salt_string
+        uid: "10001"
     volumes:
       - logs:/logs
     depends_on:
@@ -94,6 +128,7 @@ services:
 volumes:
   db-data:
   logs:
+  scamplers-web_build:
 # For simplicity, our entire configuration is loaded as secrets. That way, we don't have to grab some values from the environment and others from the secrets dir
 secrets:
   db_root_user:
@@ -120,8 +155,8 @@ secrets:
     environment: SCAMPLERS_MS_AUTH_CLIENT_ID
   ms_auth_client_credential:
     environment: SCAMPLERS_MS_AUTH_CLIENT_CREDENTIAL
-  ms_auth_redirect_uri:
-    environment: SCAMPLERS_MS_AUTH_REDIRECT_URI
+  ms_auth_redirect_url:
+    environment: SCAMPLERS_MS_AUTH_REDIRECT_URL
   app_host:
     environment: SCAMPLERS_APP_HOST
   app_port:
@@ -129,4 +164,4 @@ secrets:
   seed_data:
     file: ${SCAMPLERS_SEED_DATA}
   session_id_salt_string:
-    environment: ${SCAMPLERS_SESSION_ID_SALT_STRING}
+    environment: SCAMPLERS_SESSION_ID_SALT_STRING

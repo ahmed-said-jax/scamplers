@@ -71,7 +71,7 @@ impl Create for NewAdmin {
 }
 
 #[derive(Clone, Deserialize)]
-#[serde(tag = "build")]
+#[serde(tag = "build", rename_all = "snake_case")]
 pub enum SeedData {
     Dev,
     Prod {

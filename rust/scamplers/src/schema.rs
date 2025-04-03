@@ -10,7 +10,7 @@ diesel::table! {
         gems_id -> Uuid,
         n_amplification_cycles -> Int4,
         storage_location -> Nullable<Text>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -35,7 +35,7 @@ diesel::table! {
         name -> Text,
         description -> Text,
         definition -> Jsonb,
-        library_types -> Array<Nullable<Text>>,
+        library_types -> Array<Text>,
         cmdline -> Text,
     }
 }
@@ -47,7 +47,7 @@ diesel::table! {
         multiplexed_suspension_id -> Uuid,
         suspension_volume_loaded -> Jsonb,
         buffer_volume_loaded -> Jsonb,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -55,7 +55,7 @@ diesel::table! {
     chromium_dataset (id) {
         id -> Uuid,
         gems_id -> Uuid,
-        metrics -> Array<Nullable<Jsonb>>,
+        metrics -> Array<Jsonb>,
         web_summary -> Text,
     }
 }
@@ -71,7 +71,7 @@ diesel::table! {
         number_of_sample_index_pcr_cycles -> Int4,
         target_reads_per_cell -> Int4,
         prepared_at -> Timestamp,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -100,7 +100,7 @@ diesel::table! {
         run_at -> Timestamp,
         run_by -> Uuid,
         succeeded -> Bool,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -108,7 +108,7 @@ diesel::table! {
     chromium_sequencing_submissions (library_id, sequencing_run_id) {
         library_id -> Uuid,
         sequencing_run_id -> Uuid,
-        fastq_paths -> Nullable<Array<Nullable<Text>>>,
+        fastq_paths -> Nullable<Array<Text>>,
         submitted_at -> Timestamp,
     }
 }
@@ -215,7 +215,7 @@ diesel::table! {
         name -> Text,
         legacy_id -> Text,
         pooled_at -> Timestamp,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -264,9 +264,9 @@ diesel::table! {
         submitted_by -> Uuid,
         lab_id -> Uuid,
         received_at -> Timestamp,
-        species -> Array<Nullable<Text>>,
+        species -> Array<Text>,
         tissue -> Text,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
         returned_at -> Nullable<Timestamp>,
         returned_by -> Nullable<Uuid>,
     }
@@ -279,7 +279,7 @@ diesel::table! {
         legacy_id -> Text,
         begun_at -> Timestamp,
         finished_at -> Nullable<Timestamp>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -296,7 +296,7 @@ diesel::table! {
         name -> Text,
         kit -> Text,
         well -> Text,
-        sequences -> Array<Nullable<Text>>,
+        sequences -> Array<Text>,
     }
 }
 
@@ -310,8 +310,8 @@ diesel::table! {
         type_ -> Text,
         embedded_in -> Nullable<Text>,
         preserved_with -> Nullable<Text>,
-        measurements -> Nullable<Array<Nullable<Jsonb>>>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        measurements -> Nullable<Array<Jsonb>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 
@@ -339,7 +339,7 @@ diesel::table! {
         lysis_duration_min -> Nullable<Float4>,
         targeted_cell_recovery -> Float4,
         target_reads_per_cell -> Int4,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Array<Text>>,
     }
 }
 

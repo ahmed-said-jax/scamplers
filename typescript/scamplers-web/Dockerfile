@@ -6,7 +6,7 @@
 
 # Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
 
-ARG NODE_VERSION=23.11.0
+ARG NODE_VERSION=23.11
 
 ################################################################################
 # Use node image for base image for all stages.
@@ -45,28 +45,4 @@ COPY . .
 # Run the build script.
 RUN npm run build
 
-################################################################################
-# Create a new stage to run the application with minimal runtime dependencies
-# where the necessary files are copied from the build stage.
-FROM base as final
-
-# Use production node environment by default.
-ENV NODE_ENV production
-
-# Run the application as a non-root user.
-USER node
-
-# Copy package.json so that package manager commands can be used.
-COPY package.json .
-
-# Copy the production dependencies from the deps stage and also
-# the built application from the build stage into the image.
-COPY --from=deps /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/build ./build
-
-
-# Expose the port that the application listens on.
-EXPOSE 8001
-
-# Run the application.
-CMD s
+RUN mv build /opt/scamplers-web

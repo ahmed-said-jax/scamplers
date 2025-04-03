@@ -1,4 +1,4 @@
-use std::{fs, process::Command, str::FromStr};
+use std::{env::current_dir, fs, process::Command, str::FromStr};
 
 use camino::Utf8PathBuf;
 use regex::Regex;
@@ -150,7 +150,20 @@ impl<'a> DieselConfig<'a> {
     }
 
     fn with_patch_file(mut self) -> Self {
-        self.print_schema.patch_file = Some("scamplers/src/schema.patch");
+        let current_dir = current_dir().unwrap();
+        let current_dir = current_dir.file_name().unwrap();
+
+        let patch_file = if current_dir == "rust" {
+            "scamplers/src/schema.patch"
+        } else if current_dir == "build-scamplers" {
+            "../scamplers/src/schema.patch"
+        } else if current_dir == "scamplers" {
+            "src/schema.patch"
+        } else {
+            panic!("must compile crate from one of ['rust', 'scamplers', or 'build-scamplers']")
+        };
+
+        self.print_schema.patch_file = Some(patch_file);
         self
     }
 

@@ -1,6 +1,6 @@
-ARG POSTGRES_VERSION
-ARG ALPINE_VERSION
+ARG POSTGRES_VERSION=17.4
+ARG ALPINE_VERSION=3.21
 
 FROM postgres:${POSTGRES_VERSION}-alpine${ALPINE_VERSION}
 
-COPY docker-entrypoint-initdb.d /
+COPY docker-entrypoint-initdb.d/* /docker-entrypoint-initdb.d/
