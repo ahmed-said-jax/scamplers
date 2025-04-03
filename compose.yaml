@@ -30,12 +30,12 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
-  scamplers-web:
-    build:
-      context: typescript/scamplers-web
-      args:
-        NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
-      target: final
+  # scamplers-web:
+  #   build:
+  #     context: typescript/scamplers-web
+  #     args:
+  #       NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
+  #     target: final
   scamplers:
     build:
       args:

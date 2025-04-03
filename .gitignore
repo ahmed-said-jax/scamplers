@@ -1,2 +1,5 @@
 # Environment files useful for development
 .env
+
+# Seed Data also useful for development
+# seed_data.json

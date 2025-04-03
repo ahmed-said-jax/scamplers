@@ -14,8 +14,6 @@ create unlogged table ms_auth_flow (
     expires_at timestamp not null
 );
 
-grant
-select
-(state, flow, redirected_from) on ms_auth_flow to auth_user;
+grant select (state, flow, redirected_from) on ms_auth_flow to auth_user;
 
 grant insert on ms_auth_flow to auth_user;

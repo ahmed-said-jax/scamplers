@@ -150,7 +150,7 @@ impl<'a> DieselConfig<'a> {
     }
 
     fn with_patch_file(mut self) -> Self {
-        self.print_schema.patch_file = Some("src/schema.patch");
+        self.print_schema.patch_file = Some("scamplers/src/schema.patch");
         self
     }
 

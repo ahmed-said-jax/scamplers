@@ -1,3 +1,22 @@
+ARG NODE_VERSION=23.11.0
+
+FROM node:${NODE_VERSION}-alpine as frontend-base
+
+WORKDIR /usr/src/app
+
+FROM frontend-base as frontend-deps
+
+RUN --mount=type=bind,source=typescript/scamplers-web/package.json,target=package.json \
+    --mount=type=bind,source=typescript/scamplers-web/package-lock.json,target=package-lock.json \
+    --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
+
+FROM frontend-deps as frontend-build
+
+COPY . .
+
+RUN npm run build
+
 ARG ALPINE_VERSION
 ARG RUST_VERSION
 ARG APP_NAME=scamplers
@@ -41,7 +60,8 @@ RUN mkdir logs && chown appuser logs
 USER appuser
 
 COPY --from=build /bin/server /bin/
-COPY --from=scamplers-web /opt/scamplers-web /opt/scamplers-web
+# COPY --from=frontend-deps /usr/src/app/node_modules /opt/scamplers-web/node_modules
+COPY --from=frontend-build /usr/src/app/build /opt/scamplers-web/
 
 EXPOSE 8000
 

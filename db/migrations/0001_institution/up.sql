@@ -6,6 +6,4 @@ create table institution (
     ms_tenant_id uuid
 );
 
-grant
-select
-(id) on institution to auth_user;
+grant select (id, ms_tenant_id) on institution to auth_user;
