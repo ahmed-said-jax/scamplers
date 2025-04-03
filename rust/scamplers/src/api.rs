@@ -153,7 +153,7 @@ impl FromRequestParts<AppState2> for User {
             });
         }
         let requested_resource = parts.uri.path().to_string();
-        let Query(Web{web}) = parts.extract().await.unwrap_or_default();
+        let Query(Web { web }) = parts.extract().await.unwrap_or_default();
 
         let mut conn = app_state.db_conn().await?;
 
