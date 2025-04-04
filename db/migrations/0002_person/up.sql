@@ -7,7 +7,7 @@ create table person (
     institution_id uuid references institution on delete restrict on update restrict not null,
     orcid text unique,
     ms_user_id uuid unique,
-    api_key_hash text unique
+    api_key hashed_key unique
 );
 
 grant insert (name, email, institution_id, ms_user_id) on person to auth_user;

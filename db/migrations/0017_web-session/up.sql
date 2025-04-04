@@ -1,11 +1,12 @@
 -- Your SQL goes here
 create unlogged table session (
-    id_hash text primary key,
-    user_id uuid references person on delete restrict on update restrict not null,
-    data jsonb
+    id hashed_key primary key,
+    -- csrf_token text unique not null,
+    user_id uuid references person on delete cascade on update restrict not null
 );
 
-grant insert (id_hash, user_id) on session to auth_user;
+grant insert (id, user_id) on session to auth_user;
+
 grant select on session to login_user;
 
 create unlogged table ms_auth_flow (

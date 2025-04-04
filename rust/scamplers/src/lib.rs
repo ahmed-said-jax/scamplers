@@ -22,11 +22,13 @@ use utils::{DevContainer, ToAddress};
 use uuid::Uuid;
 
 mod api;
+mod auth;
 pub mod cli;
 pub mod db;
 pub mod schema;
 mod seed_data;
 mod utils;
+mod web;
 
 pub async fn serve_dev_app(host: String, port: u16) -> anyhow::Result<()> {
     serve(None, None, Some((host, port))).await

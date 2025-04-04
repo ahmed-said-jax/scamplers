@@ -1,5 +1,11 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "hashed_key"))]
+    pub struct HashedKey;
+}
+
 diesel::table! {
     cdna (id) {
         id -> Uuid,
@@ -245,6 +251,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::HashedKey;
+
     person (id) {
         id -> Uuid,
         link -> Text,
@@ -253,7 +262,7 @@ diesel::table! {
         institution_id -> Uuid,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
-        api_key_hash -> Nullable<Text>,
+        api_key -> Nullable<HashedKey>,
     }
 }
 
@@ -284,10 +293,12 @@ diesel::table! {
 }
 
 diesel::table! {
-    session (id_hash) {
-        id_hash -> Text,
+    use diesel::sql_types::*;
+    use super::sql_types::HashedKey;
+
+    session (id) {
+        id -> HashedKey,
         user_id -> Uuid,
-        data -> Nullable<Jsonb>,
     }
 }
 

@@ -103,3 +103,8 @@ alter user login_user with login;
 
 select create_user_if_not_exists('auth_user', '{}');
 alter user auth_user with login;
+
+create type hashed_key as (
+    prefix char(8),
+    hash text
+);
