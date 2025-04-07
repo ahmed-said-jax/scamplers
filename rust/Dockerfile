@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION=3.21
-ARG RUST_VERSION=1.85
+ARG RUST_VERSION=1.86
 ARG APP_PORT=8000
 ARG APP_NAME=scamplers
 
@@ -34,7 +34,6 @@ RUN --mount=type=bind,source=rust/Cargo.toml,target=rust/Cargo.toml \
     --mount=type=bind,source=rust/diesel.toml,target=rust/diesel.toml \
     --mount=type=bind,source=rust/scamplers/src,target=rust/scamplers/src \
     --mount=type=bind,source=rust/scamplers/Cargo.toml,target=rust/scamplers/Cargo.toml \
-    --mount=type=bind,source=rust/scamplers/diesel.toml,target=rust/scamplers/diesel.toml \
     --mount=type=bind,source=rust/build-scamplers/Cargo.toml,target=rust/build-scamplers/Cargo.toml \
     --mount=type=bind,source=db/migrations,target=db/migrations \
     --mount=type=cache,target=/app/target/ \

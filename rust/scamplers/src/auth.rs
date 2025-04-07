@@ -195,8 +195,12 @@ impl FromRequestParts<AppState2> for UserId {
     type Rejection = Error;
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        _state: &AppState2,
+        state: &AppState2,
     ) -> Result<Self, Self::Rejection> {
+        if let AppState2::Dev { user_id, .. } = state {
+            return Ok(Self(*user_id));
+        }
+
         let Some(user_id) = parts.headers.get(USER_ID_HEADER) else {
             return Err(Error::NoUserId);
         };
@@ -209,7 +213,7 @@ impl FromRequestParts<AppState2> for UserId {
 
 enum RequestType {
     Api,
-    Browser
+    Browser,
 }
 
 async fn authenticate(
@@ -225,9 +229,6 @@ async fn authenticate(
     }
 
     if let AppState2::Dev { user_id, .. } = &app_state {
-        request
-            .headers_mut()
-            .insert(USER_ID_HEADER, user_id.to_string().parse().unwrap());
         return next.run(request).await;
     }
 
@@ -239,7 +240,7 @@ async fn authenticate(
 
     let result = match request_type {
         RequestType::Api => UserId::fetch_by_api_key(&key, &mut db_conn).await,
-        RequestType::Browser => UserId::fetch_by_session_id(&key, &mut db_conn).await
+        RequestType::Browser => UserId::fetch_by_session_id(&key, &mut db_conn).await,
     };
 
     let user_id = match result {
@@ -270,15 +271,7 @@ pub async fn authenticate_api_request(State(app_state): State<AppState2>, reques
         return err;
     };
 
-    authenticate(
-        &app_state,
-        request,
-        next,
-        api_key,
-        RequestType::Api,
-        err,
-    )
-    .await
+    authenticate(&app_state, request, next, api_key, RequestType::Api, err).await
 }
 
 pub async fn authenticate_browser_request(
@@ -297,15 +290,7 @@ pub async fn authenticate_browser_request(
         return err;
     };
 
-    authenticate(
-        &app_state,
-        request,
-        next,
-        session_id,
-        RequestType::Browser,
-        err,
-    )
-    .await
+    authenticate(&app_state, request, next, session_id, RequestType::Browser, err).await
 }
 
 pub struct AuthService;

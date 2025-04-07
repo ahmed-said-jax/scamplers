@@ -288,7 +288,7 @@ fn app(app_state: AppState2) -> Router {
         )),
     };
 
-    let mut router = router.nest("/", api_router);
+    let mut router = router.merge(api_router);
 
     if matches!(&app_state, Prod { .. }) {
         // Create the frontend router, which just serves a static file directory, and add an authentication layer
@@ -298,7 +298,7 @@ fn app(app_state: AppState2) -> Router {
             .service(ServeDir::new("/opt/scamplers-web"));
 
         // Nest the just-created service
-        router = router.nest_service("/web", frontend_service).fallback("soemthi");
+        router = router.nest_service("/web", frontend_service);
 
         // The frontend also calls the API, but from a different route (because the authentication is different). Nest that too
         router = router.nest("/web/api", api::router().layer(auth_layer));

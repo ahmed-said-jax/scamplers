@@ -29,7 +29,7 @@ fn main() {
     }
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    if manifest_dir == "build-scamplers" {
+    if manifest_dir.contains("build-scamplers") {
         let path = Utf8PathBuf::from_str(manifest_dir).unwrap().join("../scamplers");
         env::set_current_dir(&path).unwrap();
     }
@@ -65,7 +65,9 @@ fn main() {
     generate_schema(&connection_string);
 
     // The container is not always cleaned up
-    drop(postgres_instance)
+    drop(postgres_instance);
+
+    diesel_config.rm();
 }
 
 trait BuildDbContainer {
@@ -167,6 +169,10 @@ impl<'a> DieselConfig<'a> {
 
     fn write(&self) {
         fs::write("diesel.toml", toml::to_string(self).unwrap()).unwrap();
+    }
+
+    fn rm(self) {
+        fs::remove_file("diesel.toml").unwrap();
     }
 }
 

@@ -76,8 +76,6 @@ services:
         uid: "10001"
       - source: seed_data
         uid: "10001"
-      - source: session_id_salt_string
-        uid: "10001"
     volumes:
       - logs:/logs
       - scamplers-web_build:/opt/scamplers-web
@@ -117,8 +115,6 @@ services:
       - source: ms_auth_client_credential
         uid: "10001"
       - source: ms_auth_redirect_url
-        uid: "10001"
-      - source: session_id_salt_string
         uid: "10001"
     volumes:
       - logs:/logs
@@ -160,5 +156,3 @@ secrets:
     environment: SCAMPLERS_APP_PORT
   seed_data:
     file: ${SCAMPLERS_SEED_DATA}
-  session_id_salt_string:
-    environment: SCAMPLERS_SESSION_ID_SALT_STRING

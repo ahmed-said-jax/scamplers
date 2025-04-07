@@ -31,7 +31,7 @@ pub fn router() -> Router<AppState2> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
-    v0::router()
+    Router::new().nest("/api", v0::router())
 }
 
 struct ValidJson<T>(T);

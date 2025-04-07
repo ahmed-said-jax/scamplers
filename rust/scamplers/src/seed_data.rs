@@ -15,7 +15,7 @@ use valuable::Valuable;
 
 use crate::{
     db::{
-        Create, Read,
+        self, Create, Read,
         index_sets::IndexSetFileUrl,
         institution::{Institution, NewInstitution},
         lab::NewLab,
@@ -29,50 +29,48 @@ use crate::{
     schema,
 };
 
-#[derive(Insertable, Validate, Deserialize, Clone)]
-#[diesel(table_name = schema::person, check_for_backend(Pg))]
-#[garde(allow_unvalidated)]
+#[derive(Deserialize, Clone, Validate)]
 struct NewAdmin {
-    #[garde(length(min = 1))]
-    name: String,
-    #[garde(email)]
-    email: String,
-    orcid: Option<String>,
-    #[diesel(skip_insertion)]
+    #[garde(dive)]
+    person: NewPerson,
+    #[garde(skip)]
     institution_name: String,
-    #[serde(skip)]
-    institution_id: Uuid,
 }
 impl Create for NewAdmin {
     type Returns = ();
 
-    async fn create(mut self, conn: &mut AsyncPgConnection) -> crate::db::Result<Self::Returns> {
-        use schema::{institution, person};
+    async fn create(self, conn: &mut AsyncPgConnection) -> crate::db::Result<Self::Returns> {
+        use schema::institution;
+
+        let Self {
+            mut person,
+            institution_name,
+        } = self;
 
         let institution_id = institution::table
             .select(institution::id)
-            .filter(institution::name.eq(&self.institution_name))
+            .filter(institution::name.eq(&institution_name))
             .first(conn)
             .await?;
 
-        self.institution_id = institution_id;
+        person.institution_id = institution_id;
 
-        let admin_id: Option<Uuid> = diesel::insert_into(person::table)
-            .values(self)
-            .returning(person::id)
-            .on_conflict_do_nothing()
-            .get_result(conn)
-            .await
-            .optional()?;
+        let result = person.create(conn).await;
 
-        if let Some(admin_id) = admin_id {
-            diesel::select(create_user_if_not_exists(
-                admin_id.to_string(),
-                vec![UserRole::AppAdmin],
-            ))
-            .execute(conn)
-            .await?;
-        };
+        match result {
+            Ok(admin_id) => {
+                diesel::select(create_user_if_not_exists(
+                    admin_id.to_string(),
+                    vec![UserRole::AppAdmin],
+                ))
+                .execute(conn)
+                .await?;
+            }
+            Err(db::Error::DuplicateRecord { .. }) => (),
+            Err(err) => {
+                return Err(err);
+            }
+        }
 
         Ok(())
     }
@@ -107,7 +105,9 @@ impl SeedData {
                     institutions_result?;
                 }
 
+                app_admin.validate()?;
                 app_admin.create(db_conn).await?;
+
                 download_and_insert_index_sets(db_conn, http_client, &index_set_urls).await?
             }
         }
@@ -196,7 +196,7 @@ async fn create_random_data(conn: &mut AsyncPgConnection) -> anyhow::Result<()> 
             email: email.to_string(),
             orcid: None,
             institution_id: random_institution_id(),
-            // roles: vec![random_enum_choice(rng.clone())],
+            roles: vec![random_enum_choice(rng.clone())],
         })
         .collect();
 

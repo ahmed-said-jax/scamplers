@@ -72,7 +72,7 @@ define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Text, roles:
 define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
 define_sql_function! {fn get_user_roles(user_id: sql_types::Text) -> sql_types::Array<sql_types::Text>}
 
-#[derive(Insertable, Validate, Deserialize, Valuable, Clone, AsChangeset)]
+#[derive(Insertable, Validate, Deserialize, Valuable, Clone)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewPerson {
@@ -82,23 +82,35 @@ pub struct NewPerson {
     pub email: String,
     pub orcid: Option<String>,
     #[valuable(skip)]
+    #[serde(default)]
     pub institution_id: Uuid,
-    // #[serde(default)]
-    // #[diesel(skip_insertion)]
-    // pub roles: Vec<UserRole>,
+    #[diesel(skip_insertion)]
+    #[serde(default)]
+    pub roles: Vec<UserRole>,
 }
 
 impl Create for &NewPerson {
     type Returns = Uuid;
 
     async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        use person::dsl::{id, ms_user_id};
+        use person::dsl::{id, institution_id as institution_id_col, ms_user_id};
+
+        let NewPerson {
+            name,
+            email,
+            institution_id,
+            ..
+        } = self;
 
         let inserted_id = diesel::insert_into(person::table)
             .values(self)
             .on_conflict(ms_user_id)
             .do_update()
-            .set(self)
+            .set((
+                name_col.eq(name),
+                email_col.eq(email),
+                institution_id_col.eq(institution_id),
+            ))
             .returning(id)
             .get_result(conn)
             .await?;
@@ -121,15 +133,15 @@ impl Create for Vec<NewPerson> {
             .get_results(conn)
             .await?;
 
-        // for (role_set, new_id) in self
-        //     .iter()
-        //     .map(|NewPerson { roles, .. }| roles)
-        //     .zip(&inserted_people_ids)
-        // {
-        //     diesel::select(create_user_if_not_exists(new_id.to_string(), role_set))
-        //         .execute(conn)
-        //         .await?;
-        // }
+        for (role_set, new_id) in self
+            .iter()
+            .map(|NewPerson { roles, .. }| roles)
+            .zip(&inserted_people_ids)
+        {
+            diesel::select(create_user_if_not_exists(new_id.to_string(), role_set))
+                .execute(conn)
+                .await?;
+        }
 
         let filter = PersonQuery {
             ids: inserted_people_ids,
