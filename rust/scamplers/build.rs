@@ -1,4 +1,9 @@
-use std::{env::current_dir, fs, process::Command, str::FromStr};
+use std::{
+    env::{self, current_dir},
+    fs,
+    process::Command,
+    str::FromStr,
+};
 
 use camino::Utf8PathBuf;
 use regex::Regex;
@@ -21,6 +26,12 @@ fn main() {
     // the root of this repo, which runs this script outside of a docker container
     if in_docker {
         return;
+    }
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    if manifest_dir == "build-scamplers" {
+        let path = Utf8PathBuf::from_str(manifest_dir).unwrap().join("../scamplers");
+        env::set_current_dir(&path).unwrap();
     }
 
     dotenvy::dotenv().unwrap_or_default();
@@ -150,20 +161,7 @@ impl<'a> DieselConfig<'a> {
     }
 
     fn with_patch_file(mut self) -> Self {
-        let current_dir = current_dir().unwrap();
-        let current_dir = current_dir.file_name().unwrap();
-
-        let patch_file = if current_dir == "rust" {
-            "scamplers/src/schema.patch"
-        } else if current_dir == "build-scamplers" {
-            "../scamplers/src/schema.patch"
-        } else if current_dir == "scamplers" {
-            "src/schema.patch"
-        } else {
-            panic!("must compile crate from one of ['rust', 'scamplers', or 'build-scamplers']")
-        };
-
-        self.print_schema.patch_file = Some(patch_file);
+        self.print_schema.patch_file = Some("src/schema.patch");
         self
     }
 

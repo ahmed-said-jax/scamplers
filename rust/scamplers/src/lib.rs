@@ -2,7 +2,8 @@
 use std::sync::Arc;
 
 use anyhow::{Context, anyhow};
-use axum::Router;
+use auth::{authenticate_api_request, authenticate_browser_request};
+use axum::{Router, ServiceExt, middleware, routing::get};
 use camino::Utf8PathBuf;
 use cli::Config;
 use diesel_async::{
@@ -17,6 +18,7 @@ use testcontainers_modules::{
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
 use tokio::{net::TcpListener, signal, sync::Mutex};
+use tower::ServiceBuilder;
 use tower_http::{services::fs::ServeDir, trace::TraceLayer};
 use utils::{DevContainer, ToAddress};
 use uuid::Uuid;
@@ -274,15 +276,35 @@ async fn run_migrations(
 }
 
 fn app(app_state: AppState2) -> Router {
-    let router = Router::new()
-        .nest("/api", api::router())
-        .with_state(app_state.clone())
-        .layer(TraceLayer::new_for_http());
+    use AppState2::*;
 
-    match &app_state {
-        AppState2::Dev { .. } => router,
-        AppState2::Prod { .. } => router.fallback_service(ServeDir::new("/opt/scamplers-web")),
+    let router = Router::new().layer(TraceLayer::new_for_http());
+
+    let api_router = match &app_state {
+        Dev { .. } => api::router(),
+        Prod { .. } => api::router().layer(middleware::from_fn_with_state(
+            app_state.clone(),
+            authenticate_api_request,
+        )),
+    };
+
+    let mut router = router.nest("/", api_router);
+
+    if matches!(&app_state, Prod { .. }) {
+        // Create the frontend router, which just serves a static file directory, and add an authentication layer
+        let auth_layer = middleware::from_fn_with_state(app_state.clone(), authenticate_browser_request);
+        let frontend_service = ServiceBuilder::new()
+            .layer(auth_layer.clone())
+            .service(ServeDir::new("/opt/scamplers-web"));
+
+        // Nest the just-created service
+        router = router.nest_service("/web", frontend_service).fallback("soemthi");
+
+        // The frontend also calls the API, but from a different route (because the authentication is different). Nest that too
+        router = router.nest("/web/api", api::router().layer(auth_layer));
     }
+
+    router.with_state(app_state)
 }
 
 // I don't entirely understand why I need to manually call `drop` here

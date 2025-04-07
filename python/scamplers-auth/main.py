@@ -15,7 +15,7 @@ import sanic
 import msal
 import asyncpg
 from datetime import datetime, timedelta
-from argon2 import PasswordHasher
+import httpx
 
 class ConfigContainer(sanic.Config):
     class Config(BaseSettings):
@@ -29,11 +29,12 @@ class ConfigContainer(sanic.Config):
         db_name: str
         auth_host: str
         auth_port: int
+        app_host: str
+        app_port: str
         ms_auth_path: str
         ms_auth_client_id: str
         ms_auth_client_credential: str
         ms_auth_redirect_url: str
-        session_id_salt_string: str
 
         @classmethod
         def settings_customise_sources(
@@ -58,6 +59,7 @@ class ConfigContainer(sanic.Config):
 class Context:
     ms_auth_client: msal.ConfidentialClientApplication
     db_pool: asyncpg.Pool
+    http_client: httpx.AsyncClient
 
 
 config = ConfigContainer()  # type: ignore
@@ -88,9 +90,19 @@ async def attach_db_pool(app: App, loop):
         loop=loop
     )
 
+@app.before_server_start
+async def attach_http_client(app: App, loop):
+    auth = httpx.BasicAuth(username="auth_user", password=app.config.inner.db_auth_user_password)
+
+    app.ctx.http_client = httpx.AsyncClient(http2=True, auth=auth)
+
 @app.after_server_stop
 async def close_db_connection(app: App, loop):
     await app.ctx.db_pool.close()
+
+@app.after_server_stop
+async def close_http_client(app: App, loop):
+    await app.ctx.http_client.aclose()
 
 type Request = sanic.Request[App]
 
@@ -122,6 +134,10 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
     received_auth_flow = request.args
 
     db_pool = request.app.ctx.db_pool
+    http_client = request.app.ctx.http_client
+    app_config = request.app.config.inner
+    new_session_url = f"{app_config.app_port}:{app_config.app_port}/api/session"
+
     async with db_pool.acquire() as conn:
         auth_flow = await conn.fetchrow("select flow, redirected_from from ms_auth_flow where state = $1", received_auth_flow["state"][0])
         await conn.execute("delete from ms_auth_flow where state = $1", received_auth_flow["state"][0])
@@ -135,18 +151,11 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
 
         institution_id: UUID = await conn.fetchval("select id from institution where ms_tenant_id = $1", UUID(user["tid"]))
 
+        user["institution_id"] = institution_id
+        user["ms_user_id"] = UUID(user["oid"])
 
-        query = "insert into person (name, email, ms_user_id, institution_id) values ($1, $2, $3, $4) on conflict (ms_user_id) do update set name = $1, email = $2, institution_id = $4 returning id"
-        params = (user["name"], user["email"], UUID(user["oid"]), institution_id)
-        user_id: UUID = await conn.fetchval(query, *params)
-
-        session_id = str(uuid4())
-        salt_string = app.config.inner.session_id_salt_string
-        session_id_hash = PasswordHasher().hash(session_id, salt=bytes(salt_string, encoding="utf-8"))
-
-        query = "insert into session (id_hash, user_id) values ($1, $2)"
-        params = (session_id_hash, user_id)
-        await conn.execute(query, *params)
+        result = await http_client.post(new_session_url, json=user)
+        session_id = result.json()["session_id"]
 
         response = redirect(auth_flow["redirected_from"])
         response.add_cookie("SESSION", session_id, samesite="lax", httponly=True)

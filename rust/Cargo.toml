@@ -6,7 +6,7 @@ default-members = ["scamplers"]
 [workspace.dependencies]
 camino = { version = "1.1.9", features = ["serde1"] }
 thiserror = "2.0.12"
-tokio = { version = "1.44.1", features = [
+tokio = { version = "1.44.2", features = [
     "macros",
     "rt-multi-thread",
     "signal",
@@ -23,7 +23,7 @@ reqwest = { version = "0.12.14", default-features = false, features = [
     "json",
 ] }
 url = { version = "2.5.4", features = ["serde"] }
-clap = { version = "4.5.32", features = ["derive", "env"] }
+clap = { version = "4.5.35", features = ["derive", "env"] }
 anyhow = "1.0.97"
 axum = { version = "0.8.3", default-features = false, features = [
     "http2",
@@ -32,9 +32,9 @@ axum = { version = "0.8.3", default-features = false, features = [
     "query",
     "tokio",
 ] }
-axum-extra = { version = "0.10.0", features = ["query", "typed-header"] }
+axum-extra = { version = "0.10.1", features = ["query", "typed-header"] }
 serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
-diesel = { version = "2.2.8", default-features = false, features = [
+diesel = { version = "2.2.9", default-features = false, features = [
     "without-deprecated",
     "chrono",
     "uuid",

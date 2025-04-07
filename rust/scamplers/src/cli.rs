@@ -4,7 +4,7 @@ use anyhow::{Context, anyhow};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand};
 
-use crate::seed_data::SeedData;
+use crate::{auth, seed_data::SeedData};
 
 #[derive(Args)]
 pub struct Config {
@@ -36,8 +36,6 @@ pub struct Config {
     seed_data: Option<SeedData>,
     #[arg(long, env)]
     seed_data_path: Option<Utf8PathBuf>,
-    #[arg(long, env)]
-    session_id_salt_string: String,
 }
 impl Config {
     pub fn from_secrets_dir(dir: &Utf8Path) -> anyhow::Result<Self> {
@@ -60,7 +58,6 @@ impl Config {
             app_port: read_secret("app_port")?.parse()?,
             seed_data: serde_json::from_str(&read_secret("seed_data")?)?,
             seed_data_path: None,
-            session_id_salt_string: read_secret("session_id_salt_string")?,
         };
 
         Ok(config)
@@ -136,10 +133,6 @@ impl Config {
                 "seed_data_path should not be set alongside seed data read from secrets dir"
             )),
         }
-    }
-
-    pub fn session_id_salt_string(&self) -> &str {
-        &self.session_id_salt_string
     }
 }
 

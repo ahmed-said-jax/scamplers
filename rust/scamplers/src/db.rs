@@ -25,6 +25,7 @@ pub mod sample;
 mod sequencing_run;
 mod units;
 pub mod utils;
+pub mod web_session;
 
 // Avoid implementing this trait for a scalar T - just implement it for Vec<T>
 // because diesel allows you to insert many things at once. This improves efficiency, especially if the database and
@@ -60,24 +61,10 @@ pub trait Read: Serialize + Sized + Send {
     fn fetch_by_id(id: &Self::Id, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self>> + Send;
 }
 
-pub trait Update {
-    type Returns;
+pub trait Update: Send {
+    type Returns: Send;
 
-    async fn update(self, conn: &mut AsyncPgConnection) -> Result<Self::Returns>;
-}
-
-impl<T: Update> Update for Vec<T> {
-    type Returns = Vec<T::Returns>;
-
-    async fn update(self, conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
-        let mut results = Vec::with_capacity(self.len());
-
-        for item in self {
-            results.push(item.update(conn).await?)
-        }
-
-        Ok(results)
-    }
+    fn update(self, conn: &mut AsyncPgConnection) -> impl Future<Output = Result<Self::Returns>> + Send;
 }
 
 pub trait ReadRelatives<T: Read>: DeserializeOwned + Send + Display {

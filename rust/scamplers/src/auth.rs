@@ -1,21 +1,53 @@
-use std::fmt::Debug;
-
-use argon2::{password_hash::{PasswordHasher, SaltString}, Argon2};
-use diesel::{deserialize::{FromSql, FromSqlRow}, expression::AsExpression, pg::Pg, serialize::{ToSql, WriteTuple}, sql_types::{self, Record, SqlType}};
-use rand::{distr::Alphanumeric, rngs::{OsRng, StdRng}, Rng, SeedableRng, TryRngCore};
+use argon2::{
+    Argon2, PasswordHash, PasswordVerifier,
+    password_hash::{PasswordHasher, SaltString},
+};
+use axum::{
+    RequestExt, RequestPartsExt,
+    extract::{FromRequestParts, Request, State},
+    http::HeaderValue,
+    middleware::Next,
+    response::{IntoResponse, Redirect, Response},
+};
+use axum_extra::{
+    TypedHeader,
+    headers::{
+        self,
+        authorization::{Basic, Bearer},
+    },
+};
+use diesel::prelude::*;
+use diesel::{
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::Pg,
+    serialize::{ToSql, WriteTuple},
+    sql_types::{self, Bool, Record, SqlType, Text},
+};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use rand::{
+    Rng, SeedableRng, TryRngCore,
+    distr::Alphanumeric,
+    rngs::{OsRng, StdRng},
+};
+use reqwest::{StatusCode, header::AsHeaderName};
 use serde::{Deserialize, Serialize};
+use std::{fmt::Debug, str::FromStr};
+use uuid::Uuid;
+use valuable::Valuable;
 
-#[derive(Deserialize, Serialize, AsExpression)]
-#[diesel(sql_type = crate::schema::sql_types::HashedKey)]
+use crate::{AppState2, api, cli::Config, db};
+
+const KEY_PREFIX_LENGTH: usize = 8;
+const KEY_LENGTH: usize = 32;
+const USER_ID_HEADER: &str = "SCAMPLERS_USER_ID";
+
+#[derive(Deserialize, Serialize)]
 #[serde(transparent)]
-struct Key(String);
+pub struct Key(String);
 impl Key {
     pub fn new() -> Self {
-        let key = [' '; 32];
-        let mut rng = StdRng::from_os_rng();
-        let key = key.iter().map(|_| rng.sample(Alphanumeric) as char).collect();
-
-        Self(key)
+        Self::default()
     }
 
     pub fn hash(&self) -> HashedKey<&str> {
@@ -28,21 +60,57 @@ impl Key {
 
         let argon2 = Argon2::default();
         let hash = argon2.hash_password(key.as_bytes(), &salt).unwrap().to_string();
-        
-        HashedKey { prefix: &key[0..8], hash }
+
+        HashedKey {
+            prefix: &key[..KEY_PREFIX_LENGTH],
+            hash,
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        let Self(inner) = self;
+
+        &inner
+    }
+}
+impl FromStr for Key {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.to_string()))
+    }
+}
+impl Default for Key {
+    fn default() -> Self {
+        let mut rng = StdRng::from_os_rng();
+        let key = (0..KEY_LENGTH).map(|_| rng.sample(Alphanumeric) as char).collect();
+
+        Self(key)
     }
 }
 impl Debug for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "KEY".fmt(f)
+        self.hash().fmt(f)
     }
 }
 
-#[derive(AsExpression, Debug, FromSqlRow)]
-#[diesel(sql_type = crate::schema::sql_types::HashedKey, postgres_type(name = "hashed_key"))]
-struct HashedKey<Str: AsExpression<diesel::sql_types::Text>> where for <'a> &'a Str: AsExpression<diesel::sql_types::Text> {
+#[derive(AsExpression, Debug, FromSqlRow, Deserialize)]
+#[diesel(sql_type = crate::schema::sql_types::HashedKey)]
+pub struct HashedKey<Str: AsExpression<diesel::sql_types::Text>>
+where
+    for<'a> &'a Str: AsExpression<diesel::sql_types::Text>,
+{
     prefix: Str,
-    hash: String
+    hash: String,
+}
+
+impl Default for HashedKey<&str> {
+    fn default() -> Self {
+        Self {
+            prefix: Default::default(),
+            hash: Default::default(),
+        }
+    }
 }
 
 impl ToSql<crate::schema::sql_types::HashedKey, Pg> for HashedKey<&str> {
@@ -57,71 +125,257 @@ impl FromSql<crate::schema::sql_types::HashedKey, Pg> for HashedKey<String> {
     fn from_sql(bytes: <Pg as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let (prefix, hash) = FromSql::<Record<(sql_types::Text, sql_types::Text)>, Pg>::from_sql(bytes)?;
 
-        Ok(Self{prefix, hash})
+        Ok(Self { prefix, hash })
     }
 }
 
-impl ToSql<crate::schema::sql_types::HashedKey, Pg> for Key {
-    fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        let hashed = self.hash();
-        <HashedKey<&str> as ToSql<crate::schema::sql_types::HashedKey, Pg>>::to_sql(&hashed, &mut out.reborrow())
-    }
+impl HashedKey<&str> {
+    fn is_same_hash(&self, other: &HashedKey<String>) -> bool {
+        let argon2 = Argon2::default();
+        let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
+            return false;
+        };
 
+        if argon2.verify_password(self.hash.as_bytes(), &parsed_hash).is_ok() {
+            true
+        } else {
+            false
+        }
+    }
 }
 
+pub struct UserId(pub Uuid);
+impl UserId {
+    async fn fetch_by_api_key(api_key: &Key, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+        use crate::schema::person::dsl::{hashed_api_key, id, person};
 
-// enum User {
-//     Web {
-//         user_id: Uuid,
-//         first_name: String,
-//         roles: Vec<UserRole>,
-//     },
-//     Api {
-//         user_id: Uuid,
-//     },
-// }
+        let hashed_input_key = api_key.hash();
 
-// impl User {
-//     fn id(&self) -> &Uuid {
-//         match self {
-//             User::Web { user_id, .. } | User::Api { user_id, .. } => user_id,
-//         }
-//     }
+        let filter_query =
+            diesel::dsl::sql::<Bool>("(hashed_api_key).prefix = ").bind::<Text, _>(hashed_input_key.prefix);
 
-//     async fn fetch_by_api_key(api_key: &Uuid, salt_string: &str, conn: &mut AsyncPgConnection) -> db::Result<Self> {
-//         use crate::schema::person::dsl::*;
+        let (user_id, found_api_key) = person
+            .filter(filter_query)
+            .select((id, hashed_api_key.assume_not_null()))
+            .first(conn)
+            .await?;
 
-//         let hash = api_key.hash(salt_string);
+        if !hashed_input_key.is_same_hash(&found_api_key) {
+            return Err(db::Error::RecordNotFound);
+        }
 
-//         let user_id = person.filter(api_key_hash.eq(hash)).select(id).first(conn).await?;
+        Ok(Self(user_id))
+    }
 
-//         Ok(Self::Api { user_id })
-//     }
+    async fn fetch_by_session_id(session_id: &Key, conn: &mut AsyncPgConnection) -> db::Result<Self> {
+        use crate::schema::{
+            person::dsl::{id as person_id, person},
+            session::dsl::{hashed_id as hashed_session_id, session},
+        };
 
-//     async fn fetch_by_session_id(
-//         session_id: &Uuid,
-//         salt_string: &str,
-//         conn: &mut AsyncPgConnection,
-//     ) -> db::Result<Self> {
-//         use crate::schema::{
-//             person::dsl::{id as person_id, name as person_name, person},
-//             session::dsl::{id_hash, session},
-//         };
+        let hashed_input_key = session_id.hash();
+        let filter_query = diesel::dsl::sql::<Bool>("(hashed_id).prefix = ").bind::<Text, _>(hashed_input_key.prefix);
 
-//         let hash = session_id.hash(salt_string);
+        let (user_id, found_session_id) = session
+            .inner_join(person)
+            .filter(filter_query)
+            .select((person_id, hashed_session_id))
+            .first(conn)
+            .await?;
 
-//         let (user_id, first_name): (Uuid, String) = session
-//             .inner_join(person)
-//             .filter(id_hash.eq(hash))
-//             .select((person_id, person_name))
-//             .first(conn)
-//             .await?;
-//         // let roles = get_user_roles(user_id.to_string()).execute(conn).await?;
+        if !hashed_input_key.is_same_hash(&found_session_id) {
+            return Err(db::Error::RecordNotFound);
+        }
 
-//         Ok(Self::Web {
-//             user_id,
-//             first_name,
-//             roles: Default::default(),
-//         })
-//     }
-// }
+        Ok(Self(user_id))
+    }
+}
+
+impl FromRequestParts<AppState2> for UserId {
+    type Rejection = Error;
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        _state: &AppState2,
+    ) -> Result<Self, Self::Rejection> {
+        let Some(user_id) = parts.headers.get(USER_ID_HEADER) else {
+            return Err(Error::NoUserId);
+        };
+
+        let user_id = Uuid::from_slice(user_id.as_bytes()).map_err(|_| Error::InvalidUserId)?;
+
+        Ok(Self(user_id))
+    }
+}
+
+enum RequestType {
+    Api,
+    Browser
+}
+
+async fn authenticate(
+    app_state: &AppState2,
+    mut request: Request,
+    next: Next,
+    key: &str,
+    request_type: RequestType,
+    err: Response,
+) -> Response {
+    if request.headers().contains_key(USER_ID_HEADER) {
+        return err;
+    }
+
+    if let AppState2::Dev { user_id, .. } = &app_state {
+        request
+            .headers_mut()
+            .insert(USER_ID_HEADER, user_id.to_string().parse().unwrap());
+        return next.run(request).await;
+    }
+
+    let Ok(mut db_conn) = app_state.db_conn().await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    let key = Key::from_str(key).unwrap();
+
+    let result = match request_type {
+        RequestType::Api => UserId::fetch_by_api_key(&key, &mut db_conn).await,
+        RequestType::Browser => UserId::fetch_by_session_id(&key, &mut db_conn).await
+    };
+
+    let user_id = match result {
+        Ok(UserId(user_id)) => user_id,
+        Err(db::Error::RecordNotFound) => {
+            return err.into_response();
+        }
+        Err(_) => {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    let user_id = user_id.to_string();
+
+    request.headers_mut().insert(USER_ID_HEADER, user_id.parse().unwrap());
+
+    next.run(request).await
+}
+
+pub async fn authenticate_api_request(State(app_state): State<AppState2>, request: Request, next: Next) -> Response {
+    let err = Error::InvalidApiKey.into_response();
+
+    let Some(raw_api_key) = request.headers().get("X-API-Key").cloned() else {
+        return err;
+    };
+
+    let Ok(api_key) = raw_api_key.to_str() else {
+        return err;
+    };
+
+    authenticate(
+        &app_state,
+        request,
+        next,
+        api_key,
+        RequestType::Api,
+        err,
+    )
+    .await
+}
+
+pub async fn authenticate_browser_request(
+    State(app_state): State<AppState2>,
+    mut request: Request,
+    next: Next,
+) -> Response {
+    let redirected_from = request.uri().to_string();
+    let err = Error::InvalidSessionId { redirected_from }.into_response();
+
+    let Ok(cookies) = request.extract_parts::<TypedHeader<headers::Cookie>>().await else {
+        return err;
+    };
+
+    let Some(session_id) = cookies.get("SESSION") else {
+        return err;
+    };
+
+    authenticate(
+        &app_state,
+        request,
+        next,
+        session_id,
+        RequestType::Browser,
+        err,
+    )
+    .await
+}
+
+pub struct AuthService;
+impl FromRequestParts<AppState2> for AuthService {
+    type Rejection = Error;
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &AppState2,
+    ) -> Result<Self, Self::Rejection> {
+        let AppState2::Prod { config, .. } = state else {
+            return Ok(Self);
+        };
+
+        let err = Error::InvalidAuthUserPassword;
+
+        let Ok(auth_service_credentials) = parts.extract::<TypedHeader<headers::Authorization<Basic>>>().await else {
+            return Err(err);
+        };
+
+        if (auth_service_credentials.username(), auth_service_credentials.password())
+            != ("auth_user", config.db_auth_user_password())
+        {
+            return Err(err);
+        }
+
+        Ok(Self)
+    }
+}
+
+#[derive(thiserror::Error, Serialize, Debug, Clone, Valuable)]
+#[serde(rename_all = "snake_case", tag = "type")]
+pub enum Error {
+    #[error("invalid API key")]
+    InvalidApiKey,
+    #[error("invalid session ID")]
+    InvalidSessionId { redirected_from: String },
+    #[error("invalid user ID")]
+    InvalidUserId,
+    #[error("invalid auth_user password")]
+    InvalidAuthUserPassword,
+    #[error("no user ID found in header")]
+    NoUserId,
+}
+impl IntoResponse for Error {
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+
+        tracing::error!(error = self.as_value());
+
+        #[derive(Serialize)]
+        struct ErrorResponse {
+            status: u16,
+            error: Option<Error>,
+        }
+
+        match self {
+            Self::InvalidSessionId { redirected_from } => {
+                Redirect::temporary(&format!("/auth?redirected_from={redirected_from}")).into_response()
+            }
+            Self::InvalidApiKey => (
+                StatusCode::UNAUTHORIZED,
+                axum::Json(ErrorResponse {
+                    status: StatusCode::UNAUTHORIZED.as_u16(),
+                    error: Some(self),
+                }),
+            )
+                .into_response(),
+            Self::InvalidUserId | Self::NoUserId | Self::InvalidAuthUserPassword => {
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
+}

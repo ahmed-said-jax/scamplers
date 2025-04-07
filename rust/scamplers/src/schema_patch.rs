@@ -262,7 +262,7 @@ diesel::table! {
         institution_id -> Uuid,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
-        api_key -> Nullable<HashedKey>,
+        hashed_api_key -> Nullable<HashedKey>,
     }
 }
 
@@ -296,8 +296,8 @@ diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::HashedKey;
 
-    session (id) {
-        id -> HashedKey,
+    session (hashed_id) {
+        hashed_id -> HashedKey,
         user_id -> Uuid,
     }
 }

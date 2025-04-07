@@ -15,8 +15,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
 
-use super::{AsDieselExpression, BoxedDieselExpression, Create, Read, institution::Institution, utils::DbEnum};
+use super::{AsDieselExpression, BoxedDieselExpression, Create, Read, Update, institution::Institution, utils::DbEnum};
 use crate::{
+    auth::{HashedKey, Key},
     db::utils::AsIlike,
     schema::{
         institution,
@@ -71,7 +72,7 @@ define_sql_function! {fn revoke_roles_from_user(user_id: sql_types::Text, roles:
 define_sql_function! {fn create_user_if_not_exists(user_id: sql_types::Text, roles: sql_types::Array<sql_types::Text>)}
 define_sql_function! {fn get_user_roles(user_id: sql_types::Text) -> sql_types::Array<sql_types::Text>}
 
-#[derive(Insertable, Validate, Deserialize, Valuable, Clone)]
+#[derive(Insertable, Validate, Deserialize, Valuable, Clone, AsChangeset)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 pub struct NewPerson {
@@ -82,9 +83,28 @@ pub struct NewPerson {
     pub orcid: Option<String>,
     #[valuable(skip)]
     pub institution_id: Uuid,
-    #[serde(default)]
-    #[diesel(skip_insertion)]
-    pub roles: Vec<UserRole>,
+    // #[serde(default)]
+    // #[diesel(skip_insertion)]
+    // pub roles: Vec<UserRole>,
+}
+
+impl Create for &NewPerson {
+    type Returns = Uuid;
+
+    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        use person::dsl::{id, ms_user_id};
+
+        let inserted_id = diesel::insert_into(person::table)
+            .values(self)
+            .on_conflict(ms_user_id)
+            .do_update()
+            .set(self)
+            .returning(id)
+            .get_result(conn)
+            .await?;
+
+        Ok(inserted_id)
+    }
 }
 
 impl Create for Vec<NewPerson> {
@@ -101,13 +121,12 @@ impl Create for Vec<NewPerson> {
             .get_results(conn)
             .await?;
 
-        // TODO: we should probably define a function that takes a list of users and a list of lists of roles, so we
-        // only have to make this network trip once for (role_set, new_id) in self
+        // for (role_set, new_id) in self
         //     .iter()
         //     .map(|NewPerson { roles, .. }| roles)
         //     .zip(&inserted_people_ids)
         // {
-        //     create_user_if_not_exists(new_id.to_string(), role_set)
+        //     diesel::select(create_user_if_not_exists(new_id.to_string(), role_set))
         //         .execute(conn)
         //         .await?;
         // }
@@ -119,6 +138,31 @@ impl Create for Vec<NewPerson> {
         let inserted_people = Person::fetch_many(&filter, conn).await?;
 
         Ok(inserted_people)
+    }
+}
+
+#[derive(Deserialize, Valuable, Identifiable, AsChangeset, Validate)]
+#[diesel(table_name = person, check_for_backend(Pg))]
+#[garde(allow_unvalidated)]
+pub struct GrantApiAccess<'a> {
+    #[valuable(skip)]
+    id: Uuid,
+    #[serde(skip)]
+    #[valuable(skip)]
+    hashed_api_key: HashedKey<&'a str>,
+}
+impl Update for GrantApiAccess<'_> {
+    type Returns = Key;
+
+    async fn update(mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        let key = Key::new();
+        let hashed_api_key = key.hash();
+
+        self.hashed_api_key = hashed_api_key;
+
+        diesel::update(person::table).set(&self).execute(conn).await?;
+
+        Ok(key)
     }
 }
 
