@@ -34,7 +34,7 @@ axum = { version = "0.8.3", default-features = false, features = [
 ] }
 axum-extra = { version = "0.10.0", features = ["query", "typed-header"] }
 serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
-diesel = { version = "2.2.8", default-features = false, features = [
+diesel = { version = "2.2.9", default-features = false, features = [
     "without-deprecated",
     "chrono",
     "uuid",
