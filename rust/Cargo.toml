@@ -32,7 +32,7 @@ axum = { version = "0.8.3", default-features = false, features = [
     "query",
     "tokio",
 ] }
-axum-extra = { version = "0.10.0", features = ["query", "typed-header"] }
+axum-extra = { version = "0.10.1", features = ["query", "typed-header"] }
 serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
 diesel = { version = "2.2.8", default-features = false, features = [
     "without-deprecated",
