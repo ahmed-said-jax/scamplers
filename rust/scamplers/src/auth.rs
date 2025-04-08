@@ -93,6 +93,12 @@ impl Debug for Key {
         self.hash().fmt(f)
     }
 }
+impl IntoResponse for Key {
+    fn into_response(self) -> Response {
+        let Self(inner) = self;
+        inner.into_response()
+    }
+}
 
 #[derive(AsExpression, Debug, FromSqlRow, Deserialize)]
 #[diesel(sql_type = crate::schema::sql_types::HashedKey)]

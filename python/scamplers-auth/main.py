@@ -162,7 +162,7 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
         data = result.json()
 
         response = redirect(auth_flow["redirected_from"])
-        for cookie_name, key, httponly in [("SESSION", "session_id", True), ("SCAMPLERS_USER_ID", "user_id", False)]:
+        for cookie_name, key, httponly in [("SESSION", "session_id", True)]:
             if value := data.get(key):
                 response.add_cookie(cookie_name, value, samesite="lax", httponly=httponly)
 

@@ -1,17 +1,13 @@
 <script lang="ts">
-    import type { PageProps } from "./$types";
+    let api_key: string | null = $state(null);
 
-    let api_key = $state(null);
-
-    let { data }: PageProps = $props();
     async function generate_api_key() {
         const response = await fetch("/api/api-key", {
             method: "POST",
-            body: JSON.stringify({ id: data.user_id }),
             headers: { "Content-Type": "application/json" },
         });
 
-        api_key = await response.json();
+        api_key = await response.text();
     }
 </script>
 

@@ -153,15 +153,11 @@ impl Create for Vec<NewPerson> {
     }
 }
 
-#[derive(Deserialize, Valuable, Identifiable, AsChangeset, Validate)]
+#[derive(Identifiable, AsChangeset)]
 #[diesel(table_name = person, check_for_backend(Pg))]
-#[garde(allow_unvalidated)]
 pub struct GrantApiAccess<'a> {
-    #[valuable(skip)]
-    id: Uuid,
-    #[serde(skip)]
-    #[valuable(skip)]
-    hashed_api_key: HashedKey<&'a str>,
+    pub id: Uuid,
+    pub hashed_api_key: HashedKey<&'a str>,
 }
 impl Update for GrantApiAccess<'_> {
     type Returns = Key;

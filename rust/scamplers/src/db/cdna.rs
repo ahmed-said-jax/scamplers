@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use garde::Validate;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -73,7 +74,7 @@ impl Parent<CdnaMeasurement> for NewCdna {
 trait CdnaGroup {
     async fn validate_library_types(&self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<()>;
 }
-impl CdnaGroup for Vec<NewCdna> {
+impl CdnaGroup for Vec<&NewCdna> {
     async fn validate_library_types(&self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::Result<()> {
         use schema::{
             chemistry::{library_types as library_types_col, table as chemistry_table},
@@ -142,6 +143,11 @@ impl Create for Vec<NewCdna> {
         use schema::cdna::dsl::{cdna, id};
 
         let n_cdnas = self.len();
+
+        let grouped_cdnas = self.iter().into_group_map_by(|c| c.gems_id);
+        for group in grouped_cdnas.values() {
+            group.validate_library_types(conn).await?;
+        }
 
         let cdna_ids = diesel::insert_into(cdna)
             .values(&self)

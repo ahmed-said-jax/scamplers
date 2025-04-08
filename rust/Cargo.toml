@@ -67,6 +67,7 @@ rstest = "0.24.0"
 similar = "2.7.0"
 dotenvy = { version = "0.15.7" }
 rand = "0.9.0"
+itertools = "0.14.0"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

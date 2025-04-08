@@ -1,3 +1,11 @@
-import {(AUTH_HOST, AUTH_PORT, MS_AUTH_PATH)} from '$env/static/public';
-<a href="https://{AUTH_HOST}:{AUTH_PORT}/{MS_AUTH_PATH}">login with microsoft</a
+<script>
+    import {
+        PUBLIC_AUTH_HOST,
+        PUBLIC_AUTH_PORT,
+        PUBLIC_MS_AUTH_PATH,
+    } from "$env/static/public";
+</script>
+
+<a href="https://{PUBLIC_AUTH_HOST}:{PUBLIC_AUTH_PORT}/{PUBLIC_MS_AUTH_PATH}"
+    >login with microsoft</a
 >

@@ -10,14 +10,10 @@ create table person (
     hashed_api_key hashed_key unique
 );
 
-grant insert (name, email, institution_id, ms_user_id) on person to auth_user;
+grant insert (name, email, institution_id, ms_user_id) on person to login_user;
 
 grant
-update (name, email, institution_id) on person to auth_user;
-
-grant
-select
-    (id) on person to auth_user;
+update (name, email, institution_id) on person to login_user;
 
 grant
 select

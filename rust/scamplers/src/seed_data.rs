@@ -31,7 +31,6 @@ use crate::{
 
 #[derive(Deserialize, Clone, Validate)]
 struct NewAdmin {
-    #[serde(flatten)]
     #[garde(dive)]
     person: NewPerson,
     #[garde(skip)]

@@ -42,13 +42,13 @@ services:
       target: final
     ports:
       - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
-    healthcheck:
-      test: curl --fail-with-body http://$(cat /run/secrets/app_host):$(cat /run/secrets/app_port))/health || exit 1
-      interval: 60s
-      start_period: 5s
-      start_interval: 1s
-      timeout: 1s
-      retries: 5
+    # healthcheck:
+    #   test: [CMD, curl, "http://${SCAMPLERS_APP_HOST}:${SCAMPLERS_APP_PORT}/health"]
+    #   interval: 5s
+    #   start_period: 5s
+    #   start_interval: 1s
+    #   timeout: 1s
+    #   retries: 5
     secrets:
       - source: db_root_user
         uid: "10001"
@@ -91,7 +91,7 @@ services:
       context: python/scamplers-auth
       target: final
     depends_on:
-      scamplers:
+      db:
         condition: service_healthy
     ports:
       - ${SCAMPLERS_AUTH_PORT}:${SCAMPLERS_AUTH_PORT}

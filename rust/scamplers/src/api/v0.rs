@@ -31,7 +31,7 @@ pub(super) fn router() -> Router<AppState2> {
         .route("/people", get(by_filter::<Person>))
         .route("/people/{person_id}", get(by_id::<Person>))
         .route("/session", post(new_session))
-        .route("/api-key", post(update::<GrantApiAccess>))
+        .route("/api-key", post(new_api_key))
         .route("/labs", get(by_filter::<Lab>).post(new::<Vec<NewLab>>))
         .route("/labs/{lab_id}", get(by_id::<Lab>))
         .route("/labs/{lab_id}/members", get(by_relationship::<LabId, Person>))
@@ -52,7 +52,12 @@ mod handlers {
         AppState2,
         api::{self, ValidJson},
         auth::{AuthService, Key, UserId},
-        db::{self, Create, person::NewPerson, set_transaction_user, web_session::NewSession},
+        db::{
+            self, Create, Update,
+            person::{GrantApiAccess, NewPerson},
+            set_transaction_user,
+            web_session::NewSession,
+        },
     };
 
     // These handlers are extremely repetitive. Surely there's a good way to fix that
@@ -203,10 +208,31 @@ mod handlers {
 
         let mut conn = app_state.db_conn().await?;
 
-        let user_id = session.create(&mut conn).await?;
+        session.create(&mut conn).await?;
 
-        let response = json!({"user_id": user_id, "session_id": session_id});
+        let response = json!({"session_id": session_id});
 
         Ok(ValidJson(response))
+    }
+
+    #[axum::debug_handler]
+    pub async fn new_api_key(
+        UserId(user_id): UserId,
+        State(app_state): State<AppState2>,
+        ValidJson(_): ValidJson<()>,
+    ) -> api::Result<Key> {
+        let api_key = Key::new();
+        let hashed_api_key = api_key.hash();
+
+        let mut db_conn = app_state.db_conn().await?;
+
+        let grant = GrantApiAccess {
+            id: user_id,
+            hashed_api_key,
+        };
+
+        grant.update(&mut db_conn).await?;
+
+        Ok(api_key)
     }
 }

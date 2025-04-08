@@ -43,7 +43,8 @@ strum = { workspace = true }
 heck = { workspace = true }
 scraper = { workspace = true }
 dotenvy = { workspace = true }
-rand = {workspace = true}
+rand = { workspace = true }
+itertools = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
