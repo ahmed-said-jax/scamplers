@@ -234,7 +234,14 @@ async fn authenticate(
         return err;
     }
 
-    if let AppState2::Dev { user_id, .. } = &app_state {
+    if let AppState2::Dev { .. } = &app_state {
+        return next.run(request).await;
+    }
+
+    if request.uri().path().contains("/web/auth") {
+        request
+            .headers_mut()
+            .insert(USER_ID_HEADER, Uuid::nil().to_string().parse().unwrap());
         return next.run(request).await;
     }
 
@@ -252,7 +259,7 @@ async fn authenticate(
     let user_id = match result {
         Ok(UserId(user_id)) => user_id,
         Err(db::Error::RecordNotFound) => {
-            return err.into_response();
+            return err;
         }
         Err(_) => {
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
