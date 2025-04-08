@@ -24,7 +24,7 @@ FROM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
-RUN apk add --no-cache clang lld musl-dev git
+RUN apk add --no-cache clang lld musl-dev git curl
 
 ENV IN_DOCKER="true"
 

@@ -19,7 +19,7 @@ pub struct NewSession<'a> {
 }
 
 impl Create for NewSession<'_> {
-    type Returns = ();
+    type Returns = Uuid;
 
     async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::session;
@@ -32,6 +32,6 @@ impl Create for NewSession<'_> {
 
         diesel::insert_into(session::table).values(self).execute(conn).await?;
 
-        Ok(())
+        Ok(user_id)
     }
 }

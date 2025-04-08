@@ -1,1 +1,3 @@
-<a href="http://localhost:8001/auth/microsoft">login with microsoft</a>
+import {(AUTH_HOST, AUTH_PORT, MS_AUTH_PATH)} from '$env/static/public';
+<a href="https://{AUTH_HOST}:{AUTH_PORT}/{MS_AUTH_PATH}">login with microsoft</a
+>

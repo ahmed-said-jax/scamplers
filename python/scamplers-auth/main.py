@@ -16,6 +16,7 @@ import msal
 import asyncpg
 from datetime import datetime, timedelta
 import httpx
+from types import new_class
 
 class ConfigContainer(sanic.Config):
     class Config(BaseSettings):
@@ -31,6 +32,7 @@ class ConfigContainer(sanic.Config):
         auth_port: int
         app_host: str
         app_port: str
+        new_session_url: str = ""
         ms_auth_path: str
         ms_auth_client_id: str
         ms_auth_client_credential: str
@@ -56,6 +58,7 @@ class ConfigContainer(sanic.Config):
     inner: Config = Config() # type: ignore
 
 
+
 class Context:
     ms_auth_client: msal.ConfidentialClientApplication
     db_pool: asyncpg.Pool
@@ -63,6 +66,8 @@ class Context:
 
 
 config = ConfigContainer()  # type: ignore
+inner_config = config.inner
+config.inner.new_session_url = f"https://{inner_config.app_host}:{inner_config.app_port}/api/session"
 
 type App = Sanic[ConfigContainer, type[Context]]
 app: App = Sanic("scamplers-auth", config=config, ctx=Context)
@@ -135,8 +140,7 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
 
     db_pool = request.app.ctx.db_pool
     http_client = request.app.ctx.http_client
-    app_config = request.app.config.inner
-    new_session_url = f"{app_config.app_port}:{app_config.app_port}/api/session"
+    new_session_url = request.app.config.inner.new_session_url
 
     async with db_pool.acquire() as conn:
         auth_flow = await conn.fetchrow("select flow, redirected_from from ms_auth_flow where state = $1", received_auth_flow["state"][0])
@@ -155,10 +159,12 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
         user["ms_user_id"] = UUID(user["oid"])
 
         result = await http_client.post(new_session_url, json=user)
-        session_id = result.json()["session_id"]
+        data = result.json()
 
         response = redirect(auth_flow["redirected_from"])
-        response.add_cookie("SESSION", session_id, samesite="lax", httponly=True)
+        for cookie_name, key, httponly in [("SESSION", "session_id", True), ("SCAMPLERS_USER_ID", "user_id", False)]:
+            if value := data.get(key):
+                response.add_cookie(cookie_name, value, samesite="lax", httponly=httponly)
 
         return response
 

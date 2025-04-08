@@ -8,13 +8,16 @@
 
 ARG NODE_VERSION=23.11
 
+ARG AUTH_HOST
+ARG AUTH_PORT
+ARG MS_AUTH_PATH
+
 ################################################################################
 # Use node image for base image for all stages.
 FROM node:${NODE_VERSION}-alpine as base
 
 # Set working directory for all build stages.
 WORKDIR /usr/src/app
-
 
 ################################################################################
 # Create a stage for installing production dependecies.
@@ -32,6 +35,10 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 ################################################################################
 # Create a stage for building the application.
 FROM deps as build
+
+ENV AUTH_HOST=${AUTH_HOST}
+ENV AUTH_PORT=${AUTH_HOST}
+ENV MS_AUTH_PATH=${MS_AUTH_PATH}
 
 # Download additional development dependencies before building, as some projects require
 # "devDependencies" to be installed to build. If you don't need this, remove this step.

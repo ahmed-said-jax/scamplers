@@ -26,6 +26,9 @@ services:
       context: typescript/scamplers-web
       args:
         NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
+        AUTH_HOST: ${SCAMPLERS_AUTH_HOST}
+        AUTH_PORT: ${SCAMPLERS_AUTH_PORT}
+        MS_AUTH_PATH: ${SCAMPLERS_MS_AUTH_PATH}
       target: build
     volumes:
       - scamplers-web_build:/opt/scamplers-web
@@ -40,10 +43,7 @@ services:
     ports:
       - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
     healthcheck:
-      test:
-        - CMD
-        - curl
-        - http://localhost:8000/
+      test: curl --fail-with-body http://$(cat /run/secrets/app_host):$(cat /run/secrets/app_port))/health || exit 1
       interval: 60s
       start_period: 5s
       start_interval: 1s

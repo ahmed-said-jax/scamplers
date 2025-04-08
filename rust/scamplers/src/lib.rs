@@ -278,7 +278,9 @@ async fn run_migrations(
 fn app(app_state: AppState2) -> Router {
     use AppState2::*;
 
-    let router = Router::new().layer(TraceLayer::new_for_http());
+    let router = Router::new()
+        .layer(TraceLayer::new_for_http())
+        .route("/health", get(async || ()));
 
     let api_router = match &app_state {
         Dev { .. } => api::router(),

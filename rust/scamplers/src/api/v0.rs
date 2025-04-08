@@ -31,7 +31,7 @@ pub(super) fn router() -> Router<AppState2> {
         .route("/people", get(by_filter::<Person>))
         .route("/people/{person_id}", get(by_id::<Person>))
         .route("/session", post(new_session))
-        .route("/api_key", post(update::<GrantApiAccess>))
+        .route("/api-key", post(update::<GrantApiAccess>))
         .route("/labs", get(by_filter::<Lab>).post(new::<Vec<NewLab>>))
         .route("/labs/{lab_id}", get(by_id::<Lab>))
         .route("/labs/{lab_id}/members", get(by_relationship::<LabId, Person>))
@@ -203,8 +203,10 @@ mod handlers {
 
         let mut conn = app_state.db_conn().await?;
 
-        session.create(&mut conn).await?;
+        let user_id = session.create(&mut conn).await?;
 
-        Ok(ValidJson(json!({"session_id": session_id})))
+        let response = json!({"user_id": user_id, "session_id": session_id});
+
+        Ok(ValidJson(response))
     }
 }

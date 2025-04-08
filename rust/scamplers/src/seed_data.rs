@@ -31,6 +31,7 @@ use crate::{
 
 #[derive(Deserialize, Clone, Validate)]
 struct NewAdmin {
+    #[serde(flatten)]
     #[garde(dive)]
     person: NewPerson,
     #[garde(skip)]
@@ -54,25 +55,14 @@ impl Create for NewAdmin {
             .await?;
 
         person.institution_id = institution_id;
+        person.roles.push(UserRole::AppAdmin);
 
         let result = person.create(conn).await;
 
         match result {
-            Ok(admin_id) => {
-                diesel::select(create_user_if_not_exists(
-                    admin_id.to_string(),
-                    vec![UserRole::AppAdmin],
-                ))
-                .execute(conn)
-                .await?;
-            }
-            Err(db::Error::DuplicateRecord { .. }) => (),
-            Err(err) => {
-                return Err(err);
-            }
+            Ok(_) | Err(db::Error::DuplicateRecord { .. }) => Ok(()),
+            Err(err) => Err(err),
         }
-
-        Ok(())
     }
 }
 
