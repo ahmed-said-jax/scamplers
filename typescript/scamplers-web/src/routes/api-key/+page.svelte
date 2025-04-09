@@ -2,12 +2,12 @@
     let api_key: string | null = $state(null);
 
     async function generate_api_key() {
-        const response = await fetch("/api/api-key", {
+        const response = await fetch("/web/api/api-key", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
         });
 
-        api_key = await response.text();
+        let result = await response.json();
+        api_key = result.api_key;
     }
 </script>
 

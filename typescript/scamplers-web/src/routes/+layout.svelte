@@ -6,7 +6,7 @@
 
 <nav>
     <a href="/">Home</a>
-    <a href="/api-key">API Key</a>
+    <a href="/api-key">Generate API Key</a>
 </nav>
 
 {@render children()}

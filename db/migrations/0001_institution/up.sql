@@ -8,6 +8,10 @@ create table institution (
 
 grant
 select
-    (id, ms_tenant_id) on institution to auth_user;
+    on institution to auth_user;
+
+grant
+select
+    on institution to login_user;
 
 grant insert on institution to app_admin;

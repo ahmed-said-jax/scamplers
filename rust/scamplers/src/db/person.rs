@@ -89,36 +89,6 @@ pub struct NewPerson {
     pub roles: Vec<UserRole>,
 }
 
-impl Create for &NewPerson {
-    type Returns = Uuid;
-
-    async fn create(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        use person::dsl::{id, institution_id as institution_id_col, ms_user_id};
-
-        let NewPerson {
-            name,
-            email,
-            institution_id,
-            ..
-        } = self;
-
-        let inserted_id = diesel::insert_into(person::table)
-            .values(self)
-            .on_conflict(ms_user_id)
-            .do_update()
-            .set((
-                name_col.eq(name),
-                email_col.eq(email),
-                institution_id_col.eq(institution_id),
-            ))
-            .returning(id)
-            .get_result(conn)
-            .await?;
-
-        Ok(inserted_id)
-    }
-}
-
 impl Create for Vec<NewPerson> {
     type Returns = Vec<Person>;
 
@@ -150,6 +120,63 @@ impl Create for Vec<NewPerson> {
         let inserted_people = Person::fetch_many(&filter, conn).await?;
 
         Ok(inserted_people)
+    }
+}
+
+impl NewPerson {
+    pub async fn create_from_ms_login(&self, conn: &mut AsyncPgConnection) -> super::Result<Uuid> {
+        use crate::schema::person::dsl::*;
+
+        let result = diesel::insert_into(person)
+            .values(self)
+            .on_conflict(ms_user_id)
+            .do_update()
+            .set((
+                name.eq(&self.name),
+                email.eq(&self.email),
+                institution_id.eq(&self.institution_id),
+            ))
+            .returning(id)
+            .get_result(conn)
+            .await;
+
+        let Err(err) = result else {
+            return Ok(result?);
+        };
+
+        let err = super::Error::from(err);
+
+        let new_id = match err {
+            super::Error::DuplicateRecord { ref field, .. } => {
+                let Some(field) = field else {
+                    return Err(err);
+                };
+                if field != "email" {
+                    return Err(err);
+                }
+
+                let p = Person::fetch_many(
+                    &PersonQuery {
+                        email: Some(self.email.clone()),
+                        ..Default::default()
+                    },
+                    conn,
+                )
+                .await?;
+                let p = &p[0];
+
+                p.stub.id
+            }
+            _ => {
+                return Err(err);
+            }
+        };
+
+        diesel::select(create_user_if_not_exists(new_id.to_string(), &self.roles))
+            .execute(conn)
+            .await?;
+
+        Ok(new_id)
     }
 }
 

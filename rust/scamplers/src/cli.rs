@@ -8,33 +8,33 @@ use crate::{auth, seed_data::SeedData};
 
 #[derive(Args)]
 pub struct Config {
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_ROOT_USER")]
     db_root_user: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_ROOT_PASSWORD")]
     db_root_password: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_LOGIN_USER_PASSWORD")]
     db_login_user_password: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_AUTH_USER_PASSWORD")]
     db_auth_user_password: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_HOST")]
     db_host: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_PORT")]
     db_port: u16,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_DB_NAME")]
     db_name: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_AUTH_HOST")]
     auth_host: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_AUTH_PORT")]
     auth_port: u16,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_MS_AUTH_PATH")]
     ms_auth_path: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_APP_HOST")]
     app_host: String,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_APP_PORT")]
     app_port: u16,
     #[arg(skip)]
     seed_data: Option<SeedData>,
-    #[arg(long, env)]
+    #[arg(long, env = "SCAMPLERS_SEED_DATA_PATH")]
     seed_data_path: Option<Utf8PathBuf>,
 }
 impl Config {
@@ -61,17 +61,6 @@ impl Config {
         };
 
         Ok(config)
-    }
-
-    pub fn ms_auth_address(&self) -> String {
-        let Self {
-            auth_host,
-            auth_port,
-            ms_auth_path,
-            ..
-        } = self;
-
-        format!("{auth_host}:{auth_port}/{ms_auth_path}")
     }
 
     pub fn app_address(&self) -> String {

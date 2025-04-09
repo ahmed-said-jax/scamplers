@@ -5,11 +5,11 @@ create unlogged table session (
     user_id uuid references person on delete cascade on update restrict not null
 );
 
-grant insert (hashed_id, user_id) on session to auth_user;
-
 grant
 select
     on session to login_user;
+
+grant insert on session to login_user;
 
 create unlogged table ms_auth_flow (
     state text primary key,
@@ -20,6 +20,8 @@ create unlogged table ms_auth_flow (
 
 grant
 select
-    (state, flow, redirected_from) on ms_auth_flow to auth_user;
+    on ms_auth_flow to auth_user;
 
 grant insert on ms_auth_flow to auth_user;
+
+grant delete on ms_auth_flow to auth_user;

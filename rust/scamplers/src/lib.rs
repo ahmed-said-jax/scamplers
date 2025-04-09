@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use anyhow::{Context, anyhow};
 use auth::{authenticate_api_request, authenticate_browser_request};
-use axum::{Router, ServiceExt, middleware, routing::get};
+use axum::{
+    Router, ServiceExt, middleware,
+    routing::{get, post},
+};
 use camino::Utf8PathBuf;
 use cli::Config;
 use diesel_async::{
@@ -13,6 +16,7 @@ use diesel_async::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use seed_data::SeedData;
+use session::new_session;
 use testcontainers_modules::{
     postgres::Postgres,
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
@@ -29,6 +33,7 @@ pub mod cli;
 pub mod db;
 pub mod schema;
 mod seed_data;
+mod session;
 mod utils;
 mod web;
 
@@ -101,12 +106,12 @@ fn initialize_logging(log_dir: Option<Utf8PathBuf>) {
     use tracing_subscriber::{filter::Targets, prelude::*};
 
     let log_layer = tracing_subscriber::fmt::layer();
-    let dev_test_log_filter = Targets::new()
-        .with_target(env!("CARGO_PKG_NAME"), Level::DEBUG)
-        .with_target("tower_http", Level::DEBUG);
 
     match log_dir {
         None => {
+            let dev_test_log_filter = Targets::new()
+                .with_target(env!("CARGO_PKG_NAME"), Level::DEBUG)
+                .with_target("tower_http", Level::TRACE);
             let log_layer = log_layer.pretty().with_filter(dev_test_log_filter);
 
             tracing_subscriber::registry().with(log_layer).init();
@@ -279,8 +284,8 @@ fn app(app_state: AppState2) -> Router {
     use AppState2::*;
 
     let router = Router::new()
-        .layer(TraceLayer::new_for_http())
-        .route("/health", get(async || ()));
+        .route("/health", get(async || ()))
+        .route("/session", post(new_session));
 
     let api_router = match &app_state {
         Dev { .. } => api::router(),
@@ -290,7 +295,7 @@ fn app(app_state: AppState2) -> Router {
         )),
     };
 
-    let mut router = router.merge(api_router);
+    let mut router = router.nest("/api", api_router);
 
     if matches!(&app_state, Prod { .. }) {
         // Create the frontend router, which just serves a static file directory, and add an authentication layer
@@ -300,7 +305,7 @@ fn app(app_state: AppState2) -> Router {
             .service(ServeDir::new("/opt/scamplers-web"));
 
         // Nest the just-created service
-        router = router.nest_service("/web", frontend_service);
+        router = router.fallback_service(frontend_service);
 
         // The frontend also calls the API, but from a different route (because the authentication is different). Nest that too
         router = router.nest("/web/api", api::router().layer(auth_layer));

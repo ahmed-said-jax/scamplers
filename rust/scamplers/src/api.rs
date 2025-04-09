@@ -31,10 +31,10 @@ pub fn router() -> Router<AppState2> {
     // In theory, we should be able to inspect the header and route the request
     // based on the API version set in the header, but I don't know how to do that
     // yet
-    Router::new().nest("/api", v0::router())
+    v0::router()
 }
 
-struct ValidJson<T>(T);
+pub struct ValidJson<T>(pub T);
 impl<S, T> FromRequest<S> for ValidJson<T>
 where
     axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,

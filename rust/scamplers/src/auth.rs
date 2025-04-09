@@ -50,6 +50,11 @@ impl Key {
         Self::default()
     }
 
+    fn prefix(&self) -> &str {
+        let Self(key) = self;
+        &key[..KEY_PREFIX_LENGTH]
+    }
+
     pub fn hash(&self) -> HashedKey<&str> {
         let Self(key) = self;
 
@@ -62,8 +67,25 @@ impl Key {
         let hash = argon2.hash_password(key.as_bytes(), &salt).unwrap().to_string();
 
         HashedKey {
-            prefix: &key[..KEY_PREFIX_LENGTH],
+            prefix: self.prefix(),
             hash,
+        }
+    }
+
+    fn is_same_hash(&self, other: &HashedKey<String>) -> bool {
+        let argon2 = Argon2::default();
+
+        let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
+            tracing::error!(invalid_hash = other.as_value());
+            return false;
+        };
+
+        tracing::debug!("{:?}", argon2.verify_password(self.as_str().as_bytes(), &parsed_hash));
+
+        if argon2.verify_password(self.as_str().as_bytes(), &parsed_hash).is_ok() {
+            true
+        } else {
+            false
         }
     }
 
@@ -93,30 +115,15 @@ impl Debug for Key {
         self.hash().fmt(f)
     }
 }
-impl IntoResponse for Key {
-    fn into_response(self) -> Response {
-        let Self(inner) = self;
-        inner.into_response()
-    }
-}
 
-#[derive(AsExpression, Debug, FromSqlRow, Deserialize)]
+#[derive(AsExpression, Debug, FromSqlRow, Deserialize, Valuable)]
 #[diesel(sql_type = crate::schema::sql_types::HashedKey)]
-pub struct HashedKey<Str: AsExpression<diesel::sql_types::Text>>
+pub struct HashedKey<Str: AsExpression<diesel::sql_types::Text> + Valuable>
 where
     for<'a> &'a Str: AsExpression<diesel::sql_types::Text>,
 {
     prefix: Str,
     hash: String,
-}
-
-impl Default for HashedKey<&str> {
-    fn default() -> Self {
-        Self {
-            prefix: Default::default(),
-            hash: Default::default(),
-        }
-    }
 }
 
 impl ToSql<crate::schema::sql_types::HashedKey, Pg> for HashedKey<&str> {
@@ -135,30 +142,12 @@ impl FromSql<crate::schema::sql_types::HashedKey, Pg> for HashedKey<String> {
     }
 }
 
-impl HashedKey<&str> {
-    fn is_same_hash(&self, other: &HashedKey<String>) -> bool {
-        let argon2 = Argon2::default();
-        let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
-            return false;
-        };
-
-        if argon2.verify_password(self.hash.as_bytes(), &parsed_hash).is_ok() {
-            true
-        } else {
-            false
-        }
-    }
-}
-
 pub struct UserId(pub Uuid);
 impl UserId {
     async fn fetch_by_api_key(api_key: &Key, conn: &mut AsyncPgConnection) -> db::Result<Self> {
         use crate::schema::person::dsl::{hashed_api_key, id, person};
 
-        let hashed_input_key = api_key.hash();
-
-        let filter_query =
-            diesel::dsl::sql::<Bool>("(hashed_api_key).prefix = ").bind::<Text, _>(hashed_input_key.prefix);
+        let filter_query = diesel::dsl::sql::<Bool>("(hashed_api_key).prefix = ").bind::<Text, _>(api_key.prefix());
 
         let (user_id, found_api_key) = person
             .filter(filter_query)
@@ -166,7 +155,7 @@ impl UserId {
             .first(conn)
             .await?;
 
-        if !hashed_input_key.is_same_hash(&found_api_key) {
+        if !api_key.is_same_hash(&found_api_key) {
             return Err(db::Error::RecordNotFound);
         }
 
@@ -179,17 +168,18 @@ impl UserId {
             session::dsl::{hashed_id as hashed_session_id, session},
         };
 
-        let hashed_input_key = session_id.hash();
-        let filter_query = diesel::dsl::sql::<Bool>("(hashed_id).prefix = ").bind::<Text, _>(hashed_input_key.prefix);
+        let filter_query = diesel::dsl::sql::<Bool>("(hashed_id).prefix = ").bind::<Text, _>(session_id.prefix());
 
-        let (user_id, found_session_id) = session
+        let (user_id, found_session_id): (_, HashedKey<String>) = session
             .inner_join(person)
             .filter(filter_query)
             .select((person_id, hashed_session_id))
             .first(conn)
             .await?;
 
-        if !hashed_input_key.is_same_hash(&found_session_id) {
+        tracing::debug!(found_session = found_session_id.as_value());
+
+        if !session_id.is_same_hash(&found_session_id) {
             return Err(db::Error::RecordNotFound);
         }
 
@@ -211,7 +201,12 @@ impl FromRequestParts<AppState2> for UserId {
             return Err(Error::NoUserId);
         };
 
-        let user_id = Uuid::from_slice(user_id.as_bytes()).map_err(|_| Error::InvalidUserId)?;
+        let r = Uuid::from_slice(user_id.as_bytes());
+        tracing::info!("from bytes: {:?}", r);
+        let r = Uuid::from_str(user_id.to_str().unwrap());
+        tracing::info!("from str: {:?}", r);
+
+        let user_id = Uuid::from_str(user_id.to_str().unwrap()).map_err(|_| Error::InvalidUserId)?;
 
         Ok(Self(user_id))
     }
@@ -231,17 +226,11 @@ async fn authenticate(
     err: Response,
 ) -> Response {
     if request.headers().contains_key(USER_ID_HEADER) {
+        tracing::error!("found this");
         return err;
     }
 
     if let AppState2::Dev { .. } = &app_state {
-        return next.run(request).await;
-    }
-
-    if request.uri().path().contains("/web/auth") {
-        request
-            .headers_mut()
-            .insert(USER_ID_HEADER, Uuid::nil().to_string().parse().unwrap());
         return next.run(request).await;
     }
 
@@ -293,15 +282,24 @@ pub async fn authenticate_browser_request(
     next: Next,
 ) -> Response {
     let redirected_from = request.uri().to_string();
+
+    if redirected_from.contains("/auth") {
+        return next.run(request).await;
+    }
+
     let err = Error::InvalidSessionId { redirected_from }.into_response();
 
     let Ok(cookies) = request.extract_parts::<TypedHeader<headers::Cookie>>().await else {
+        tracing::error!("couldnt extract cookies");
         return err;
     };
 
     let Some(session_id) = cookies.get("SESSION") else {
+        tracing::error!("no session cookie");
         return err;
     };
+
+    tracing::error!(cookie_found = session_id.as_value());
 
     authenticate(&app_state, request, next, session_id, RequestType::Browser, err).await
 }
@@ -361,7 +359,7 @@ impl IntoResponse for Error {
 
         match self {
             Self::InvalidSessionId { redirected_from } => {
-                Redirect::temporary(&format!("/auth?redirected_from={redirected_from}")).into_response()
+                Redirect::temporary(&format!("/auth.html?redirected_from={redirected_from}")).into_response()
             }
             Self::InvalidApiKey => (
                 StatusCode::UNAUTHORIZED,

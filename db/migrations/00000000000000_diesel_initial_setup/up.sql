@@ -78,7 +78,7 @@ create function create_user_if_not_exists(
 ) returns void language plpgsql volatile strict as $$
     begin
         if not user_exists(user_id) then
-            execute format('create role %I', user_id);
+            execute format('create user %I', user_id);
         end if;
         perform grant_roles_to_user(user_id, roles);
     end;
@@ -94,17 +94,14 @@ create function get_user_roles(
     end;
 $$;
 
-select create_user_if_not_exists('app_admin', '{}');
-select create_user_if_not_exists('biology_staff', '{}');
-select create_user_if_not_exists('computational_staff', '{}');
+create role app_admin;
+create role biology_staff;
+create role computational_staff;
 
-select create_user_if_not_exists('login_user', '{}');
-alter user login_user with login;
-
-select create_user_if_not_exists('auth_user', '{}');
-alter user auth_user with login;
+create user login_user with createrole;
+create user auth_user;
 
 create type hashed_key as (
-    prefix char(8),
+    prefix text,
     hash text
 );

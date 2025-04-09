@@ -21,9 +21,10 @@ from types import new_class
 class ConfigContainer(sanic.Config):
     class Config(BaseSettings):
         model_config = SettingsConfigDict(
-            cli_parse_args=True, secrets_dir="/run/secrets", env_file=".env"
+            cli_parse_args=True, secrets_dir="/run/secrets", env_file=".env", env_prefix="SCAMPLERS_", extra="ignore"
         )
 
+        debug: bool = False
         db_host: str
         db_port: int
         db_auth_user_password: str
@@ -36,7 +37,7 @@ class ConfigContainer(sanic.Config):
         ms_auth_path: str
         ms_auth_client_id: str
         ms_auth_client_credential: str
-        ms_auth_redirect_url: str
+        ms_auth_redirect_path: str
 
         @classmethod
         def settings_customise_sources(
@@ -49,7 +50,6 @@ class ConfigContainer(sanic.Config):
         ) -> tuple[PydanticBaseSettingsSource, ...]:
             return (
                 init_settings,
-                CliSettingsSource(settings_cls),
                 env_settings,
                 dotenv_settings,
                 file_secret_settings,
@@ -62,12 +62,12 @@ class ConfigContainer(sanic.Config):
 class Context:
     ms_auth_client: msal.ConfidentialClientApplication
     db_pool: asyncpg.Pool
-    http_client: httpx.AsyncClient
+    http_client: httpx.Client
 
 
 config = ConfigContainer()  # type: ignore
 inner_config = config.inner
-config.inner.new_session_url = f"https://{inner_config.app_host}:{inner_config.app_port}/api/session"
+config.inner.new_session_url = f"http://{inner_config.app_host}:{inner_config.app_port}/session"
 
 type App = Sanic[ConfigContainer, type[Context]]
 app: App = Sanic("scamplers-auth", config=config, ctx=Context)
@@ -99,7 +99,7 @@ async def attach_db_pool(app: App, loop):
 async def attach_http_client(app: App, loop):
     auth = httpx.BasicAuth(username="auth_user", password=app.config.inner.db_auth_user_password)
 
-    app.ctx.http_client = httpx.AsyncClient(http2=True, auth=auth)
+    app.ctx.http_client = httpx.Client(http2=True, auth=auth)
 
 @app.after_server_stop
 async def close_db_connection(app: App, loop):
@@ -107,20 +107,22 @@ async def close_db_connection(app: App, loop):
 
 @app.after_server_stop
 async def close_http_client(app: App, loop):
-    await app.ctx.http_client.aclose()
+    app.ctx.http_client.close()
 
 type Request = sanic.Request[App]
 
 @app.route(app.config.inner.ms_auth_path)
 async def initiate_ms_login(request: Request) -> sanic.HTTPResponse:
     auth_client = request.app.ctx.ms_auth_client
-    redirect_uri = request.app.config.inner.ms_auth_redirect_url
+
+    app_config = request.app.config.inner
+    redirect_uri = f"http://{app_config.auth_host}:{app_config.auth_port}{app_config.ms_auth_redirect_path}"
 
     auth_flow = auth_client.initiate_auth_code_flow(
         scopes=["email"], redirect_uri=redirect_uri
     )
 
-    redirected_from = request.args.get("redirected_from", "/")
+    redirected_from = f"{request.args.get("redirected_from", "/")}"
 
     db_pool = request.app.ctx.db_pool
     await db_pool.execute(
@@ -134,43 +136,50 @@ async def initiate_ms_login(request: Request) -> sanic.HTTPResponse:
     return redirect(auth_flow["auth_uri"])
 
 
-@app.route("/auth/microsoft-redirect")
+@app.route(app.config.inner.ms_auth_redirect_path)
 async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
     received_auth_flow = request.args
 
     db_pool = request.app.ctx.db_pool
     http_client = request.app.ctx.http_client
-    new_session_url = request.app.config.inner.new_session_url
+    auth_client = app.ctx.ms_auth_client
+
+    app_config = request.app.config.inner
+    new_session_url = app_config.new_session_url
+    app_base_url = f"http://{app_config.app_host}:{app_config.app_port}"
 
     async with db_pool.acquire() as conn:
-        auth_flow = await conn.fetchrow("select flow, redirected_from from ms_auth_flow where state = $1", received_auth_flow["state"][0])
-        await conn.execute("delete from ms_auth_flow where state = $1", received_auth_flow["state"][0])
+        async with conn.transaction():
+            auth_flow = await conn.fetchrow("select flow, redirected_from from ms_auth_flow where state = $1", received_auth_flow["state"][0])
+            await conn.execute("delete from ms_auth_flow where state = $1", received_auth_flow["state"][0])
 
-        stored_auth_flow = json.loads(auth_flow["flow"])
+            stored_auth_flow = json.loads(auth_flow["flow"])
 
-        auth_client = app.ctx.ms_auth_client
-        user = auth_client.acquire_token_by_auth_code_flow(
-            stored_auth_flow, received_auth_flow
-        )["id_token_claims"]
+            user = auth_client.acquire_token_by_auth_code_flow(
+                stored_auth_flow, received_auth_flow
+            )["id_token_claims"]
 
-        institution_id: UUID = await conn.fetchval("select id from institution where ms_tenant_id = $1", UUID(user["tid"]))
+            institution_id: str = await conn.fetchval("select id::text from institution where ms_tenant_id = $1", UUID(user["tid"]))
 
-        user["institution_id"] = institution_id
-        user["ms_user_id"] = UUID(user["oid"])
+    user["institution_id"] = institution_id
+    user["ms_user_id"] = user["oid"]
 
-        result = await http_client.post(new_session_url, json=user)
-        data = result.json()
+    result = http_client.post(new_session_url, json=user)
+    data = result.json()
 
-        response = redirect(auth_flow["redirected_from"])
-        for cookie_name, key, httponly in [("SESSION", "session_id", True)]:
-            if value := data.get(key):
-                response.add_cookie(cookie_name, value, samesite="lax", httponly=httponly)
+    if "session_id" not in data:
+        return text("something went wrong", status=500)
 
-        return response
+    response = redirect(app_base_url + auth_flow["redirected_from"])
+    for cookie_name, key, httponly in [("SESSION", "session_id", True)]:
+        if value := data.get(key):
+            response.add_cookie(cookie_name, value, httponly=httponly)
+
+    return response
 
 if __name__ == "__main__":
     config = app.config.inner
     host = config.auth_host
     port = config.auth_port
 
-    app.run(host=host, port=port)
+    app.run(host=host, port=port, debug=config.debug)

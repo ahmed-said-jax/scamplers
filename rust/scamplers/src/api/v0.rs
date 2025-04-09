@@ -30,7 +30,6 @@ pub(super) fn router() -> Router<AppState2> {
         .route("/institutions/{institution_id}", get(by_id::<Institution>))
         .route("/people", get(by_filter::<Person>))
         .route("/people/{person_id}", get(by_id::<Person>))
-        .route("/session", post(new_session))
         .route("/api-key", post(new_api_key))
         .route("/labs", get(by_filter::<Lab>).post(new::<Vec<NewLab>>))
         .route("/labs/{lab_id}", get(by_id::<Lab>))
@@ -190,37 +189,11 @@ mod handlers {
         Ok(ValidJson(updated))
     }
 
-    pub async fn new_session(
-        _auth_service: AuthService,
-        State(app_state): State<AppState2>,
-        ValidJson(person): ValidJson<NewPerson>,
-    ) -> api::Result<ValidJson<serde_json::Value>> {
-        tracing::debug!(deserialized_person = person.as_value());
-
-        let session_id = Key::new();
-        let hashed_id = session_id.hash();
-
-        let session = NewSession {
-            hashed_id,
-            person,
-            user_id: Uuid::default(),
-        };
-
-        let mut conn = app_state.db_conn().await?;
-
-        session.create(&mut conn).await?;
-
-        let response = json!({"session_id": session_id});
-
-        Ok(ValidJson(response))
-    }
-
     #[axum::debug_handler]
     pub async fn new_api_key(
         UserId(user_id): UserId,
         State(app_state): State<AppState2>,
-        ValidJson(_): ValidJson<()>,
-    ) -> api::Result<Key> {
+    ) -> api::Result<ValidJson<serde_json::Value>> {
         let api_key = Key::new();
         let hashed_api_key = api_key.hash();
 
@@ -233,6 +206,6 @@ mod handlers {
 
         grant.update(&mut db_conn).await?;
 
-        Ok(api_key)
+        Ok(ValidJson(json!({"api_key": api_key})))
     }
 }

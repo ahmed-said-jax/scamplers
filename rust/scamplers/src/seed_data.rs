@@ -56,12 +56,9 @@ impl Create for NewAdmin {
         person.institution_id = institution_id;
         person.roles.push(UserRole::AppAdmin);
 
-        let result = person.create(conn).await;
+        person.create_from_ms_login(conn).await?;
 
-        match result {
-            Ok(_) | Err(db::Error::DuplicateRecord { .. }) => Ok(()),
-            Err(err) => Err(err),
-        }
+        Ok(())
     }
 }
 
