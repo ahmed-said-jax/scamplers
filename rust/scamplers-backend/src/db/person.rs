@@ -8,7 +8,7 @@ use diesel::{
     serialize::ToSql,
     sql_types::{self},
 };
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl};
 use garde::Validate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -49,7 +49,7 @@ use crate::{
 pub enum UserRole {
     AppAdmin,
     ComputationalStaff,
-    LabStaff,
+    BiologyStaff,
     #[default]
     Unknown,
 }
@@ -180,7 +180,7 @@ impl NewPerson {
     }
 }
 
-#[derive(Identifiable, AsChangeset)]
+#[derive(Identifiable, AsChangeset, Queryable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 pub struct GrantApiAccess<'a> {
     pub id: Uuid,
@@ -190,12 +190,16 @@ impl Update for GrantApiAccess<'_> {
     type Returns = Key;
 
     async fn update(mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
+        use person::hashed_api_key as api_key_col;
+
         let key = Key::new();
         let hashed_api_key = key.hash();
 
         self.hashed_api_key = hashed_api_key;
 
-        diesel::update(person::table).set(&self).execute(conn).await?;
+        diesel::update(&self).set(&self).execute(conn).await?;
+
+        // self.save_changes(conn).await?;
 
         Ok(key)
     }

@@ -182,7 +182,10 @@ async fn create_random_data(conn: &mut AsyncPgConnection) -> anyhow::Result<()> 
             email: email.to_string(),
             orcid: None,
             institution_id: random_institution_id(),
-            roles: vec![random_enum_choice(rng.clone())],
+            roles: vec![random_enum_choice(rng.clone())]
+                .into_iter()
+                .filter(|r| *r != Default::default())
+                .collect(),
         })
         .collect();
 

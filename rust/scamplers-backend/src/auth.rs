@@ -4,7 +4,7 @@ use argon2::{
 };
 use axum::{
     RequestExt, RequestPartsExt,
-    extract::{FromRequestParts, Request, State},
+    extract::{FromRequestParts, OptionalFromRequestParts, Request, State},
     http::HeaderValue,
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
@@ -76,11 +76,8 @@ impl Key {
         let argon2 = Argon2::default();
 
         let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
-            tracing::error!(invalid_hash = other.as_value());
             return false;
         };
-
-        tracing::debug!("{:?}", argon2.verify_password(self.as_str().as_bytes(), &parsed_hash));
 
         if argon2.verify_password(self.as_str().as_bytes(), &parsed_hash).is_ok() {
             true
@@ -142,6 +139,7 @@ impl FromSql<crate::schema::sql_types::HashedKey, Pg> for HashedKey<String> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct UserId(pub Uuid);
 impl UserId {
     async fn fetch_by_api_key(api_key: &Key, conn: &mut AsyncPgConnection) -> db::Result<Self> {
@@ -177,8 +175,6 @@ impl UserId {
             .first(conn)
             .await?;
 
-        tracing::debug!(found_session = found_session_id.as_value());
-
         if !session_id.is_same_hash(&found_session_id) {
             return Err(db::Error::RecordNotFound);
         }
@@ -200,15 +196,21 @@ impl FromRequestParts<AppState2> for UserId {
         let Some(user_id) = parts.headers.get(USER_ID_HEADER) else {
             return Err(Error::NoUserId);
         };
-
-        let r = Uuid::from_slice(user_id.as_bytes());
-        tracing::info!("from bytes: {:?}", r);
-        let r = Uuid::from_str(user_id.to_str().unwrap());
-        tracing::info!("from str: {:?}", r);
-
         let user_id = Uuid::from_str(user_id.to_str().unwrap()).map_err(|_| Error::InvalidUserId)?;
 
         Ok(Self(user_id))
+    }
+}
+
+impl OptionalFromRequestParts<AppState2> for UserId {
+    type Rejection = ();
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &AppState2,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        Ok(<UserId as FromRequestParts<_>>::from_request_parts(parts, state)
+            .await
+            .ok())
     }
 }
 
@@ -226,7 +228,6 @@ async fn authenticate(
     err: Response,
 ) -> Response {
     if request.headers().contains_key(USER_ID_HEADER) {
-        tracing::error!("found this");
         return err;
     }
 
@@ -290,16 +291,12 @@ pub async fn authenticate_browser_request(
     let err = Error::InvalidSessionId { redirected_from }.into_response();
 
     let Ok(cookies) = request.extract_parts::<TypedHeader<headers::Cookie>>().await else {
-        tracing::error!("couldnt extract cookies");
         return err;
     };
 
     let Some(session_id) = cookies.get("SESSION") else {
-        tracing::error!("no session cookie");
         return err;
     };
-
-    tracing::error!(cookie_found = session_id.as_value());
 
     authenticate(&app_state, request, next, session_id, RequestType::Browser, err).await
 }

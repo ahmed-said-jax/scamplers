@@ -23,6 +23,7 @@ pub(super) fn router() -> Router<AppState2> {
 
     let router = Router::new()
         .route("/", get(|| async { Json(endpoints) }))
+        .route("/me", get(me))
         .route(
             "/institutions",
             get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>),
@@ -40,7 +41,10 @@ pub(super) fn router() -> Router<AppState2> {
 
 mod handlers {
 
-    use axum::extract::{Path, State};
+    use axum::{
+        debug_handler,
+        extract::{Path, State},
+    };
     use axum_extra::extract::Query;
     use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use serde_json::json;
@@ -52,8 +56,8 @@ mod handlers {
         api::{self, ValidJson},
         auth::{AuthService, Key, UserId},
         db::{
-            self, Create, Update,
-            person::{GrantApiAccess, NewPerson},
+            self, Create, Read, Update,
+            person::{GrantApiAccess, NewPerson, Person},
             set_transaction_user,
             web_session::NewSession,
         },
@@ -189,7 +193,6 @@ mod handlers {
         Ok(ValidJson(updated))
     }
 
-    #[axum::debug_handler]
     pub async fn new_api_key(
         UserId(user_id): UserId,
         State(app_state): State<AppState2>,
@@ -207,5 +210,33 @@ mod handlers {
         grant.update(&mut db_conn).await?;
 
         Ok(ValidJson(json!({"api_key": api_key})))
+    }
+
+    // This is kind of repetetive but it's fine for now
+    #[debug_handler]
+    pub async fn me(
+        user_id: Option<UserId>,
+        State(app_state): State<AppState2>,
+    ) -> api::Result<ValidJson<Option<Person>>> {
+        tracing::debug!(user_id = user_id.map(|UserId(u)| u.to_string()).as_value());
+
+        let Some(UserId(user_id)) = user_id else {
+            return Ok(ValidJson(None));
+        };
+
+        let mut conn = app_state.db_conn().await?;
+
+        let me = conn
+            .transaction(|conn| {
+                async move {
+                    set_transaction_user(&user_id, conn).await?;
+
+                    Person::fetch_by_id(&user_id, conn).await
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        Ok(ValidJson(Some(me)))
     }
 }

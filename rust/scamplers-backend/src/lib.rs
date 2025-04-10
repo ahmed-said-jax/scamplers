@@ -35,7 +35,6 @@ pub mod schema;
 mod seed_data;
 mod session;
 mod utils;
-mod web;
 
 pub async fn serve_dev_app(host: String, port: u16) -> anyhow::Result<()> {
     serve(None, None, Some((host, port))).await
@@ -284,6 +283,7 @@ fn app(app_state: AppState2) -> Router {
     use AppState2::*;
 
     let router = Router::new()
+        .layer(TraceLayer::new_for_http())
         .route("/health", get(async || ()))
         .route("/session", post(new_session));
 
@@ -302,13 +302,13 @@ fn app(app_state: AppState2) -> Router {
         let auth_layer = middleware::from_fn_with_state(app_state.clone(), authenticate_browser_request);
         let frontend_service = ServiceBuilder::new()
             .layer(auth_layer.clone())
-            .service(ServeDir::new("/opt/scamplers-web"));
+            .service(ServeDir::new("/opt/scamplers-frontend"));
 
         // Nest the just-created service
         router = router.fallback_service(frontend_service);
 
         // The frontend also calls the API, but from a different route (because the authentication is different). Nest that too
-        router = router.nest("/web/api", api::router().layer(auth_layer));
+        router = router.nest("/frontend/api", api::router().layer(auth_layer));
     }
 
     router.with_state(app_state)

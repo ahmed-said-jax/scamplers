@@ -21,9 +21,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  scamplers-web:
+  scamplers-frontend:
     build:
-      context: typescript/scamplers-web
+      context: typescript/scamplers-frontend
       args:
         NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
         AUTH_HOST: ${SCAMPLERS_AUTH_HOST}
@@ -32,7 +32,7 @@ services:
       target: build
     volumes:
       - scamplers-web_build:/opt/scamplers-web
-  scamplers:
+  scamplers-backend:
     build:
       args:
         ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}

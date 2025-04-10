@@ -1,5 +1,5 @@
 use clap::Parser;
-use scamplers::{
+use scamplers_backend::{
     cli::{self, Cli, Config},
     serve_dev_app, serve_prod_app,
 };

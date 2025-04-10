@@ -18,3 +18,7 @@ grant insert on person to login_user;
 
 grant
 update on person to login_user;
+
+grant
+select
+    on person to public;

@@ -59,4 +59,4 @@ COPY . .
 # Run the build script.
 RUN npm run build
 
-RUN mv build /opt/scamplers-web
+RUN mv build /opt/scamplers-frontend

@@ -167,13 +167,10 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
     result = http_client.post(new_session_url, json=user)
     data = result.json()
 
-    if "session_id" not in data:
-        return text("something went wrong", status=500)
-
     response = redirect(app_base_url + auth_flow["redirected_from"])
-    for cookie_name, key, httponly in [("SESSION", "session_id", True)]:
-        if value := data.get(key):
-            response.add_cookie(cookie_name, value, httponly=httponly)
+
+    if session_id := data.get("session_id"):
+        response.add_cookie("SESSION", session_id, httponly=True)
 
     return response
 

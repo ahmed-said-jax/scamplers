@@ -2,4 +2,4 @@
 .env
 
 # Seed Data also useful for development
-seed_data.*
+seed_data.*.json
