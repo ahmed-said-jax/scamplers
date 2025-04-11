@@ -298,6 +298,7 @@ diesel::table! {
 
     session (hashed_id) {
         hashed_id -> HashedKey,
+        csrf_token -> Uuid,
         user_id -> Uuid,
     }
 }
@@ -321,7 +322,6 @@ diesel::table! {
         type_ -> Text,
         embedded_in -> Nullable<Text>,
         preserved_with -> Nullable<Text>,
-        measurements -> Nullable<Array<Jsonb>>,
         notes -> Nullable<Array<Text>>,
     }
 }
@@ -348,7 +348,7 @@ diesel::table! {
         pooled_into_id -> Nullable<Uuid>,
         multiplexing_tag_id -> Nullable<Uuid>,
         lysis_duration_min -> Nullable<Float4>,
-        targeted_cell_recovery -> Float4,
+        target_cell_recovery -> Float4,
         target_reads_per_cell -> Int4,
         notes -> Nullable<Array<Text>>,
     }

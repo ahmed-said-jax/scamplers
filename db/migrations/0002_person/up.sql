@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table person (
-    id uuid primary key default gen_random_uuid (),
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/people/' || id) stored not null,
     name text not null,
     email text unique not null,
@@ -9,16 +9,3 @@ create table person (
     ms_user_id uuid unique,
     hashed_api_key hashed_key unique
 );
-
-grant
-select
-    on person to login_user;
-
-grant insert on person to login_user;
-
-grant
-update on person to login_user;
-
-grant
-select
-    on person to public;

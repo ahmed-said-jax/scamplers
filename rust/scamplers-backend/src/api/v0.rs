@@ -225,18 +225,6 @@ mod handlers {
         };
 
         let mut conn = app_state.db_conn().await?;
-
-        let me = conn
-            .transaction(|conn| {
-                async move {
-                    set_transaction_user(&user_id, conn).await?;
-
-                    Person::fetch_by_id(&user_id, conn).await
-                }
-                .scope_boxed()
-            })
-            .await?;
-
-        Ok(ValidJson(Some(me)))
+        Ok(ValidJson(Some(Person::fetch_by_id(&user_id, &mut conn).await?)))
     }
 }

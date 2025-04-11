@@ -5,7 +5,7 @@
 
 	let { children }: LayoutProps = $props();
 
-	let me = $state(null);
+	let me: {name: string} | null = $state(null);
 
 	onMount(async () => {
 		const response = await fetch('/frontend/api/me', { method: 'GET' });
@@ -18,8 +18,9 @@
 {#if me}
 	<nav>
 		<a href="/">Home</a>
-		<a href="/api-key">Generate API Key</a>
+		<a href="/profile">Profile</a>
 	</nav>
+	<p>Hello {me.name}</p>
 {/if}
 
 {@render children()}

@@ -1,5 +1,1 @@
-drop table dual_index_set;
-
-drop table single_index_set;
-
-drop table index_kit;
+drop table dual_index_set, single_index_set, index_kit;

@@ -9,9 +9,13 @@ create table specimen (
     type text not null,
     embedded_in text,
     preserved_with text,
-    measurements jsonb [],
     notes text []
 );
+
+create index specimen_type_idx on specimen (type);
+create index specimen_embedding_idx on specimen (embedded_in);
+create index specimen_preservation_idx on specimen (preserved_with);
+
 
 create table specimen_measurement (
     id uuid primary key default gen_random_uuid(),
@@ -20,4 +24,4 @@ create table specimen_measurement (
     data jsonb not null
 );
 
-create index idx_specimen_measurement on specimen_measurement (specimen_id);
+create index specimen_measurement_idx on specimen_measurement (specimen_id);

@@ -161,7 +161,7 @@ pub struct NewSuspension {
     pub pooled_into_id: Option<Uuid>,
     pub multiplexing_tag_id: Option<Uuid>,
     #[garde(range(min = 0.0))]
-    targeted_cell_recovery: f32,
+    target_cell_recovery: f32,
     #[garde(range(min = 0))]
     target_reads_per_cell: i32,
     #[garde(range(min = 0.0))]

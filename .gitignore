@@ -1,5 +1,7 @@
 # Environment files useful for development
-.env
+.env*
+!.env.sample
 
-# Seed Data also useful for development
+# Seed data also useful for development
 seed_data.*.json
+!seed_data.sample.json

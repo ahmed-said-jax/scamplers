@@ -356,7 +356,7 @@ impl IntoResponse for Error {
 
         match self {
             Self::InvalidSessionId { redirected_from } => {
-                Redirect::temporary(&format!("/auth.html?redirected_from={redirected_from}")).into_response()
+                Redirect::temporary(&format!("/auth?redirected_from={redirected_from}")).into_response()
             }
             Self::InvalidApiKey => (
                 StatusCode::UNAUTHORIZED,

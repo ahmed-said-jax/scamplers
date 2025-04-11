@@ -80,6 +80,8 @@ create function create_user_if_not_exists(
         if not user_exists(user_id) then
             execute format('create user %I', user_id);
         end if;
+
+        execute format('grant %I to login_user', user_id);
         perform grant_roles_to_user(user_id, roles);
     end;
 $$;

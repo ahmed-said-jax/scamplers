@@ -138,7 +138,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::HashedKey;
-@@ -304,13 +304,13 @@
+@@ -305,13 +305,13 @@
  
  diesel::table! {
      single_index_set (name) {
@@ -153,16 +153,14 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -318,14 +318,14 @@
+@@ -319,13 +319,13 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
          type_ -> Text,
          embedded_in -> Nullable<Text>,
          preserved_with -> Nullable<Text>,
--        measurements -> Nullable<Array<Nullable<Jsonb>>>,
 -        notes -> Nullable<Array<Nullable<Text>>>,
-+        measurements -> Nullable<Array<Jsonb>>,
 +        notes -> Nullable<Array<Text>>,
      }
  }
@@ -175,7 +173,7 @@
          pooled_into_id -> Nullable<Uuid>,
          multiplexing_tag_id -> Nullable<Uuid>,
          lysis_duration_min -> Nullable<Float4>,
-         targeted_cell_recovery -> Float4,
+         target_cell_recovery -> Float4,
          target_reads_per_cell -> Int4,
 -        notes -> Nullable<Array<Nullable<Text>>>,
 +        notes -> Nullable<Array<Text>>,

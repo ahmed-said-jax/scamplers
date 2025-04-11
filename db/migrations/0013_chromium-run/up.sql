@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table chromium_run (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/chromium_runs/' || id) stored not null,
     legacy_id text unique not null,
     chip text not null, -- constrained by Rust enum
@@ -11,7 +11,7 @@ create table chromium_run (
 );
 
 create table gems (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/gems/' || id) stored not null,
     legacy_id text unique not null,
     n_samples integer not null,

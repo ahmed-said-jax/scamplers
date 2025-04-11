@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table chromium_library (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/libraries/' || id) stored not null,
     legacy_id text unique not null,
     cdna_id uuid references cdna on delete restrict on update restrict not null,
@@ -9,9 +9,7 @@ create table chromium_library (
     number_of_sample_index_pcr_cycles integer not null, -- validated on Rust side
     target_reads_per_cell integer not null,
     prepared_at timestamp not null,
-    notes text [],
-
-    constraint has_index check ((single_index_set_name is null) != (dual_index_set_name is null))
+    notes text [], constraint has_index check ((single_index_set_name is null) != (dual_index_set_name is null))
 );
 
 create table chromium_library_measurement (

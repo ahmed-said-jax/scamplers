@@ -1,8 +1,2 @@
 -- This file should undo anything in `up.sql`
-drop table chromium_sequencing_submissions;
-
-drop table chromium_library_preparers;
-
-drop table chromium_library_measurement;
-
-drop table chromium_library;
+drop table chromium_sequencing_submissions, chromium_library_preparers, chromium_library_measurement, chromium_library;

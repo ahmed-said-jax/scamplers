@@ -7,5 +7,3 @@ create table dataset_metadata (
     data_path text not null,
     delivered_at timestamp
 );
-
-create index idx_dataset_lab on dataset_metadata (lab_id);
