@@ -59,7 +59,8 @@ COPY --from=build --chown=app:app /app /app
 EXPOSE 8001
 
 # Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    IN_DOCKER="true"
 
 # Run the application.
 CMD python3 /app/main.py

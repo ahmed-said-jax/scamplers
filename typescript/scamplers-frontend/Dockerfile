@@ -23,9 +23,9 @@ ARG MS_AUTH_PATH
 # Set working directory for all build stages.
 WORKDIR /usr/src/app
 
-RUN echo "PUBLIC_AUTH_HOST=${AUTH_HOST}" >> .env && \
-    echo "PUBLIC_AUTH_PORT=${AUTH_PORT}" >> .env && \
-    echo "PUBLIC_MS_AUTH_PATH=${MS_AUTH_PATH}" >> .env
+# RUN echo "PUBLIC_AUTH_HOST=${AUTH_HOST}" >> .env && \
+#     echo "PUBLIC_AUTH_PORT=${AUTH_PORT}" >> .env && \
+#     echo "PUBLIC_MS_AUTH_PATH=${MS_AUTH_PATH}" >> .env
 
 ################################################################################
 # Create a stage for installing production dependecies.
@@ -51,10 +51,14 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.npm \
     npm ci
 
-COPY --from=base /usr/src/app/.env .env
+# COPY --from=base /usr/src/app/.env .env
 
 # Copy the rest of the source files into the image.
 COPY . .
+
+ENV PUBLIC_AUTH_HOST=${AUTH_HOST} \
+    PUBLIC_AUTH_PORT=${AUTH_PORT} \
+    PUBLIC_MS_AUTH_PATH=${MS_AUTH_PATH}
 
 # Run the build script.
 RUN npm run build

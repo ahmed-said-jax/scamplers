@@ -1,12 +1,15 @@
 #! /usr/bin/env python3
 from dataclasses import dataclass
 import json
+import os
 from typing import Any
 from uuid import UUID, uuid4
+from pydantic import ValidationError
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
     PydanticBaseSettingsSource,
+    SecretsSettingsSource,
     SettingsConfigDict,
 )
 from sanic import Sanic, redirect
@@ -16,13 +19,19 @@ import msal
 import asyncpg
 from datetime import datetime, timedelta
 import httpx
-from types import new_class
+
+config_source_config = SettingsConfigDict(
+    cli_parse_args=True, secrets_dir="/run/secrets", env_file=".env", env_prefix="SCAMPLERS_", extra="ignore"
+)
+
+# This is a workaround for https://github.com/pydantic/pydantic-settings/issues/30
+in_docker = os.environ.get("IN_DOCKER")
+if in_docker:
+    config_source_config["env_prefix"] = ""
 
 class ConfigContainer(sanic.Config):
     class Config(BaseSettings):
-        model_config = SettingsConfigDict(
-            cli_parse_args=True, secrets_dir="/run/secrets", env_file=".env", env_prefix="SCAMPLERS_", extra="ignore"
-        )
+        model_config = config_source_config
 
         debug: bool = False
         db_host: str
@@ -57,13 +66,10 @@ class ConfigContainer(sanic.Config):
 
     inner: Config = Config() # type: ignore
 
-
-
 class Context:
     ms_auth_client: msal.ConfidentialClientApplication
     db_pool: asyncpg.Pool
     http_client: httpx.Client
-
 
 config = ConfigContainer()  # type: ignore
 inner_config = config.inner

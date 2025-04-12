@@ -16,6 +16,8 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
     expose:
       - 5432
+    ports:
+      - 5432:5432
     healthcheck:
       test: pg_isready --dbname $(cat /run/secrets/db_name) || exit 1
       interval: 5s
@@ -31,7 +33,7 @@ services:
         MS_AUTH_PATH: ${SCAMPLERS_MS_AUTH_PATH}
       target: build
     volumes:
-      - scamplers-web_build:/opt/scamplers-web
+      - scamplers-frontend:/opt/scamplers-frontend
   scamplers-backend:
     build:
       args:
@@ -42,13 +44,13 @@ services:
       target: final
     ports:
       - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
-    # healthcheck:
-    #   test: [CMD, curl, "http://${SCAMPLERS_APP_HOST}:${SCAMPLERS_APP_PORT}/health"]
-    #   interval: 5s
-    #   start_period: 5s
-    #   start_interval: 1s
-    #   timeout: 1s
-    #   retries: 5
+    healthcheck:
+      test: [CMD, curl, "http://localhost:${SCAMPLERS_APP_PORT}/health"]
+      interval: 5s
+      start_period: 5s
+      start_interval: 1s
+      timeout: 1s
+      retries: 5
     secrets:
       - source: db_root_user
         uid: "10001"
@@ -78,11 +80,11 @@ services:
         uid: "10001"
     volumes:
       - logs:/logs
-      - scamplers-web_build:/opt/scamplers-web
+      - scamplers-frontend:/opt/scamplers-frontend
     depends_on:
       db:
         condition: service_healthy
-      scamplers-web:
+      scamplers-frontend:
         condition: service_completed_successfully
   scamplers-auth:
     build:
@@ -96,11 +98,11 @@ services:
     ports:
       - ${SCAMPLERS_AUTH_PORT}:${SCAMPLERS_AUTH_PORT}
     secrets:
-      - source: db_auth_user_password
-        uid: "10001"
       - source: db_host
         uid: "10001"
       - source: db_port
+        uid: "10001"
+      - source: db_auth_user_password
         uid: "10001"
       - source: db_name
         uid: "10001"
@@ -108,21 +110,25 @@ services:
         uid: "10001"
       - source: auth_port
         uid: "10001"
+      - source: app_host
+        uid: "10001"
+      - source: app_port
+        uid: "10001"
       - source: ms_auth_path
         uid: "10001"
       - source: ms_auth_client_id
         uid: "10001"
       - source: ms_auth_client_credential
         uid: "10001"
-      - source: ms_auth_redirect_url
+      - source: ms_auth_redirect_path
         uid: "10001"
     volumes:
       - logs:/logs
 volumes:
   db-data:
   logs:
-  scamplers-web_build:
-# For simplicity, our entire configuration is loaded as secrets. That way, we don't have to grab some values from the environment and others from the secrets dir
+  scamplers-frontend:
+# For simplicity, our entire configuration is stored as secrets
 secrets:
   db_root_user:
     environment: SCAMPLERS_DB_ROOT_USER
@@ -148,8 +154,8 @@ secrets:
     environment: SCAMPLERS_MS_AUTH_CLIENT_ID
   ms_auth_client_credential:
     environment: SCAMPLERS_MS_AUTH_CLIENT_CREDENTIAL
-  ms_auth_redirect_url:
-    environment: SCAMPLERS_MS_AUTH_REDIRECT_URL
+  ms_auth_redirect_path:
+    environment: SCAMPLERS_MS_AUTH_REDIRECT_PATH
   app_host:
     environment: SCAMPLERS_APP_HOST
   app_port:
