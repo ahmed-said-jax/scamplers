@@ -116,6 +116,10 @@ services:
         uid: "10001"
       - source: ms_auth_redirect_path
         uid: "10001"
+      - source: fullchain.pem
+        uid: "10001"
+      - source: privkey.pem
+        uid: "10001"
     volumes:
       - logs:/logs
 volumes:
@@ -142,6 +146,10 @@ secrets:
     environment: SCAMPLERS_AUTH_HOST
   auth_port:
     environment: SCAMPLERS_AUTH_PORT
+  fullchain.pem:
+    file: ${SCAMPLERS_FULLCHAIN_PEM}
+  privkey.pem:
+    file: ${SCAMPLERS_PRIVKEY_PEM}
   ms_auth_path:
     environment: SCAMPLERS_MS_AUTH_PATH
   ms_auth_client_id:

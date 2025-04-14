@@ -128,7 +128,7 @@ async def initiate_ms_login(request: Request) -> sanic.HTTPResponse:
     auth_client = request.app.ctx.ms_auth_client
 
     app_config = request.app.config.inner
-    redirect_uri = f"http://{app_config.auth_host}:{app_config.auth_port}{app_config.ms_auth_redirect_path}"
+    redirect_uri = f"https://{app_config.auth_host}:{app_config.auth_port}{app_config.ms_auth_redirect_path}"
 
     auth_flow = auth_client.initiate_auth_code_flow(
         scopes=["email"], redirect_uri=redirect_uri
@@ -191,9 +191,9 @@ if __name__ == "__main__":
 
     if in_docker:
         host = "0.0.0.0"
+        tls_dir = "/run/secrets"
     else:
         host = config.auth_host
+        tls_dir = None
 
-    port = config.auth_port
-
-    app.run(host=host, port=port, debug=config.debug)
+    app.run(host=host, port=config.auth_port, debug=config.debug, ssl=tls_dir)
