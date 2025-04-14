@@ -66,12 +66,6 @@ services:
         uid: "10001"
       - source: db_name
         uid: "10001"
-      - source: auth_host
-        uid: "10001"
-      - source: auth_port
-        uid: "10001"
-      - source: ms_auth_path
-        uid: "10001"
       - source: app_host
         uid: "10001"
       - source: app_port
