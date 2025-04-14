@@ -1,3 +1,5 @@
+use std::{fmt::Debug, str::FromStr};
+
 use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
     password_hash::{PasswordHasher, SaltString},
@@ -16,11 +18,11 @@ use axum_extra::{
         authorization::{Basic, Bearer},
     },
 };
-use diesel::prelude::*;
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
+    prelude::*,
     serialize::{ToSql, WriteTuple},
     sql_types::{self, Bool, Record, SqlType, Text},
 };
@@ -32,7 +34,6 @@ use rand::{
 };
 use reqwest::{StatusCode, header::AsHeaderName};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, str::FromStr};
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -185,6 +186,7 @@ impl UserId {
 
 impl FromRequestParts<AppState2> for UserId {
     type Rejection = Error;
+
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
         state: &AppState2,
@@ -204,6 +206,7 @@ impl FromRequestParts<AppState2> for UserId {
 
 impl OptionalFromRequestParts<AppState2> for UserId {
     type Rejection = ();
+
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
         state: &AppState2,
@@ -267,6 +270,7 @@ pub async fn authenticate_api_request(State(app_state): State<AppState2>, reques
     let err = Error::InvalidApiKey.into_response();
 
     let Some(raw_api_key) = request.headers().get("X-API-Key").cloned() else {
+
         return err;
     };
 
@@ -304,6 +308,7 @@ pub async fn authenticate_browser_request(
 pub struct AuthService;
 impl FromRequestParts<AppState2> for AuthService {
     type Rejection = Error;
+
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
         state: &AppState2,

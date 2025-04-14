@@ -193,6 +193,7 @@ mod handlers {
         Ok(ValidJson(updated))
     }
 
+    // TODO: I don't really like this function - it shouldn't be creating the API key itself. This should be the job of the GrantApiAccess struct
     pub async fn new_api_key(
         UserId(user_id): UserId,
         State(app_state): State<AppState2>,

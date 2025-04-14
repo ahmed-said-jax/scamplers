@@ -22,12 +22,6 @@ pub struct Config {
     db_port: u16,
     #[arg(long, env = "SCAMPLERS_DB_NAME")]
     db_name: String,
-    #[arg(long, env = "SCAMPLERS_AUTH_HOST")]
-    auth_host: String,
-    #[arg(long, env = "SCAMPLERS_AUTH_PORT")]
-    auth_port: u16,
-    #[arg(long, env = "SCAMPLERS_MS_AUTH_PATH")]
-    ms_auth_path: String,
     #[arg(long, env = "SCAMPLERS_APP_HOST")]
     app_host: String,
     #[arg(long, env = "SCAMPLERS_APP_PORT")]
@@ -51,10 +45,7 @@ impl Config {
             db_host: read_secret("db_host")?,
             db_port: read_secret("db_port")?.parse()?,
             db_name: read_secret("db_name")?,
-            auth_host: read_secret("auth_host")?,
-            auth_port: read_secret("auth_port")?.parse()?,
-            ms_auth_path: read_secret("ms_auth_path")?,
-            app_host: read_secret("app_host")?,
+            app_host: "0.0.0.0".to_string(), // Slightly hacky
             app_port: read_secret("app_port")?.parse()?,
             seed_data: serde_json::from_str(&read_secret("seed_data")?)?,
             seed_data_path: None,
@@ -64,7 +55,11 @@ impl Config {
     }
 
     pub fn app_address(&self) -> String {
-        let Self { app_host, app_port, .. } = self;
+        let Self {
+            app_host,
+            app_port,
+            ..
+        } = self;
 
         format!("{app_host}:{app_port}")
     }

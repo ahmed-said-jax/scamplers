@@ -138,7 +138,7 @@
  diesel::table! {
      use diesel::sql_types::*;
      use super::sql_types::HashedKey;
-@@ -305,13 +305,13 @@
+@@ -304,13 +304,13 @@
  
  diesel::table! {
      single_index_set (name) {
@@ -153,7 +153,7 @@
  diesel::table! {
      specimen (id) {
          id -> Uuid,
-@@ -319,13 +319,13 @@
+@@ -318,13 +318,13 @@
          legacy_id -> Text,
          metadata_id -> Uuid,
          #[sql_name = "type"]
@@ -168,7 +168,7 @@
  diesel::table! {
      specimen_measurement (id) {
          id -> Uuid,
-@@ -347,13 +347,13 @@
+@@ -346,13 +346,13 @@
          created_at -> Timestamp,
          pooled_into_id -> Nullable<Uuid>,
          multiplexing_tag_id -> Nullable<Uuid>,

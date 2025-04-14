@@ -298,7 +298,6 @@ diesel::table! {
 
     session (hashed_id) {
         hashed_id -> HashedKey,
-        csrf_token -> Uuid,
         user_id -> Uuid,
     }
 }

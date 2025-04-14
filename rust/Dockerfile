@@ -41,4 +41,5 @@ COPY --from=build /bin/scamplers-backend /bin/
 
 EXPOSE ${APP_PORT}
 
+# Note that app-host is set to '0.0.0.0' - this means that the app is listening on all addresses inside the container, but only the port we set (as $APP_PORT) will be listened to)
 CMD ["/bin/scamplers-backend", "prod", "--log-dir", "logs"]

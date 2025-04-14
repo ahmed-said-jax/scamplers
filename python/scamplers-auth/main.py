@@ -25,7 +25,8 @@ config_source_config = SettingsConfigDict(
 )
 
 # This is a workaround for https://github.com/pydantic/pydantic-settings/issues/30
-in_docker = os.environ.get("IN_DOCKER")
+in_docker = bool(os.environ.get("IN_DOCKER"))
+
 if in_docker:
     config_source_config["env_prefix"] = ""
 
@@ -73,7 +74,12 @@ class Context:
 
 config = ConfigContainer()  # type: ignore
 inner_config = config.inner
-config.inner.new_session_url = f"http://{inner_config.app_host}:{inner_config.app_port}/session"
+
+# TODO: For now, this is okay - we know that we're deploying to production using Docker Compose, but should this change, we should make this more dynamic so that any sort of configuration works
+if in_docker:
+    inner_config.new_session_url = f"http://scamplers-backend:{inner_config.app_port}/session"
+else:
+    inner_config.new_session_url = f"http://{inner_config.app_host}:{inner_config.app_port}/session"
 
 type App = Sanic[ConfigContainer, type[Context]]
 app: App = Sanic("scamplers-auth", config=config, ctx=Context)
@@ -182,7 +188,12 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
 
 if __name__ == "__main__":
     config = app.config.inner
-    host = config.auth_host
+
+    if in_docker:
+        host = "0.0.0.0"
+    else:
+        host = config.auth_host
+
     port = config.auth_port
 
     app.run(host=host, port=port, debug=config.debug)

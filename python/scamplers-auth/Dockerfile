@@ -60,7 +60,7 @@ EXPOSE 8001
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH" \
-    IN_DOCKER="true"
+    IN_DOCKER=1
 
 # Run the application.
-CMD python3 /app/main.py
+CMD ["python3", "/app/main.py"]

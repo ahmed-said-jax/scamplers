@@ -307,7 +307,8 @@ fn app(app_state: AppState2) -> Router {
         // Nest the just-created service
         router = router.fallback_service(frontend_service);
 
-        // The frontend also calls the API, but from a different route (because the authentication is different). Nest that too
+        // The frontend also calls the API, but from a different route (because the authentication is different). Nest
+        // that too
         router = router.nest("/frontend/api", api::router().layer(auth_layer));
     }
 

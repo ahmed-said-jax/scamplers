@@ -1,16 +1,13 @@
-use super::person::{Person, PersonQuery};
 use diesel::{pg::Pg, prelude::*};
+use diesel_async::RunQueryDsl;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::auth::HashedKey;
-use crate::db::Read;
-use crate::schema;
-use crate::schema::person::ms_user_id;
-
-use super::Create;
-use super::person::NewPerson;
-use diesel_async::RunQueryDsl;
+use super::{
+    Create,
+    person::{NewPerson, Person, PersonQuery},
+};
+use crate::{auth::HashedKey, db::Read, schema, schema::person::ms_user_id};
 
 #[derive(Insertable)]
 #[diesel(table_name = schema::session, check_for_backend(Pg))]
@@ -26,8 +23,11 @@ impl Create for NewSession<'_> {
 
     async fn create(mut self, conn: &mut diesel_async::AsyncPgConnection) -> super::Result<Self::Returns> {
         use schema::{
-            person::email as email_col, person::id as id_col, person::institution_id as institution_col,
-            person::name as name_col, person::table as person_table, session,
+            person::{
+                email as email_col, id as id_col, institution_id as institution_col, name as name_col,
+                table as person_table,
+            },
+            session,
         };
 
         let Self { person, .. } = &self;

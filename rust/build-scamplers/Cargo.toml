@@ -6,7 +6,7 @@ default-run = "build-scamplers"
 
 [[bin]]
 name = "build-scamplers"
-path = "../scamplers/build.rs"
+path = "../scamplers-backend/build.rs"
 
 [dependencies]
 testcontainers-modules = { workspace = true, features = ["blocking"] }

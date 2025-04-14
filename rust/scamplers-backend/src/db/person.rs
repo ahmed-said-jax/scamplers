@@ -186,22 +186,13 @@ pub struct GrantApiAccess<'a> {
     pub id: Uuid,
     pub hashed_api_key: HashedKey<&'a str>,
 }
+
 impl Update for GrantApiAccess<'_> {
-    type Returns = Key;
+    type Returns = ();
 
-    async fn update(mut self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
-        use person::hashed_api_key as api_key_col;
-
-        let key = Key::new();
-        let hashed_api_key = key.hash();
-
-        self.hashed_api_key = hashed_api_key;
-
+    async fn update(self, conn: &mut AsyncPgConnection) -> super::Result<Self::Returns> {
         diesel::update(&self).set(&self).execute(conn).await?;
-
-        // self.save_changes(conn).await?;
-
-        Ok(key)
+        Ok(())
     }
 }
 
