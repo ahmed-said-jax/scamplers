@@ -1,6 +1,7 @@
+# TODO: the same alpine version is used twice - we can fix this somehow
 services:
-  db:
-    image: postgres:${SCAMPLERS_POSTGRES_VERSION}-alpine${SCAMPLERS_ALPINE_VERSION}
+  postgres:
+    image: postgres:17-alpine3.21
     restart: always
     user: root
     secrets:
@@ -15,118 +16,128 @@ services:
       - POSTGRES_DB_FILE=/run/secrets/db_name
       - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
     expose:
-      - 5432
-    ports:
-      - 5432:5432
+      - &db_port 5432
     healthcheck:
       test: pg_isready --dbname $(cat /run/secrets/db_name) || exit 1
       interval: 5s
       timeout: 5s
       retries: 10
-  scamplers-frontend:
-    build:
-      context: typescript/scamplers-frontend
-      args:
-        NODE_VERSION: ${SCAMPLERS_NODE_VERSION}
-        AUTH_HOST: ${SCAMPLERS_AUTH_HOST}
-        AUTH_PORT: ${SCAMPLERS_AUTH_PORT}
-        MS_AUTH_PATH: ${SCAMPLERS_MS_AUTH_PATH}
-      target: build
-    volumes:
-      - scamplers-frontend:/opt/scamplers-frontend
   scamplers-backend:
+    restart: always
     build:
       args:
-        ALPINE_VERSION: ${SCAMPLERS_ALPINE_VERSION}
-        RUST_VERSION: ${SCAMPLERS_RUST_VERSION}
+        RUST_VERSION: 1.86
       context: .
       dockerfile: rust/Dockerfile
       target: final
-    ports:
-      - ${SCAMPLERS_APP_PORT}:${SCAMPLERS_APP_PORT}
+    environment:
+      PORT: ${SCAMPLERS_BACKEND_PORT}
+      DB_HOST: &db_host postgres
+      DB_PORT: *db_port
+      PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
+    expose:
+      - *backend_port
+    secrets:
+      - db_root_user
+      - db_root_password
+      - db_login_user_password
+      - db_auth_user_password
+      - db_name
+      - seed_data
+    volumes:
+      - logs:/logs
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
-      test: [CMD, curl, "http://localhost:${SCAMPLERS_APP_PORT}/health"]
+      test: [CMD, curl, "http://localhost:$PORT/health"]
       interval: 5s
       start_period: 5s
       start_interval: 1s
       timeout: 1s
       retries: 5
-    secrets:
-      - source: db_root_user
-        uid: "10001"
-      - source: db_root_password
-        uid: "10001"
-      - source: db_login_user_password
-        uid: "10001"
-      - source: db_auth_user_password
-        uid: "10001"
-      - source: db_host
-        uid: "10001"
-      - source: db_port
-        uid: "10001"
-      - source: db_name
-        uid: "10001"
-      - source: app_host
-        uid: "10001"
-      - source: app_port
-        uid: "10001"
-      - source: seed_data
-        uid: "10001"
-    volumes:
-      - logs:/logs
-      - scamplers-frontend:/opt/scamplers-frontend
-    depends_on:
-      db:
-        condition: service_healthy
-      scamplers-frontend:
-        condition: service_completed_successfully
   scamplers-auth:
+    restart: always
     build:
       args:
-        PYTHON_VERSION: ${SCAMPLERS_PYTHON_VERSION}
+        PYTHON_VERSION: 3.13
       context: python/scamplers-auth
       target: final
     depends_on:
-      db:
+      scamplers-backend:
         condition: service_healthy
-    ports:
-      - ${SCAMPLERS_AUTH_PORT}:${SCAMPLERS_AUTH_PORT}
+    environment:
+      PORT: ${SCAMPLERS_AUTH_PORT}
+      DB_HOST: *db_host
+      DB_PORT: *db_port
+      BACKEND_HOST: &scamplers_backend scamplers-backend
+      BACKEND_PORT: ${SCAMPLERS_BACKEND_PORT}
+      AUTH_SUBDOMAIN: ${SCAMPLERS_AUTH_SUBDOMAIN}
+      PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
+      MS_AUTH_PATH: &ms_auth_path /microsoft/login
+      MS_AUTH_REDIRECT_PATH: /microsoft/redirect
+    expose:
+      - *auth_port:*auth_port
     secrets:
-      - source: db_host
-        uid: "10001"
-      - source: db_port
-        uid: "10001"
-      - source: db_auth_user_password
-        uid: "10001"
-      - source: db_name
-        uid: "10001"
-      - source: auth_host
-        uid: "10001"
-      - source: auth_port
-        uid: "10001"
-      - source: app_host
-        uid: "10001"
-      - source: app_port
-        uid: "10001"
-      - source: ms_auth_path
-        uid: "10001"
-      - source: ms_auth_client_id
-        uid: "10001"
-      - source: ms_auth_client_credential
-        uid: "10001"
-      - source: ms_auth_redirect_path
-        uid: "10001"
-      - source: fullchain.pem
-        uid: "10001"
-      - source: privkey.pem
-        uid: "10001"
+      - db_auth_user_password
+      - db_name
+      - ms_auth_client_id
+      - ms_auth_client_credential
+    healthcheck:
+      test: [CMD, curl, "http://localhost:$PORT/health"]
+      interval: 5s
+      start_period: 5s
+      start_interval: 1s
+      timeout: 1s
+      retries: 5
+  scamplers-frontend:
+    restart: always
+    build:
+      context: typescript/scamplers-frontend
+      args:
+        BUN_VERSION: 1.2
+        ALPINE_VERSION: 3.21
+      target: final
+    environment:
+        PORT: ${SCAMPLERS_FRONTEND_PORT}
+        AUTH_SUBDOMAIN: ${SCAMPLERS_AUTH_SUBDOMAIN}
+        PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
+        BACKEND_HOST: *scamplers_backend
+        BACKEND_PORT: ${SCAMPLERS_BACKEND_PORT}
+        MS_AUTH_PATH: *ms_auth_path
+    depends_on:
+      scamplers-backend:
+        condition: service_healthy
+      scamplers-auth:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, "http://localhost:$PORT/health"]
+      interval: 5s
+      start_period: 5s
+      start_interval: 1s
+      timeout: 1s
+      retries: 5
+  caddy:
+    image: caddy:2.9.1-alpine
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
     volumes:
-      - logs:/logs
+      - $PWD/caddy:/etc/caddy
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      scamplers-frontend:
+        condition: service_healthy
 volumes:
   db-data:
   logs:
-  scamplers-frontend:
-# For simplicity, our entire configuration is stored as secrets
+  caddy-data:
+  caddy-config:
 secrets:
   db_root_user:
     environment: SCAMPLERS_DB_ROOT_USER
@@ -136,31 +147,11 @@ secrets:
     environment: SCAMPLERS_DB_LOGIN_USER_PASSWORD
   db_auth_user_password:
     environment: SCAMPLERS_DB_AUTH_USER_PASSWORD
-  db_host:
-    environment: SCAMPLERS_DB_HOST
-  db_port:
-    environment: SCAMPLERS_DB_PORT
   db_name:
     environment: SCAMPLERS_DB_NAME
-  auth_host:
-    environment: SCAMPLERS_AUTH_HOST
-  auth_port:
-    environment: SCAMPLERS_AUTH_PORT
-  fullchain.pem:
-    file: ${SCAMPLERS_FULLCHAIN_PEM}
-  privkey.pem:
-    file: ${SCAMPLERS_PRIVKEY_PEM}
-  ms_auth_path:
-    environment: SCAMPLERS_MS_AUTH_PATH
   ms_auth_client_id:
     environment: SCAMPLERS_MS_AUTH_CLIENT_ID
   ms_auth_client_credential:
     environment: SCAMPLERS_MS_AUTH_CLIENT_CREDENTIAL
-  ms_auth_redirect_path:
-    environment: SCAMPLERS_MS_AUTH_REDIRECT_PATH
-  app_host:
-    environment: SCAMPLERS_APP_HOST
-  app_port:
-    environment: SCAMPLERS_APP_PORT
   seed_data:
     file: ${SCAMPLERS_SEED_DATA}

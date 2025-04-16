@@ -1,0 +1,17 @@
+[project]
+name = "scamplepy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ahmed Said", email = "ahmed.said@jax.org" }
+]
+requires-python = ">=3.13"
+dependencies = ["scamplers-core"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+scamplers-core = { path = "../../rust/scamplers-core" }

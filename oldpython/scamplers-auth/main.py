@@ -39,12 +39,11 @@ class ConfigContainer(sanic.Config):
         db_port: int
         db_auth_user_password: str
         db_name: str
-        host: str
-        port: str
-        backend_host: str
-        backend_port: str
-        auth_subdomain: str
-        public_url: str
+        auth_host: str
+        auth_port: int
+        app_host: str
+        app_port: str
+        new_session_url: str = ""
         ms_auth_path: str
         ms_auth_client_id: str
         ms_auth_client_credential: str
@@ -75,6 +74,12 @@ class Context:
 
 config = ConfigContainer()  # type: ignore
 inner_config = config.inner
+
+# TODO: For now, this is okay - we know that we're deploying to production using Docker Compose, but should this change, we should make this more dynamic so that any sort of configuration works
+if in_docker:
+    inner_config.new_session_url = f"http://scamplers-backend:{inner_config.app_port}/session"
+else:
+    inner_config.new_session_url = f"http://{inner_config.app_host}:{inner_config.app_port}/session"
 
 type App = Sanic[ConfigContainer, type[Context]]
 app: App = Sanic("scamplers-auth", config=config, ctx=Context)
@@ -118,16 +123,12 @@ async def close_http_client(app: App, loop):
 
 type Request = sanic.Request[App]
 
-@app.route("/health")
-async def health(request: Request) -> sanic.HTTPResponse:
-    return text("")
-
 @app.route(app.config.inner.ms_auth_path)
 async def initiate_ms_login(request: Request) -> sanic.HTTPResponse:
     auth_client = request.app.ctx.ms_auth_client
 
     app_config = request.app.config.inner
-    redirect_uri = f"https://{app_config.auth_subdomain}.{app_config.public_url}{app_config.ms_auth_redirect_path}"
+    redirect_uri = f"https://{app_config.auth_host}:{app_config.auth_port}{app_config.ms_auth_redirect_path}"
 
     auth_flow = auth_client.initiate_auth_code_flow(
         scopes=["email"], redirect_uri=redirect_uri
@@ -153,9 +154,11 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
 
     db_pool = request.app.ctx.db_pool
     http_client = request.app.ctx.http_client
-    auth_client = request.app.ctx.ms_auth_client
+    auth_client = app.ctx.ms_auth_client
 
     app_config = request.app.config.inner
+    new_session_url = app_config.new_session_url
+    app_base_url = f"http://{app_config.app_host}:{app_config.app_port}"
 
     async with db_pool.acquire() as conn:
         async with conn.transaction():
@@ -173,10 +176,10 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
     user["institution_id"] = institution_id
     user["ms_user_id"] = user["oid"]
 
-    result = http_client.post(f"http://{app_config.backend_host}{app_config.backend_port}/session", json=user)
+    result = http_client.post(new_session_url, json=user)
     data = result.json()
 
-    response = redirect(f"https://{app_config.public_url}" + auth_flow["redirected_from"])
+    response = redirect(app_base_url + auth_flow["redirected_from"])
 
     if session_id := data.get("session_id"):
         response.add_cookie("SESSION", session_id, httponly=True)
@@ -186,4 +189,11 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
 if __name__ == "__main__":
     config = app.config.inner
 
-    app.run(host=config.host, port=config.port, debug=config.debug)
+    if in_docker:
+        host = "0.0.0.0"
+        tls_dir = "/run/secrets"
+    else:
+        host = config.auth_host
+        tls_dir = None
+
+    app.run(host=host, port=config.auth_port, debug=config.debug, ssl=tls_dir)

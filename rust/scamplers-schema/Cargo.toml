@@ -1,0 +1,15 @@
+[package]
+name = "scamplers-schema"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+diesel = {workspace = true, features = ["postgres"]}
+
+[lints]
+workspace = true
+
+[build-dependencies]
+camino = {workspace = true}
+dotenvy = {workspace = true}
+testcontainers-modules = {workspace = true}

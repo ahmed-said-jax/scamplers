@@ -1,0 +1,31 @@
+[package]
+name = "scamplers-core"
+version = "0.1.0"
+edition = {workspace = true}
+publish = false
+
+[lib]
+name = "scamplers_core"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+thiserror = {workspace = true, optional = true}
+uuid = {workspace = true}
+serde = {workspace = true, optional = true }
+diesel = {workspace = true, optional = true}
+chrono = {workspace = true}
+valuable = {workspace = true, optional = true}
+strum = {workspace = true, optional = true}
+scraper = {workspace = true, optional = true}
+pyo3 = {workspace = true, optional = true}
+wasm-bindgen = { workspace = true, optional = true }
+garde = { workspace = true, optional = true }
+scamplers-schema = {path = "../scamplers-schema"}
+
+[features]
+backend = ["diesel", "valuable", "strum", "scraper", "garde", "serde"]
+python = ["pyo3"]
+web = ["wasm-bindgen"]
+
+[lints]
+workspace = true
