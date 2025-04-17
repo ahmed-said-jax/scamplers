@@ -19,8 +19,7 @@ use wasm_bindgen::prelude::*;
     feature = "backend",
     derive(Insertable, Valuable, Validate, Deserialize)
 )]
-#[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)))]
-#[cfg_attr(feature = "backend", garde(allow_unvalidated))]
+#[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)), garde(allow_unvalidated))]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub struct NewInstitution {
@@ -29,14 +28,21 @@ pub struct NewInstitution {
     pub ms_tenant_id: Option<Uuid>,
 }
 
-#[cfg_attr(feature = "python", pymethods)]
 #[cfg_attr(feature = "web", wasm_bindgen)]
 impl NewInstitution {
-    #[cfg_attr(feature = "python", new)]
     #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
     #[cfg(any(feature = "python", feature = "web"))]
     pub fn new(name: String, ms_tenant_id: Option<Uuid>) -> Self {
         Self { name, ms_tenant_id }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl NewInstitution {
+    #[new]
+    fn py_new(name: String, ms_tenant_id: Option<Uuid>) -> Self {
+        Self::new(name, ms_tenant_id)
     }
 }
 

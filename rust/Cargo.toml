@@ -21,10 +21,11 @@ tokio = { version = "1.44.2", features = [
     "rt-multi-thread",
     "signal",
 ] }
-axum-extra = { version = "0.10.1", features = ["typed-header"] }
+regex = "1.11.1"
+axum-extra = { version = "0.10.1", features = ["typed-header", "query"] }
 camino = { version = "1.1.9" }
 thiserror = "2.0.12"
-_uuid = { package = "uuid", version = "1.16.0", features = ["serde", "v7", "v4"] }
+_uuid = { package = "uuid", version = "1.11.0", features = ["serde", "v7", "v4"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140"}
 diesel = { version = "2.2.9", default-features = false, features = [
@@ -34,15 +35,15 @@ diesel = { version = "2.2.9", default-features = false, features = [
     "serde_json",
 ] }
 chrono = { version = "0.4.40", features = ["serde"] }
+futures = { version = "0.3.31" }
 valuable = { version = "0.1.1", features = ["derive"] }
 garde = { version = "0.22.0", features = ["derive", "email", "serde", "regex"] }
 strum = { version = "0.27.1", features = ["derive"] }
 scraper = { version = "0.23.1", features = ["serde"] }
-pyo3 = {version = "0.24.0", features = ["uuid"] }
+pyo3 = {version = "0.24.1", features = ["uuid"] }
 wasm-bindgen = { version = "0.2.100", features = ["enable-interning"] }
 dotenvy = { version = "0.15.7" }
 testcontainers-modules = { version = "0.11.6", features = ["postgres", "blocking"] }
-futures = { version = "0.3.31" }
 diesel_migrations = { version = "2.2.0", features = ["postgres"] }
 diesel-async = { version = "0.5.2", features = [
     "postgres",
@@ -56,6 +57,13 @@ tracing-subscriber = { version = "0.3.19", features = ["json"] }
 argon2 = "0.5.3"
 tower-http = { version = "0.6.2", features = ["trace", "fs"] }
 rand = "0.9.0"
+reqwest = { version = "0.12.14", default-features = false, features = [
+    "rustls-tls",
+    "http2",
+    "charset",
+    "json",
+] }
+url = { version = "2.5.4", features = ["serde"] }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

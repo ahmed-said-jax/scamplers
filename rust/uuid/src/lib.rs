@@ -1,9 +1,12 @@
-use {std::fmt::Display};
+use {_uuid::Bytes, std::fmt::Display};
 
 #[cfg(feature = "backend")]
 use {diesel::{deserialize::{FromSql, FromSqlRow}, expression::AsExpression, sql_types}, serde::{Deserialize, Serialize}};
 
-#[cfg_attr(feature = "python", pyclass(transparent))]
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "backend", derive(Deserialize, Serialize, FromSqlRow, AsExpression))]
 #[cfg_attr(feature = "backend", diesel(sql_type = sql_types::Uuid))]
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Debug)]
@@ -13,6 +16,18 @@ impl Display for Uuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(inner) = self;
         inner.fmt(f)
+    }
+}
+
+impl Uuid {
+    pub fn as_bytes(&self) -> &Bytes {
+        let Self(inner) = self;
+        inner.as_bytes()
+    }
+
+    #[cfg(feature = "backend")]
+    pub fn now_v7() -> Self {
+        Self(_uuid::Uuid::now_v7())
     }
 }
 
@@ -61,12 +76,11 @@ mod backend {
 
     impl Valuable for Uuid {
         fn as_value(&self) -> Value<'_> {
-            let Self(inner) = self;
-            inner.as_bytes().as_value()
+            self.as_bytes().as_value()
         }
 
         fn visit(&self, visit: &mut dyn valuable::Visit) {
-            let Self(inner)
+            self.as_bytes().visit(visit)
         }
     }
 
@@ -79,7 +93,7 @@ mod backend {
     impl ToSql<sql_types::Uuid, Pg> for Uuid {
         fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> diesel::serialize::Result {
             let Self(inner) = self;
-            inner.to_sql(out)
+            <_uuid::Uuid as ToSql<sql_types::Uuid, Pg>>::to_sql(inner, out)
         }
     }
 }
