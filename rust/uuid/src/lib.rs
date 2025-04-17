@@ -1,12 +1,12 @@
 use {std::fmt::Display};
 
 #[cfg(feature = "backend")]
-use diesel::{deserialize::{FromSql, FromSqlRow}, expression::AsExpression, sql_types};
+use {diesel::{deserialize::{FromSql, FromSqlRow}, expression::AsExpression, sql_types}, serde::{Deserialize, Serialize}};
 
 #[cfg_attr(feature = "python", pyclass(transparent))]
 #[cfg_attr(feature = "backend", derive(Deserialize, Serialize, FromSqlRow, AsExpression))]
 #[cfg_attr(feature = "backend", diesel(sql_type = sql_types::Uuid))]
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Debug)]
 pub struct Uuid(_uuid::Uuid);
 
 impl Display for Uuid {
@@ -57,11 +57,16 @@ mod web {
 
 #[cfg(feature = "backend")]
 mod backend {
-    use {valuable::{Valuable, Value}, diesel::{deserialize::{FromSql}, serialize::{ToSql, Output}, sql_types}};
+    use {super::Uuid, diesel::{backend::Backend, deserialize::FromSql, pg::Pg, serialize::{Output, ToSql}, sql_types}, valuable::{Valuable, Value}};
 
     impl Valuable for Uuid {
         fn as_value(&self) -> Value<'_> {
-            self.to_string().as_value()
+            let Self(inner) = self;
+            inner.as_bytes().as_value()
+        }
+
+        fn visit(&self, visit: &mut dyn valuable::Visit) {
+            let Self(inner)
         }
     }
 

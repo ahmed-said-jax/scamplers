@@ -7,6 +7,21 @@ default-members = ["scamplers-core"]
 edition = "2024"
 
 [workspace.dependencies]
+clap = { version = "4.5.36", features = ["derive", "env"] }
+anyhow = "1.0.98"
+axum = { version = "0.8.3", default-features = false, features = [
+    "http2",
+    "json",
+    "macros",
+    "query",
+    "tokio",
+] }
+tokio = { version = "1.44.2", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+] }
+axum-extra = { version = "0.10.1", features = ["typed-header"] }
 camino = { version = "1.1.9" }
 thiserror = "2.0.12"
 _uuid = { package = "uuid", version = "1.16.0", features = ["serde", "v7", "v4"] }
@@ -27,6 +42,20 @@ pyo3 = {version = "0.24.0", features = ["uuid"] }
 wasm-bindgen = { version = "0.2.100", features = ["enable-interning"] }
 dotenvy = { version = "0.15.7" }
 testcontainers-modules = { version = "0.11.6", features = ["postgres", "blocking"] }
+futures = { version = "0.3.31" }
+diesel_migrations = { version = "2.2.0", features = ["postgres"] }
+diesel-async = { version = "0.5.2", features = [
+    "postgres",
+    "deadpool",
+    "async-connection-wrapper",
+] }
+tracing-appender = "0.2.3"
+tracing = { version = "0.1.41", features = ["valuable"] }
+tower = { version = "0.5.2", default-features = false }
+tracing-subscriber = { version = "0.3.19", features = ["json"] }
+argon2 = "0.5.3"
+tower-http = { version = "0.6.2", features = ["trace", "fs"] }
+rand = "0.9.0"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
