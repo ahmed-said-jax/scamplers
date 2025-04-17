@@ -333,7 +333,7 @@ dependencies = [
  "itoa",
  "pq-sys",
  "serde_json",
- "uuid",
+ "uuid 1.16.0",
 ]
 
 [[package]]
@@ -1368,7 +1368,7 @@ dependencies = [
  "pyo3-ffi",
  "pyo3-macros",
  "unindent",
- "uuid",
+ "uuid 1.16.0",
 ]
 
 [[package]]
@@ -1607,7 +1607,7 @@ dependencies = [
  "serde",
  "strum",
  "thiserror",
- "uuid",
+ "uuid 0.1.0",
  "valuable",
  "wasm-bindgen",
 ]
@@ -2224,12 +2224,26 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "uuid"
+version = "0.1.0"
+dependencies = [
+ "diesel",
+ "pyo3",
+ "serde",
+ "uuid 1.16.0",
+ "valuable",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "uuid"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
 dependencies = [
  "getrandom 0.3.2",
+ "js-sys",
  "serde",
+ "wasm-bindgen",
 ]
 
 [[package]]

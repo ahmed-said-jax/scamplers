@@ -1,16 +1,19 @@
-pub mod institution;
-pub mod person;
-pub mod lab;
 pub mod chromium;
 mod dataset_metadata;
+pub mod index_sets;
+pub mod institution;
+pub mod lab;
+pub mod person;
 mod sample_metadata;
 pub mod sequencing_run;
-pub mod index_sets;
+
+#[cfg(feature = "web")]
+use wasm_bindgen::convert::{IntoWasmAbi, WasmPrimitive, WasmAbi};
 
 #[cfg(feature = "python")]
 mod python_modules {
-    use pyo3::prelude::*;
     use crate::institution::*;
+    use pyo3::prelude::*;
 
     #[pymodule]
     fn scamplers_core(m: &Bound<'_, PyModule>) -> PyResult<()> {

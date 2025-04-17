@@ -10,7 +10,6 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 thiserror = {workspace = true, optional = true}
-uuid = {workspace = true}
 serde = {workspace = true, optional = true }
 diesel = {workspace = true, optional = true}
 chrono = {workspace = true}
@@ -20,12 +19,13 @@ scraper = {workspace = true, optional = true}
 pyo3 = {workspace = true, optional = true}
 wasm-bindgen = { workspace = true, optional = true }
 garde = { workspace = true, optional = true }
-scamplers-schema = {path = "../scamplers-schema"}
+scamplers-schema = {path = "../scamplers-schema", optional = true}
+uuid = {path = "../uuid"}
 
 [features]
-backend = ["diesel", "valuable", "strum", "scraper", "garde", "serde"]
-python = ["pyo3"]
-web = ["wasm-bindgen"]
+backend = ["diesel", "valuable", "strum", "scraper", "garde", "serde", "uuid/backend", "scamplers-schema"]
+python = ["pyo3", "uuid/python"]
+web = ["wasm-bindgen", "uuid/web"]
 
 [lints]
 workspace = true

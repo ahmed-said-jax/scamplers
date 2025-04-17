@@ -5,3 +5,6 @@
 # Seed data also useful for development
 seed_data.*.json
 !seed_data.sample.json
+
+# Generated TypesScript code
+pkg
