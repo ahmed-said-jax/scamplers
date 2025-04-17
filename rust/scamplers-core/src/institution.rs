@@ -17,7 +17,7 @@ use wasm_bindgen::prelude::*;
 
 #[cfg_attr(
     feature = "backend",
-    derive(Insertable, Valuable, Validate, Deserialize)
+    derive(Insertable, Valuable, Validate, Deserialize, Debug)
 )]
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)), garde(allow_unvalidated))]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
@@ -46,7 +46,7 @@ impl NewInstitution {
     }
 }
 
-#[cfg_attr(feature = "backend", derive(Queryable, Selectable, Serialize))]
+#[cfg_attr(feature = "backend", derive(Queryable, Selectable, Serialize, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)))]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]

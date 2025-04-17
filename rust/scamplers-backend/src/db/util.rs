@@ -8,7 +8,7 @@ use valuable::Valuable;
 
 #[derive(Clone, FromSqlRow, AsExpression, Deserialize, Serialize, Debug, Copy)]
 #[diesel(sql_type = sql_types::Text)]
-pub (super) struct DbEnum<T: FromStr + Default + Debug + Clone + Copy>(T) where &'static str: From<T>;
+pub (super) struct DbEnum<T: FromStr + Default + Debug + Clone + Copy>(pub(in crate::db::model::person) T) where &'static str: From<T>;
 
 impl<T: FromStr + Default + Debug + Clone + Copy> FromSql<sql_types::Text, Pg> for DbEnum<T> where &'static str: From<T> {
     fn from_sql(bytes: <Pg as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {

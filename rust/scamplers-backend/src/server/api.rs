@@ -8,13 +8,11 @@ use crate::db::model::person::fetch_people;
 mod error;
 
 pub(super) fn router() -> Router<AppState2> {
-    use handlers::*;
-
     // TODO: get a list of routes from the database and then just put them here
     let endpoints: HashMap<&str, [&str; 1], RandomState> = HashMap::from_iter([("available_endpoints", [""])]);
 
     let router = Router::new()
-        .route("/", get(|| async { axum::Json(endpoints) }))
+        .route("/", get(|| async { axum::Json(endpoints) }));
         // .route("/me", get(me))
         // .route(
         //     "/institutions",

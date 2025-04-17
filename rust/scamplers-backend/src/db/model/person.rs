@@ -1,5 +1,5 @@
 use diesel::{dsl::InnerJoin, prelude::*};
-use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl, methods::ExecuteDsl};
 use scamplers_core::person::{NewPerson, PersonQuery, Person};
 use uuid::Uuid;
 use scamplers_schema::{institution, person::dsl::{email as email_col, id as id_col, name as name_col, person}};
@@ -11,7 +11,7 @@ define_sql_function! {fn revoke_roles_from_user(user_id: Text, roles: Array<Text
 define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
-use crate::db::{util::AsIlike, AsDieselSelect, AsDieselExpression, BoxedDieselExpression};
+use crate::db::{util::{AsIlike, DbEnum}, AsDieselExpression, AsDieselSelect, BoxedDieselExpression};
 
 impl<Table> AsDieselExpression<Table> for PersonQuery
 where
@@ -115,7 +115,9 @@ impl WriteMsLogin for NewPerson {
             }
         };
 
-        diesel::select(create_user_if_not_exists(new_id.to_string(), &self.roles))
+        let roles: Vec<_> = self.roles.into_iter().map(|r| DbEnum(r)).collect();
+
+        diesel::select(create_user_if_not_exists(new_id.to_string(), roles))
             .execute(db_conn)
             .await?;
 
