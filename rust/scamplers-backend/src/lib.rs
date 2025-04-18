@@ -1,7 +1,7 @@
 use camino::Utf8PathBuf;
 use config::Config;
 
-mod config;
+pub mod config;
 pub mod db;
 
 mod server;

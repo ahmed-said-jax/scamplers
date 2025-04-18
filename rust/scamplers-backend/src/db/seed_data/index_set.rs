@@ -12,7 +12,7 @@ use scamplers_schema::{dual_index_set, index_kit, single_index_set};
 
 #[derive(Deserialize, Validate, Clone, Serialize, Debug)]
 #[serde(transparent)]
-pub (super) struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))] Url);
+pub(super) struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))] Url);
 
 fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
     let Some(domain) = url.domain() else {
@@ -30,7 +30,7 @@ fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
 
 // `anyhow::Result` is fine here because this isn't user-facing code
 impl IndexSetFileUrl {
-    pub (super) async fn download(self, http_client: reqwest::Client) -> anyhow::Result<IndexSets> {
+    pub(super) async fn download(self, http_client: reqwest::Client) -> anyhow::Result<IndexSets> {
         let Self(url) = self;
 
         let index_set: IndexSets = http_client.get(url.clone()).send().await?.json().await?;
@@ -43,7 +43,7 @@ impl IndexSetFileUrl {
 
 #[derive(Deserialize, Validate)]
 #[serde(untagged)]
-pub (super) enum IndexSets {
+pub(super) enum IndexSets {
     Single(#[garde(dive)] Vec<NewSingleIndexSet>),
     Dual(#[garde(dive)] HashMap<IndexSetName, NewDualIndexSet>),
 }
@@ -51,7 +51,10 @@ pub (super) enum IndexSets {
 impl Write for IndexSets {
     type Returns = ();
 
-    async fn write(self, db_conn: &mut AsyncPgConnection) -> crate::db::error::Result<Self::Returns> {
+    async fn write(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> crate::db::error::Result<Self::Returns> {
         match self {
             Self::Single(sets) => sets.write(db_conn).await?,
             Self::Dual(sets) => sets.write(db_conn).await?,
@@ -61,9 +64,11 @@ impl Write for IndexSets {
     }
 }
 
-static INDEX_SET_NAME_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap());
-static DNA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
+static INDEX_SET_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^SI-([NA]{2}|[TN]{2}|[GA]{2}|[TS]{2}|[TT]{2})-[A-H]\d{1,2}$").unwrap()
+});
+static DNA_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[ACGT]{8}|[ACGT]{10}$").unwrap());
 
 #[derive(Deserialize, Validate, Hash, PartialEq, Eq, Clone)]
 #[garde(transparent)]
@@ -96,7 +101,10 @@ impl PathComponentKind for IndexSetName {
     }
 }
 
-async fn insert_kit_name(kit_name: &str, conn: &mut AsyncPgConnection) -> super::super::error::Result<()> {
+async fn insert_kit_name(
+    kit_name: &str,
+    conn: &mut AsyncPgConnection,
+) -> super::super::error::Result<()> {
     diesel::insert_into(index_kit::table)
         .values(index_kit::name.eq(kit_name))
         .on_conflict_do_nothing()
@@ -121,7 +129,10 @@ impl Write for Vec<NewSingleIndexSet> {
     // We should technically validate the fact that this whole set has the same kit,
     // but it doesn't really matter because this won't be exposed as an API route -
     // we are downloading these files from 10X ourselves.
-    async fn write(self, conn: &mut diesel_async::AsyncPgConnection) -> super::super::error::Result<Self::Returns> {
+    async fn write(
+        self,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> super::super::error::Result<Self::Returns> {
         // This one clone is necessary
         let Some(NewSingleIndexSet(index_set_name, ..)) = self.get(0).cloned() else {
             return Ok(());
@@ -133,8 +144,15 @@ impl Write for Vec<NewSingleIndexSet> {
         // Doing this all in a functional manner becomes cumbersome
         let mut insertables = Vec::with_capacity(self.len());
         for index_set in &self {
-            let NewSingleIndexSet(index_set_name, [DnaSequence(s1), DnaSequence(s2), DnaSequence(s3), DnaSequence(s4)]) =
-                index_set;
+            let NewSingleIndexSet(
+                index_set_name,
+                [
+                    DnaSequence(s1),
+                    DnaSequence(s2),
+                    DnaSequence(s3),
+                    DnaSequence(s4),
+                ],
+            ) = index_set;
 
             let well_name = index_set_name.well_name()?;
 
@@ -203,7 +221,10 @@ where
 impl Write for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = ();
 
-    async fn write(self, conn: &mut diesel_async::AsyncPgConnection) -> crate::db::error::Result<Self::Returns> {
+    async fn write(
+        self,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> crate::db::error::Result<Self::Returns> {
         let Some(index_set_name) = self.keys().next().cloned() else {
             return Ok(());
         };

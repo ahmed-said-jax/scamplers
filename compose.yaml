@@ -31,31 +31,39 @@ services:
       dockerfile: rust/Dockerfile
       target: final
     environment:
-      PORT: ${SCAMPLERS_BACKEND_PORT}
+      PORT: &backend_port 8000
       DB_HOST: &db_host postgres
       DB_PORT: *db_port
       PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
     expose:
       - *backend_port
     secrets:
-      - db_root_user
-      - db_root_password
-      - db_login_user_password
-      - db_auth_user_password
-      - db_name
-      - seed_data
+      - source: db_root_user
+        uid: "10001"
+      - source: db_root_password
+        uid: "10001"
+      - source: db_login_user_password
+        uid: "10001"
+      - source: db_auth_user_password
+        uid: "10001"
+      - source: db_name
+        uid: "10001"
+      - source: seed_data
+        uid: "10001"
     volumes:
       - logs:/logs
+      - scamplers-frontend:/opt/scamplers-frontend
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     healthcheck:
-      test: [CMD, curl, "http://localhost:$PORT/health"]
+      # TODO: interpolate backend_port
+      test: curl http://localhost:8000/health || exit 1
       interval: 5s
-      start_period: 5s
+      start_period: 10s
       start_interval: 1s
-      timeout: 1s
-      retries: 5
+      timeout: 5s
+      retries: 10
   scamplers-auth:
     restart: always
     build:
@@ -67,58 +75,74 @@ services:
       scamplers-backend:
         condition: service_healthy
     environment:
-      PORT: ${SCAMPLERS_AUTH_PORT}
+      PORT: &auth_port 8000
       DB_HOST: *db_host
       DB_PORT: *db_port
-      BACKEND_HOST: &scamplers_backend scamplers-backend
-      BACKEND_PORT: ${SCAMPLERS_BACKEND_PORT}
-      AUTH_SUBDOMAIN: ${SCAMPLERS_AUTH_SUBDOMAIN}
+      BACKEND_HOST: &backend_host scamplers-backend
+      BACKEND_PORT: *backend_port
+      AUTH_SUBDOMAIN: &auth_subdomain auth
       PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
       MS_AUTH_PATH: &ms_auth_path /microsoft/login
       MS_AUTH_REDIRECT_PATH: /microsoft/redirect
     expose:
-      - *auth_port:*auth_port
+      - *auth_port
     secrets:
-      - db_auth_user_password
-      - db_name
-      - ms_auth_client_id
-      - ms_auth_client_credential
+      - source: db_auth_user_password
+        uid: "10001"
+      - source: db_name
+        uid: "10001"
+      - source: ms_auth_client_id
+        uid: "10001"
+      - source: ms_auth_client_credential
+        uid: "10001"
     healthcheck:
-      test: [CMD, curl, "http://localhost:$PORT/health"]
+      # TODO: interpolate *auth_port instead of hardcoding 8000
+      test: curl http://localhost:8000/health || exit 1
       interval: 5s
-      start_period: 5s
+      start_period: 10s
       start_interval: 1s
-      timeout: 1s
-      retries: 5
+      timeout: 5s
+      retries: 10
   scamplers-frontend:
     restart: always
     build:
       context: typescript/scamplers-frontend
       args:
         BUN_VERSION: 1.2
-        ALPINE_VERSION: 3.21
-      target: final
-    environment:
-        PORT: ${SCAMPLERS_FRONTEND_PORT}
-        AUTH_SUBDOMAIN: ${SCAMPLERS_AUTH_SUBDOMAIN}
+        AUTH_SUBDOMAIN: *auth_subdomain
         PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
-        BACKEND_HOST: *scamplers_backend
-        BACKEND_PORT: ${SCAMPLERS_BACKEND_PORT}
         MS_AUTH_PATH: *ms_auth_path
-    depends_on:
-      scamplers-backend:
-        condition: service_healthy
-      scamplers-auth:
-        condition: service_healthy
-    healthcheck:
-      test: [CMD, curl, "http://localhost:$PORT/health"]
-      interval: 5s
-      start_period: 5s
-      start_interval: 1s
-      timeout: 1s
-      retries: 5
+      target: build
+    environment:
+        # Leave these here, as we will eventually switch to a proper server implementation instead of building a static site generator
+        PORT: &frontend_port 8000
+        AUTH_SUBDOMAIN: *auth_subdomain
+        PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
+        BACKEND_HOST: *backend_host
+        BACKEND_PORT: *backend_port
+        MS_AUTH_PATH: *ms_auth_path
+    # depends_on:
+    #   scamplers-backend:
+    #     condition: service_healthy
+    #   scamplers-auth:
+    #     condition: service_healthy
+    # This healthcheck will be good for a proper server as well
+    # healthcheck:
+    #   test: [CMD, curl, "http://localhost:$PORT/health"]
+    #   interval: 5s
+    #   start_period: 5s
+    #   start_interval: 1s
+    #   timeout: 1s
+    #   retries: 5
+    volumes:
+      - scamplers-frontend:/opt/scamplers-frontend
   caddy:
     image: caddy:2.9.1-alpine
+    environment:
+      PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
+      AUTH_SUBDOMAIN: *auth_subdomain
+      AUTH_HOST: &auth_host scamplers-auth
+      AUTH_PORT: *auth_port
     restart: always
     cap_add:
       - NET_ADMIN
@@ -131,13 +155,14 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      scamplers-frontend:
+      scamplers-auth:
         condition: service_healthy
 volumes:
   db-data:
   logs:
   caddy-data:
   caddy-config:
+  scamplers-frontend:
 secrets:
   db_root_user:
     environment: SCAMPLERS_DB_ROOT_USER

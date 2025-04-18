@@ -624,7 +624,6 @@ dependencies = [
  "chrono",
  "diesel_derives",
  "itoa",
- "pq-sys",
  "serde_json",
  "uuid 1.16.0",
 ]
@@ -1899,16 +1898,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pq-sys"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41c852911b98f5981956037b2ca976660612e548986c30af075e753107bc3400"
-dependencies = [
- "libc",
- "vcpkg",
-]
-
-[[package]]
 name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2311,8 +2300,10 @@ dependencies = [
  "diesel",
  "diesel-async",
  "diesel_migrations",
+ "dotenvy",
  "futures",
  "garde",
+ "rand 0.9.1",
  "regex",
  "reqwest",
  "scamplers-core",
@@ -2357,6 +2348,7 @@ version = "0.1.0"
 dependencies = [
  "camino",
  "diesel",
+ "diesel-async",
  "dotenvy",
  "testcontainers-modules",
 ]
@@ -3321,6 +3313,7 @@ name = "uuid"
 version = "0.1.0"
 dependencies = [
  "diesel",
+ "diesel-async",
  "pyo3",
  "serde",
  "uuid 1.16.0",
@@ -3359,12 +3352,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "vcpkg"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"

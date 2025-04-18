@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = [ "scamplers-backend","scamplers-core", "scamplers-schema", "uuid"]
-default-members = ["scamplers-core"]
+members = ["scamplers-backend","scamplers-core", "scamplers-schema", "uuid"]
+default-members = ["scamplers-backend"]
 
 [workspace.package]
 edition = "2024"

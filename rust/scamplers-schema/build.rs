@@ -19,7 +19,7 @@ fn main() {
     let in_docker = option_env!("IN_DOCKER").unwrap_or_default();
     let in_docker = bool::from_str(in_docker).unwrap_or_default();
 
-    if !in_docker {
+    if in_docker {
         return;
     }
     let postgres_version = option_env!("SCAMPLERS_POSTGRES_VERSION").unwrap_or("17-alpine");

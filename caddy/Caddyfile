@@ -1,0 +1,7 @@
+{$PUBLIC_URL} {
+    reverse_proxy {$BACKEND_HOST}:{$BACKEND_PORT}
+}
+
+{$AUTH_SUBDOMAIN}.{$PUBLIC_URL} {
+    reverse_proxy {$AUTH_HOST}:{$AUTH_PORT}
+}

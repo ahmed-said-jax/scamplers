@@ -13,10 +13,27 @@ use std::default;
 
 #[cfg_attr(
     feature = "backend",
-    derive(Validate, Deserialize, Valuable, strum::EnumString, strum::IntoStaticStr, Default, Debug, Clone, Copy)
+    derive(
+        Validate,
+        Deserialize,
+        Valuable,
+        strum::EnumString,
+        strum::IntoStaticStr,
+        Default,
+        Debug,
+        Clone,
+        Copy
+    )
 )]
-#[cfg_attr(feature = "backend", strum(serialize_all = "snake_case"), serde(rename_all = "snake_case"))]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all, rename_all = "snake_case"))]
+#[cfg_attr(
+    feature = "backend",
+    strum(serialize_all = "snake_case"),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(
+    feature = "python",
+    pyclass(get_all, set_all, rename_all = "snake_case")
+)]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub enum UserRole {
     #[cfg_attr(feature = "web", js_name = "app_admin")]
@@ -26,7 +43,7 @@ pub enum UserRole {
     #[cfg_attr(feature = "web", js_name = "biology_staff")]
     BiologyStaff,
     #[cfg_attr(feature = "backend", default)]
-    Unknown
+    Unknown,
 }
 
 #[cfg_attr(
@@ -45,7 +62,7 @@ pub struct NewPerson {
     pub institution_id: Uuid,
     pub ms_user_id: Uuid,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
-    pub roles: Vec<UserRole>
+    pub roles: Vec<UserRole>,
 }
 
 #[cfg_attr(feature = "backend", derive(Queryable, Selectable, Serialize, Debug))]

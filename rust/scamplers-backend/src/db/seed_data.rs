@@ -1,52 +1,21 @@
+use admin::NewAdmin;
+use anyhow::Context;
 use diesel_async::AsyncPgConnection;
 use garde::Validate;
 use index_set::IndexSetFileUrl;
-use scamplers_core::{institution::NewInstitution, person::{NewPerson, UserRole}};
+use scamplers_core::{
+    institution::NewInstitution,
+    person::{NewPerson, UserRole},
+};
 use scamplers_schema::person;
 use serde::Deserialize;
 use uuid::Uuid;
 mod index_set;
-use diesel::{prelude::*, pg::Pg};
+use diesel::{pg::Pg, prelude::*};
 use diesel_async::RunQueryDsl;
 mod admin;
 
 use super::Write;
-
-#[derive(Deserialize, Validate, Insertable)]
-#[diesel(table_name = person, check_for_backend(Pg))]
-#[garde(allow_unvalidated)]
-struct NewAdmin {
-    #[garde(dive)]
-    #[diesel(embed)]
-    person: NewPerson,
-    #[diesel(skip_insertion)]
-    institution_name: String,
-    ms_user_id: Uuid
-}
-
-impl Write for NewAdmin {
-    type Returns = ();
-
-    async fn write(mut self, db_conn: &mut AsyncPgConnection) -> super::error::Result<Self::Returns> {
-        use scamplers_schema::institution;
-
-        let Self {
-            person: NewPerson { name, email, orcid, roles, .. },
-            institution_name,
-            ms_user_id
-        } = self;
-
-        let institution_id = institution::table
-            .select(institution::id)
-            .filter(institution::name.eq(&institution_name))
-            .first(db_conn)
-            .await?;
-
-        roles.push(UserRole::AppAdmin);
-
-        Ok(())
-    }
-}
 
 #[derive(Deserialize)]
 pub struct SeedData {
@@ -56,11 +25,15 @@ pub struct SeedData {
 }
 
 impl SeedData {
-    async fn write(self, db_conn: &mut AsyncPgConnection, http_client: reqwest::Client) -> anyhow::Result<()> {
+    pub async fn write(
+        self,
+        db_conn: &mut AsyncPgConnection,
+        http_client: reqwest::Client,
+    ) -> anyhow::Result<()> {
         let Self {
             institution,
             app_admin,
-            index_set_urls
+            index_set_urls,
         } = self;
 
         let institutions_result = institution.write(db_conn).await;
@@ -97,7 +70,7 @@ async fn download_and_insert_index_sets(
     // A for-loop is fine because this is like 10 URLs max, and each of these is a
     // bulk insert
     for sets in index_sets {
-        sets.create(db_conn)
+        sets.write(db_conn)
             .await
             .context("failed to insert index sets into database")?;
     }

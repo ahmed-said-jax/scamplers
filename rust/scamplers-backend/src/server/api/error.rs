@@ -18,33 +18,7 @@ use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 use valuable::Valuable;
 
-use crate::{
-    db
-};
-
-pub struct ValidJson<T>(pub T);
-impl<S, T> FromRequest<S> for ValidJson<T>
-where
-    axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,
-    S: Send + Sync,
-    T: Validate,
-    <T as Validate>::Context: std::default::Default,
-{
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> std::result::Result<Self, Self::Rejection> {
-        let axum::Json(data) = axum::Json::<T>::from_request(req, state).await?;
-        data.validate()?;
-
-        Ok(Self(data))
-    }
-}
-
-impl<T: Serialize> IntoResponse for ValidJson<T> {
-    fn into_response(self) -> Response {
-        axum::Json(self.0).into_response()
-    }
-}
+use crate::db;
 
 #[derive(thiserror::Error, Serialize, Debug, Clone, Valuable)]
 #[serde(rename_all = "snake_case", tag = "type")]

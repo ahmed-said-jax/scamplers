@@ -1,41 +1,58 @@
-pub mod model;
 pub mod error;
+pub mod model;
 pub mod seed_data;
 mod util;
 
-use diesel::prelude::*;
 use diesel::BoxableExpression;
 use diesel::pg::Pg;
+use diesel::query_builder::QueryFragment;
+use diesel::query_dsl::methods::FilterDsl;
 use diesel::sql_types;
-use diesel_async::AsyncPgConnection;
+use diesel::{prelude::*, query_dsl::methods::LimitDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use util::QueryLimit;
 
-type BoxedDieselExpression<'a, Table> = Box<dyn BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a>;
+type BoxedDieselExpression<'a, Table> =
+    Box<dyn BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a>;
 
-trait AsDieselExpression<Table = ()> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>> where Table: 'a;
+trait AsDieselFilter<Table = ()> {
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+    where
+        Table: 'a;
+
+    fn limit(&self) -> QueryLimit {
+        Default::default()
+    }
 }
 
-impl AsDieselExpression for () {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, ()>> where (): 'a {
+impl AsDieselFilter for () {
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, ()>>
+    where
+        (): 'a,
+    {
         None
     }
 }
 
-impl <DbQuery, Table> AsDieselExpression<Table> for Option<DbQuery> where DbQuery: AsDieselExpression<Table> {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>> where Table: 'a {
-        let Some(filter) = self else {
-            return None;
-        };
-
-        filter.as_diesel_expression()
+impl<FilterStruct, Table> AsDieselFilter<Table> for Option<FilterStruct>
+where
+    FilterStruct: AsDieselFilter<Table>,
+{
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+    where
+        Table: 'a,
+    {
+        self.as_ref().map(|q| q.as_diesel_filter()).flatten()
     }
 }
 
-trait AsDieselSelect<Table: QueryDsl> {
-    fn as_diesel_select() -> Table;
+trait AsDieselQueryBase {
+    type QueryBase;
+
+    fn as_diesel_query_base() -> Self::QueryBase;
 }
 
-trait Write {
+pub trait Write {
     type Returns;
 
     async fn write(self, db_conn: &mut AsyncPgConnection) -> error::Result<Self::Returns>;

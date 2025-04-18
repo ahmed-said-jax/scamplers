@@ -33,6 +33,8 @@ tracing-subscriber = {workspace = true}
 tracing-appender = {workspace = true}
 argon2 = {workspace = true}
 axum-extra = {workspace = true}
+rand = {workspace = true}
+dotenvy = {workspace = true}
 
 [lints]
 workspace = true

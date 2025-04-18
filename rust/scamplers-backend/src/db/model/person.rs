@@ -1,29 +1,45 @@
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl, methods::ExecuteDsl};
-use scamplers_core::person::{NewPerson, PersonQuery, Person};
+use scamplers_core::person::{NewPerson, Person, PersonQuery};
+use scamplers_schema::{
+    institution,
+    person::{
+        self,
+        dsl::{
+            email as email_col, id as id_col, institution_id as institution_col,
+            ms_user_id as ms_user_id_col, name as name_col,
+        },
+    }
+};
 use uuid::Uuid;
-use scamplers_schema::{institution, person::dsl::{email as email_col, id as id_col, name as name_col, person}};
 
-use diesel::{define_sql_function, sql_types::{Text, Array}};
+use diesel::{
+    define_sql_function,
+    sql_types::{Array, Text},
+};
 
 define_sql_function! {fn grant_roles_to_user(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn revoke_roles_from_user(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
-use crate::db::{util::{AsIlike, DbEnum}, AsDieselExpression, AsDieselSelect, BoxedDieselExpression};
+use crate::{db::{
+    self, util::{AsIlike, DbEnum}, AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, Write
+}, server::auth::HashedKey};
 
-impl<Table> AsDieselExpression<Table> for PersonQuery
+impl<Table> AsDieselFilter<Table> for PersonQuery
 where
     id_col: SelectableExpression<Table>,
     name_col: SelectableExpression<Table>,
     email_col: SelectableExpression<Table>,
 {
-    fn as_diesel_expression<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
     where
         Table: 'a,
     {
-        let Self { ids, name, email, .. } = self;
+        let Self {
+            ids, name, email, ..
+        } = self;
 
         if matches!((ids.is_empty(), name, email), (true, None, None)) {
             return None;
@@ -48,15 +64,22 @@ where
     }
 }
 
-impl AsDieselSelect<InnerJoin<person, institution::table>> for Person {
-    fn as_diesel_select() -> InnerJoin<person, institution::table> {
-        person.inner_join(institution::table)
+impl AsDieselQueryBase for Person {
+    type QueryBase = InnerJoin<person::table, institution::table>;
+
+    fn as_diesel_query_base() -> Self::QueryBase {
+        person::table.inner_join(institution::table)
     }
 }
 
-pub async fn fetch_people(filter: Option<PersonQuery>, db_conn: &mut AsyncPgConnection) -> crate::db::error::Result<Vec<Person>> {
-    let query = Person::as_diesel_select().order_by(name_col).select(Person::as_select());
-    let filter = filter.as_diesel_expression();
+pub async fn fetch_by_filter(
+    filter: Option<PersonQuery>,
+    db_conn: &mut AsyncPgConnection,
+) -> crate::db::error::Result<Vec<Person>> {
+    let query = Person::as_diesel_query_base()
+        .order_by(name_col)
+        .select(Person::as_select());
+    let filter = filter.as_diesel_filter();
 
     let people = match filter {
         Some(f) => query.filter(f).load(db_conn).await?,
@@ -66,61 +89,94 @@ pub async fn fetch_people(filter: Option<PersonQuery>, db_conn: &mut AsyncPgConn
     Ok(people)
 }
 
+pub async fn fetch_by_id(id: Uuid, db_conn: &mut AsyncPgConnection) -> crate::db::error::Result<Person> {
+    Ok(Person::as_diesel_query_base().filter(id_col.eq(id)).select(Person::as_select()).first(db_conn).await?)
+}
+
 pub trait WriteMsLogin {
-    async fn write_ms_login(self, db_conn: &mut AsyncPgConnection) -> crate::db::error::Result<()>;
+    async fn write_ms_login(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> crate::db::error::Result<Uuid>;
 }
 
 impl WriteMsLogin for NewPerson {
-    async fn write_ms_login(self, db_conn: &mut AsyncPgConnection) -> crate::db::error::Result<()> {
-        use scamplers_schema::person::dsl::*;
+    async fn write_ms_login(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> crate::db::error::Result<Uuid> {
         use crate::db::error::Error;
 
-        let result = diesel::insert_into(person)
-            .values(self)
-            .on_conflict(ms_user_id)
+        let Self {
+            name,
+            email,
+            institution_id,
+            roles,
+            ..
+        } = &self;
+
+        let result = diesel::insert_into(person::table)
+            .values(&self)
+            .on_conflict(ms_user_id_col)
             .do_update()
             .set((
-                name.eq(&self.name),
-                email.eq(&self.email),
-                institution_id.eq(&self.institution_id),
+                name_col.eq(name),
+                email_col.eq(email),
+                institution_col.eq(institution_id),
             ))
-            .returning(id)
+            .returning(id_col)
             .get_result(db_conn)
             .await;
 
-        let Err(err) = result else {
-            return Ok(());
-        };
+        let result = result.map_err(Error::from);
 
-        let err = Error::from(err);
-
-        let new_id: Uuid = match err {
-            Error::DuplicateRecord { ref field, .. } => {
+        let new_id = match &result {
+            Ok(id) => *id,
+            Err(Error::DuplicateRecord { field, .. }) => {
                 let Some(field) = field else {
-                    return Err(err);
+                    return result;
                 };
                 if field != "email" {
-                    return Err(err);
+                    return result;
                 }
 
-                let query = PersonQuery {email: Some(self.email.clone()), ..Default::default()};
+                let query = PersonQuery {
+                    email: Some(email.clone()),
+                    ..Default::default()
+                };
 
-                let p = fetch_people(Some(query),db_conn).await?;
+                let p = fetch_by_filter(Some(query), db_conn).await?;
                 let p = &p[0];
 
                 p.id
             }
             _ => {
-                return Err(err);
+                return result;
             }
         };
 
-        let roles: Vec<_> = self.roles.into_iter().map(|r| DbEnum(r)).collect();
+        let roles: Vec<_> = roles.clone().into_iter().map(|r| DbEnum(r)).collect();
 
-        diesel::select(create_user_if_not_exists(new_id.to_string(), roles))
+        diesel::select(create_user_if_not_exists(new_id.to_string(), &roles))
             .execute(db_conn)
             .await?;
 
+        Ok(new_id)
+    }
+}
+
+#[derive(Identifiable, AsChangeset, Queryable)]
+#[diesel(table_name = person, check_for_backend(Pg))]
+pub struct GrantApiAccess<'a> {
+    pub id: Uuid,
+    pub hashed_api_key: HashedKey<&'a str>,
+}
+
+impl Write for GrantApiAccess<'_> {
+    type Returns = ();
+
+    async fn write(self, conn: &mut AsyncPgConnection) -> db::error::Result<Self::Returns> {
+        diesel::update(&self).set(&self).execute(conn).await?;
         Ok(())
     }
 }

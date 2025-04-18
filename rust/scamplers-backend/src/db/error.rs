@@ -94,16 +94,29 @@ impl
         let details = info.details().unwrap_or_default();
         let field_value: Vec<String> = detail_regex
             .captures(details)
-            .and_then(|cap| cap.iter().take(3).map(|m| m.map(|s| s.as_str().to_string())).collect())
+            .and_then(|cap| {
+                cap.iter()
+                    .take(3)
+                    .map(|m| m.map(|s| s.as_str().to_string()))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let field = field_value.get(1).cloned();
         let value = field_value.get(2).cloned();
 
         match kind {
-            UniqueViolation => Self::DuplicateRecord { entity: entity.to_string(), field, value },
+            UniqueViolation => Self::DuplicateRecord {
+                entity: entity.to_string(),
+                field,
+                value,
+            },
             ForeignKeyViolation => {
-                let referenced_entity = details.split_whitespace().last().unwrap_or_default().replace('"', "");
+                let referenced_entity = details
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .replace('"', "");
                 let referenced_entity = referenced_entity.strip_suffix(".").unwrap_or_default();
 
                 Self::ReferenceNotFound {

@@ -6,7 +6,8 @@ edition.workspace = true
 [dependencies]
 _uuid = {workspace = true}
 serde = {workspace = true, optional = true }
-diesel = {workspace = true, optional = true, features = ["postgres"] }
+diesel = {workspace = true, optional = true }
+diesel-async = {workspace = true}
 valuable = {workspace = true, optional = true}
 pyo3 = {workspace = true, optional = true}
 wasm-bindgen = { workspace = true, optional = true }

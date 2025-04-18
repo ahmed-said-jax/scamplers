@@ -1,18 +1,23 @@
+use diesel::{pg::Pg, prelude::*};
 use diesel_async::AsyncPgConnection;
+use diesel_async::RunQueryDsl;
 use garde::Validate;
-use scamplers_core::{institution::NewInstitution, person::{NewPerson, UserRole}};
+use scamplers_core::{
+    institution::NewInstitution,
+    person::{NewPerson, UserRole},
+};
 use scamplers_schema::person;
 use serde::Deserialize;
 use uuid::Uuid;
-use diesel::{prelude::*, pg::Pg};
-use diesel_async::RunQueryDsl;
+
+use crate::db::model::person::WriteMsLogin;
 
 use super::Write;
 
 #[derive(Deserialize, Validate, Insertable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
-struct NewAdmin {
+pub(super) struct NewAdmin {
     #[garde(dive)]
     #[diesel(embed)]
     person: NewPerson,
@@ -23,7 +28,10 @@ struct NewAdmin {
 impl Write for NewAdmin {
     type Returns = ();
 
-    async fn write(mut self, db_conn: &mut AsyncPgConnection) -> super::super::error::Result<Self::Returns> {
+    async fn write(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> super::super::error::Result<Self::Returns> {
         use scamplers_schema::institution;
 
         let Self {
@@ -40,6 +48,8 @@ impl Write for NewAdmin {
         person.institution_id = institution_id;
         person.roles.push(UserRole::AppAdmin);
 
-        person.write_ms_login(db_conn).await
+        person.write_ms_login(db_conn).await?;
+
+        Ok(())
     }
 }

@@ -8,7 +8,7 @@ use crate::db::seed_data::SeedData;
 
 #[derive(Args)]
 pub struct Config {
-    #[arg(long, env = "SCAMPLERS_SECRETS_DIR")]
+    #[arg(long)]
     secrets_dir: Option<Utf8PathBuf>,
     #[arg(long, env = "SCAMPLERS_DB_ROOT_USER", default_value_t)]
     db_root_user: String,
@@ -54,14 +54,16 @@ impl Config {
         };
 
         // This is a bit of AI genius
-        let read_secret =
-            |name: &str| fs::read_to_string(secrets_dir.join(name)).context(format!("failed to read secret {name}"));
+        let read_secret = |name: &str| {
+            fs::read_to_string(secrets_dir.join(name))
+                .context(format!("failed to read secret {name}"))
+        };
 
         *db_root_user = read_secret("db_root_user")?;
-        *db_root_password=  read_secret("db_root_password")?;
-        *db_login_user_password= read_secret("db_login_user_password")?;
-        *db_auth_user_password= read_secret("db_auth_user_password")?;
-        *db_name= read_secret("db_name")?;
+        *db_root_password = read_secret("db_root_password")?;
+        *db_login_user_password = read_secret("db_login_user_password")?;
+        *db_auth_user_password = read_secret("db_auth_user_password")?;
+        *db_name = read_secret("db_name")?;
         // *seed_data= serde_json::from_str(&read_secret("seed_data")?)?;
         *seed_data_path = None;
 
@@ -116,7 +118,7 @@ impl Config {
         self.db_url(false)
     }
 
-    pub fn seed_data(&self) -> anyhow::Result<Option<SeedData>> {
+    pub fn seed_data(&mut self) -> anyhow::Result<Option<SeedData>> {
         let Self {
             seed_data,
             seed_data_path,
@@ -124,11 +126,12 @@ impl Config {
         } = self;
 
         match (seed_data, seed_data_path) {
-            (None, None) => Ok(None),
-            (Some(seed_data), None) => Ok(Some(seed_data.clone())),
-            (None, Some(seed_data_path)) => Ok(Some(serde_json::from_str(&fs::read_to_string(seed_data_path)?)?)),
+            (seed_data, None) => Ok(seed_data.take()),
+            (None, Some(seed_data_path)) => Ok(Some(serde_json::from_str(&fs::read_to_string(
+                seed_data_path,
+            )?)?)),
             (Some(_), Some(_)) => Err(anyhow!(
-                "seed_data_path should not be set alongside seed data read from secrets dir"
+                "`seed_data` and `seed_data_path` are mutually exclusive"
             )),
         }
     }

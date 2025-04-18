@@ -3,7 +3,7 @@ use testcontainers_modules::{
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
 
-pub (super) trait ToAddress {
+pub(super) trait ToAddress {
     fn to_address(&self) -> String;
 }
 
@@ -14,7 +14,7 @@ impl ToAddress for (String, u16) {
     }
 }
 
-pub (super) trait DevContainer: Sized {
+pub(super) trait DevContainer: Sized {
     async fn new() -> anyhow::Result<Self>;
     async fn db_url(&self) -> anyhow::Result<String>;
 }

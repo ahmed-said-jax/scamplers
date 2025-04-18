@@ -40,7 +40,7 @@ class ConfigContainer(sanic.Config):
         db_auth_user_password: str
         db_name: str
         host: str
-        port: str
+        port: int
         backend_host: str
         backend_port: str
         auth_subdomain: str
@@ -173,7 +173,7 @@ async def complete_ms_login(request: Request) -> sanic.HTTPResponse:
     user["institution_id"] = institution_id
     user["ms_user_id"] = user["oid"]
 
-    result = http_client.post(f"http://{app_config.backend_host}{app_config.backend_port}/session", json=user)
+    result = http_client.post(f"http://{app_config.backend_host}{app_config.backend_port}/api/session", json=user)
     data = result.json()
 
     response = redirect(f"https://{app_config.public_url}" + auth_flow["redirected_from"])
