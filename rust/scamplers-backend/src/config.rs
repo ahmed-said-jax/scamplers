@@ -135,6 +135,10 @@ impl Config {
             )),
         }
     }
+
+    pub fn public_url(&self) -> &str {
+        &self.public_url
+    }
 }
 
 #[derive(Subcommand)]

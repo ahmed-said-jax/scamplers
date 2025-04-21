@@ -3,19 +3,20 @@ name = "uuid"
 version = "0.1.0"
 edition.workspace = true
 
+[lib]
+crate-type = ["cdylib", "lib"]
+
 [dependencies]
 _uuid = {workspace = true}
 serde = {workspace = true, optional = true }
 diesel = {workspace = true, optional = true }
 diesel-async = {workspace = true}
 valuable = {workspace = true, optional = true}
-pyo3 = {workspace = true, optional = true}
 wasm-bindgen = { workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [features]
-backend = ["serde", "diesel", "valuable"]
-python = ["pyo3"]
+backend = ["serde", "diesel", "valuable", "_uuid/serde", "_uuid/v7"]
 web = ["wasm-bindgen", "_uuid/js"]

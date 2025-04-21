@@ -276,6 +276,17 @@ impl AppState2 {
             }
         }
     }
+
+    fn public_url(&self) -> String {
+        use AppState2::*;
+
+        match self {
+            Dev { .. } => "http://localhost:8000".to_string(),
+            Prod { config, .. } => {
+                config.lock().unwrap().public_url().to_string()
+            }
+        }
+    }
 }
 
 async fn run_migrations(
@@ -304,20 +315,20 @@ fn app(app_state: AppState2) -> Router {
 
     let api_router = match &app_state {
         Dev { .. } => api::router(),
-        Prod { .. } => api::router().layer(middleware::from_fn_with_state(
-            app_state.clone(),
-            authenticate_api_request,
-        )),
+        Prod { .. } => api::router() // .layer(middleware::from_fn_with_state(
+        //app_state.clone(),
+            //authenticate_api_request,
+        // )),
     };
 
     let mut router = router.nest("/api", api_router);
 
     if matches!(&app_state, Prod { .. }) {
         // Create the frontend router, which just serves a static file directory, and add an authentication layer
-        let auth_layer =
-            middleware::from_fn_with_state(app_state.clone(), authenticate_browser_request);
+        // let auth_layer =
+        //     middleware::from_fn_with_state(app_state.clone(), authenticate_browser_request);
         let frontend_service = ServiceBuilder::new()
-            .layer(auth_layer.clone())
+            // .layer(auth_layer.clone())
             .service(ServeDir::new("/opt/scamplers-frontend"));
 
         // Nest the just-created service
@@ -325,7 +336,7 @@ fn app(app_state: AppState2) -> Router {
 
         // The frontend also calls the API, but from a different route (because the authentication is different). Nest
         // that too
-        router = router.nest("/frontend/api", api::router().layer(auth_layer));
+        router = router.nest("/frontend/api", api::router());
     }
 
     router.with_state(app_state)

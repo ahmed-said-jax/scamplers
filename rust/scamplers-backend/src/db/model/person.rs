@@ -117,7 +117,7 @@ impl WriteMsLogin for NewPerson {
 
         let result = diesel::insert_into(person::table)
             .values(&self)
-            .on_conflict(ms_user_id_col)
+            .on_conflict(id_col)
             .do_update()
             .set((
                 name_col.eq(name),

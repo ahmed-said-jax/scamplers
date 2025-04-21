@@ -7,6 +7,9 @@ use {
     valuable::Valuable,
 };
 
+#[cfg(feature = "web")]
+use wasm_bindgen::prelude::*;
+
 use {crate::institution::Institution, uuid::Uuid};
 
 use std::default;
@@ -20,9 +23,7 @@ use std::default;
         strum::EnumString,
         strum::IntoStaticStr,
         Default,
-        Debug,
-        Clone,
-        Copy
+        Debug
     )
 )]
 #[cfg_attr(
@@ -30,11 +31,8 @@ use std::default;
     strum(serialize_all = "snake_case"),
     serde(rename_all = "snake_case")
 )]
-#[cfg_attr(
-    feature = "python",
-    pyclass(get_all, set_all, rename_all = "snake_case")
-)]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[derive(Clone, Copy)]
 pub enum UserRole {
     #[cfg_attr(feature = "web", js_name = "app_admin")]
     AppAdmin,
@@ -51,23 +49,21 @@ pub enum UserRole {
     derive(Insertable, Validate, Deserialize, Valuable, Debug)
 )]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)), garde(allow_unvalidated))]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub struct NewPerson {
+    pub id: Uuid,
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,
     #[cfg_attr(feature = "backend", garde(email))]
     pub email: String,
     pub orcid: Option<String>,
     pub institution_id: Uuid,
-    pub ms_user_id: Uuid,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     pub roles: Vec<UserRole>,
 }
 
 #[cfg_attr(feature = "backend", derive(Queryable, Selectable, Serialize, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)))]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub struct Person {
     pub id: Uuid,
@@ -80,7 +76,6 @@ pub struct Person {
 }
 
 #[cfg_attr(feature = "backend", derive(Deserialize, Valuable, Default, Debug))]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub struct PersonQuery {
     #[cfg_attr(feature = "backend", serde(default))]

@@ -13,10 +13,6 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-#[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(
     feature = "backend",
     derive(Deserialize, Serialize, FromSqlRow, AsExpression)
@@ -77,7 +73,7 @@ mod web {
         type Abi = <Self as IntoWasmAbi>::Abi;
 
         unsafe fn from_abi(js: Self::Abi) -> Self {
-            Self(String::from_abi(js).parse().unwrap_or_default())
+            Self(unsafe {String::from_abi(js).parse().unwrap_or_default()})
         }
     }
 

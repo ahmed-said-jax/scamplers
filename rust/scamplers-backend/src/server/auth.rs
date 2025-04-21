@@ -73,7 +73,7 @@ impl Key {
             .to_string();
 
         HashedKey {
-            prefix: self.prefix(),
+            prefix: self.prefix().to_string(),
             hash,
         }
     }
@@ -126,15 +126,12 @@ impl Debug for Key {
 
 #[derive(AsExpression, Debug, FromSqlRow, Deserialize, Valuable)]
 #[diesel(sql_type = scamplers_schema::sql_types::HashedKey)]
-pub struct HashedKey<Str: AsExpression<diesel::sql_types::Text> + Valuable>
-where
-    for<'a> &'a Str: AsExpression<diesel::sql_types::Text>,
-{
-    prefix: Str,
+pub struct HashedKey {
+    prefix: String,
     hash: String,
 }
 
-impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey<&str> {
+impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
     fn to_sql<'b>(
         &'b self,
         out: &mut diesel::serialize::Output<'b, '_, Pg>,
@@ -148,7 +145,7 @@ impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey<&str> {
     }
 }
 
-impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey<String> {
+impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
     fn from_sql(
         bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
     ) -> diesel::deserialize::Result<Self> {
@@ -305,7 +302,7 @@ pub(super) async fn authenticate_api_request(
 ) -> Response {
     let uri = request.uri().to_string();
 
-    // The 'session' route of the API has its own authentication
+    // The 'session' route of the API has its own authentication. TODO: this is a bad implicit pattern, and we should fix this when we implement JWT auth
     if uri.contains("/session") {
         return next.run(request).await;
     }
@@ -334,7 +331,9 @@ pub(super) async fn authenticate_browser_request(
         return next.run(request).await;
     }
 
-    let err = Error::InvalidSessionId { redirected_from }.into_response();
+    let public_url = app_state.public_url();
+
+    let err = Error::InvalidSessionId{login_url: format!("https://{public_url}/login")}.into_response();
 
     let Ok(cookies) = request
         .extract_parts::<TypedHeader<headers::Cookie>>()
@@ -397,7 +396,7 @@ pub(super) enum Error {
     #[error("invalid API key")]
     InvalidApiKey,
     #[error("invalid session ID")]
-    InvalidSessionId { redirected_from: String },
+    InvalidSessionId{login_url: String},
     #[error("invalid user ID")]
     InvalidUserId,
     #[error("invalid auth_user password")]
@@ -418,8 +417,8 @@ impl IntoResponse for Error {
         }
 
         match self {
-            Self::InvalidSessionId { redirected_from } => {
-                Redirect::temporary(&format!("/login?redirected_from={redirected_from}"))
+            Self::InvalidSessionId{login_url} => {
+                Redirect::temporary(&login_url)
                     .into_response()
             }
             Self::InvalidApiKey => (

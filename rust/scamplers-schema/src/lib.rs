@@ -209,7 +209,7 @@ diesel::table! {
     ms_auth_flow (state) {
         state -> Text,
         flow -> Jsonb,
-        redirected_from -> Text,
+        redirected_from -> Nullable<Text>,
         expires_at -> Timestamp,
     }
 }
