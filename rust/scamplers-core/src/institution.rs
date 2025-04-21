@@ -36,6 +36,7 @@ impl NewInstitution {
 #[cfg_attr(feature = "backend", derive(Queryable, Selectable, Serialize, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", derive(Clone))]
 pub struct Institution {
     pub id: Uuid,
     pub name: String,
