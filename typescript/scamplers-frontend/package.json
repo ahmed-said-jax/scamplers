@@ -46,6 +46,7 @@
 	},
 	"dependencies": {
 		"@auth/core": "^0.39.0",
-		"@auth/sveltekit": "^1.9.0"
+		"@auth/sveltekit": "^1.9.0",
+		"vite-plugin-wasm": "^3.4.1"
 	}
 }

@@ -16,8 +16,8 @@ pub struct Config {
     db_root_password: String,
     #[arg(long, env = "SCAMPLERS_DB_LOGIN_USER_PASSWORD", default_value_t)]
     db_login_user_password: String,
-    #[arg(long, env = "SCAMPLERS_DB_AUTH_USER_PASSWORD", default_value_t)]
-    db_auth_user_password: String,
+    #[arg(long, env = "SCAMPLERS_AUTH_SECRET", default_value_t)]
+    auth_secret: String,
     #[arg(long, env = "SCAMPLERS_DB_HOST")]
     db_host: String,
     #[arg(long, env = "SCAMPLERS_DB_PORT")]
@@ -28,8 +28,6 @@ pub struct Config {
     host: String,
     #[arg(long, env = "SCAMPLERS_BACKEND_PORT", default_value_t = 8000)]
     port: u16,
-    #[arg(long, env = "SCAMPLERS_PUBLIC_URL", default_value_t = String::from("localhost:8000"))]
-    public_url: String,
     #[arg(skip)]
     seed_data: Option<SeedData>,
     #[arg(long, env = "SCAMPLERS_SEED_DATA_PATH")]
@@ -42,9 +40,9 @@ impl Config {
             db_root_user,
             db_root_password,
             db_login_user_password,
-            db_auth_user_password,
+            auth_secret,
             db_name,
-            // seed_data,
+            seed_data,
             seed_data_path,
             ..
         } = self;
@@ -62,9 +60,9 @@ impl Config {
         *db_root_user = read_secret("db_root_user")?;
         *db_root_password = read_secret("db_root_password")?;
         *db_login_user_password = read_secret("db_login_user_password")?;
-        *db_auth_user_password = read_secret("db_auth_user_password")?;
+        *auth_secret = read_secret("auth_secret")?;
         *db_name = read_secret("db_name")?;
-        // *seed_data= serde_json::from_str(&read_secret("seed_data")?)?;
+        *seed_data= serde_json::from_str(&read_secret("seed_data")?)?;
         *seed_data_path = None;
 
         Ok(())
@@ -82,10 +80,6 @@ impl Config {
 
     pub fn db_login_user_password(&self) -> &str {
         &self.db_login_user_password
-    }
-
-    pub fn db_auth_user_password(&self) -> &str {
-        &self.db_auth_user_password
     }
 
     fn db_url(&self, root: bool) -> String {
@@ -118,6 +112,10 @@ impl Config {
         self.db_url(false)
     }
 
+    pub fn auth_secret(&self) -> &str {
+        &self.auth_secret
+    }
+
     pub fn seed_data(&mut self) -> anyhow::Result<Option<SeedData>> {
         let Self {
             seed_data,
@@ -134,10 +132,6 @@ impl Config {
                 "`seed_data` and `seed_data_path` are mutually exclusive"
             )),
         }
-    }
-
-    pub fn public_url(&self) -> &str {
-        &self.public_url
     }
 }
 

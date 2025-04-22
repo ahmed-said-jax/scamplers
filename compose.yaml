@@ -108,19 +108,12 @@ services:
     build:
       context: typescript/scamplers-frontend
       args:
-        BUN_VERSION: 1.2
-        AUTH_SUBDOMAIN: *auth_subdomain
-        PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
-        MS_AUTH_PATH: *ms_auth_path
+        NODE_VERSION: 23.11.0
       target: build
     environment:
-        # Leave these here, as we will eventually switch to a proper server implementation instead of building a static site generator
         PORT: &frontend_port 8000
-        AUTH_SUBDOMAIN: *auth_subdomain
-        PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
         BACKEND_HOST: *backend_host
         BACKEND_PORT: *backend_port
-        MS_AUTH_PATH: *ms_auth_path
     # depends_on:
     #   scamplers-backend:
     #     condition: service_healthy
@@ -140,9 +133,6 @@ services:
     image: caddy:2.9.1-alpine
     environment:
       PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
-      AUTH_SUBDOMAIN: *auth_subdomain
-      AUTH_HOST: &auth_host scamplers-auth
-      AUTH_PORT: *auth_port
     restart: always
     cap_add:
       - NET_ADMIN
@@ -170,8 +160,8 @@ secrets:
     environment: SCAMPLERS_DB_ROOT_PASSWORD
   db_login_user_password:
     environment: SCAMPLERS_DB_LOGIN_USER_PASSWORD
-  db_auth_user_password:
-    environment: SCAMPLERS_DB_AUTH_USER_PASSWORD
+  auth_secret:
+    environment: SCAMPLERS_AUTH_SECRET
   db_name:
     environment: SCAMPLERS_DB_NAME
   ms_auth_client_id:

@@ -1,6 +1,6 @@
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl, methods::ExecuteDsl};
-use scamplers_core::person::{NewPerson, Person, PersonQuery};
+use scamplers_core::person::{CreatedUser, NewPerson, Person, PersonQuery};
 use scamplers_schema::{
     institution,
     person::{
@@ -11,6 +11,7 @@ use scamplers_schema::{
         },
     }
 };
+use serde::Serialize;
 use uuid::Uuid;
 
 use diesel::{
@@ -25,7 +26,7 @@ define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{db::{
     self, util::{AsIlike, DbEnum}, AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, Write
-}, server::auth::HashedKey};
+}, server::auth::{HashedKey, Key}};
 
 impl<Table> AsDieselFilter<Table> for PersonQuery
 where
@@ -93,31 +94,38 @@ pub async fn fetch_by_id(id: Uuid, db_conn: &mut AsyncPgConnection) -> crate::db
     Ok(Person::as_diesel_query_base().filter(id_col.eq(id)).select(Person::as_select()).first(db_conn).await?)
 }
 
-pub trait WriteMsLogin {
+pub trait WriteLogin {
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<Uuid>;
+    ) -> crate::db::error::Result<CreatedUser>;
 }
 
-impl WriteMsLogin for NewPerson {
+impl WriteLogin for NewPerson {
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<Uuid> {
+    ) -> crate::db::error::Result<CreatedUser> {
         use crate::db::error::Error;
 
-        let Self {
-            name,
-            email,
-            institution_id,
-            roles,
-            ..
-        } = &self;
+        #[derive(Insertable)]
+        #[diesel(table_name = person)]
+        struct NewUser {
+            #[diesel(embed)]
+            person: NewPerson,
+            hashed_api_key: HashedKey
+        }
 
+        let api_key = Key::new();
+        let hashed_api_key = api_key.hash();
+
+        let new_user = NewUser {person: self, hashed_api_key};
+        let NewUser { person: NewPerson { name, email, institution_id, roles, .. }, .. } = &new_user;
+
+        // If it's a new user, then we can add the API key. If not,
         let result = diesel::insert_into(person::table)
-            .values(&self)
-            .on_conflict(id_col)
+            .values(&new_user)
+            .on_conflict(ms_user_id_col)
             .do_update()
             .set((
                 name_col.eq(name),
@@ -130,14 +138,14 @@ impl WriteMsLogin for NewPerson {
 
         let result = result.map_err(Error::from);
 
-        let new_id = match &result {
-            Ok(id) => *id,
+        let (user_id, user_is_new) = match &result {
+            Ok(id) => (*id, true),
             Err(Error::DuplicateRecord { field, .. }) => {
                 let Some(field) = field else {
-                    return result;
+                    return Err(result.unwrap_err());
                 };
                 if field != "email" {
-                    return result;
+                    return Err(result.unwrap_err());
                 }
 
                 let query = PersonQuery {
@@ -148,35 +156,25 @@ impl WriteMsLogin for NewPerson {
                 let p = fetch_by_filter(Some(query), db_conn).await?;
                 let p = &p[0];
 
-                p.id
+                (p.id, false)
             }
             _ => {
-                return result;
+                return Err(result.unwrap_err());
             }
         };
 
         let roles: Vec<_> = roles.clone().into_iter().map(|r| DbEnum(r)).collect();
 
-        diesel::select(create_user_if_not_exists(new_id.to_string(), &roles))
+        diesel::select(create_user_if_not_exists(user_id.to_string(), &roles))
             .execute(db_conn)
             .await?;
 
-        Ok(new_id)
-    }
-}
+        let api_key = if user_is_new {
+            Some(api_key.to_string())
+        } else {
+            None
+        };
 
-#[derive(Identifiable, AsChangeset, Queryable)]
-#[diesel(table_name = person, check_for_backend(Pg))]
-pub struct GrantApiAccess<'a> {
-    pub id: Uuid,
-    pub hashed_api_key: HashedKey<&'a str>,
-}
-
-impl Write for GrantApiAccess<'_> {
-    type Returns = ();
-
-    async fn write(self, conn: &mut AsyncPgConnection) -> db::error::Result<Self::Returns> {
-        diesel::update(&self).set(&self).execute(conn).await?;
-        Ok(())
+        Ok(CreatedUser{id: user_id, api_key})
     }
 }

@@ -19,9 +19,9 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)), garde(allow_unvalidated))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub struct NewInstitution {
-    #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub id: Uuid,
-    pub name: String,
+    #[cfg_attr(feature = "backend", garde(length(min = 1)))]
+    pub name: String
 }
 
 #[cfg_attr(feature = "web", wasm_bindgen)]

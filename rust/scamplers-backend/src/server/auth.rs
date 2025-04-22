@@ -1,4 +1,4 @@
-use std::{fmt::Debug, str::FromStr};
+use std::{fmt::{Debug, Display}, str::FromStr};
 
 use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
@@ -34,6 +34,7 @@ use rand::{
 };
 use reqwest::{StatusCode, header::AsHeaderName};
 use serde::{Deserialize, Serialize};
+use strum::Display;
 use uuid::Uuid;
 use valuable::Valuable;
 
@@ -47,7 +48,7 @@ const USER_ID_HEADER: &str = "SCAMPLERS_USER_ID";
 
 #[derive(Deserialize, Serialize)]
 #[serde(transparent)]
-pub(super) struct Key(String);
+pub struct Key(String);
 impl Key {
     pub fn new() -> Self {
         Self::default()
@@ -58,7 +59,7 @@ impl Key {
         &key[..KEY_PREFIX_LENGTH]
     }
 
-    pub fn hash(&self) -> HashedKey<&str> {
+    pub fn hash(&self) -> HashedKey {
         let Self(key) = self;
 
         let mut salt = [0u8; 16];
@@ -78,7 +79,7 @@ impl Key {
         }
     }
 
-    fn is_same_hash(&self, other: &HashedKey<String>) -> bool {
+    fn is_same_hash(&self, other: &HashedKey) -> bool {
         let argon2 = Argon2::default();
 
         let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
@@ -124,6 +125,13 @@ impl Debug for Key {
     }
 }
 
+impl Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(inner) = self;
+        <String as Display>::fmt(inner, f)
+    }
+}
+
 #[derive(AsExpression, Debug, FromSqlRow, Deserialize, Valuable)]
 #[diesel(sql_type = scamplers_schema::sql_types::HashedKey)]
 pub struct HashedKey {
@@ -157,8 +165,8 @@ impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
 }
 
 #[derive(Clone, Copy, Valuable)]
-pub(super) struct UserId(pub (super) Uuid);
-impl UserId {
+pub(super) struct User(pub (super) Uuid);
+impl User {
     async fn fetch_by_api_key(
         api_key: &Key,
         conn: &mut AsyncPgConnection,
@@ -180,56 +188,32 @@ impl UserId {
 
         Ok(Self(user_id))
     }
-
-    async fn fetch_by_session_id(
-        session_id: &Key,
-        conn: &mut AsyncPgConnection,
-    ) -> db::error::Result<Self> {
-        use scamplers_schema::{
-            person::dsl::{id as person_id, person},
-            session::dsl::{hashed_id as hashed_session_id, session},
-        };
-
-        let filter_query =
-            diesel::dsl::sql::<Bool>("(hashed_id).prefix = ").bind::<Text, _>(session_id.prefix());
-
-        let (user_id, found_session_id): (_, HashedKey<String>) = session
-            .inner_join(person)
-            .filter(filter_query)
-            .select((person_id, hashed_session_id))
-            .first(conn)
-            .await?;
-
-        if !session_id.is_same_hash(&found_session_id) {
-            return Err(db::error::Error::RecordNotFound);
-        }
-
-        Ok(Self(user_id))
-    }
 }
 
-impl FromRequestParts<AppState2> for UserId {
+impl FromRequestParts<AppState2> for User {
     type Rejection = Error;
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        state: &AppState2,
+        app_state: &AppState2,
     ) -> Result<Self, Self::Rejection> {
-        if let AppState2::Dev { user_id, .. } = state {
+        if let AppState2::Dev { user_id, .. } = app_state {
             return Ok(Self(*user_id));
         }
 
-        let Some(user_id) = parts.headers.get(USER_ID_HEADER) else {
-            return Err(Error::NoUserId);
+        let Some(Ok(api_key)) = parts.headers.get("X-API-Key").map(|s| s.to_str().unwrap().parse()) else {
+            return Err(Error::InvalidApiKey);
         };
-        let user_id =
-            Uuid::from_str(user_id.to_str().unwrap()).map_err(|_| Error::InvalidUserId)?;
 
-        Ok(Self(user_id))
+        let mut db_conn = app_state.db_conn().await?;
+
+        let user = User::fetch_by_api_key(&api_key, &mut db_conn).await?;
+
+        Ok(user)
     }
 }
 
-impl OptionalFromRequestParts<AppState2> for UserId {
+impl OptionalFromRequestParts<AppState2> for User {
     type Rejection = ();
 
     async fn from_request_parts(
@@ -237,128 +221,15 @@ impl OptionalFromRequestParts<AppState2> for UserId {
         state: &AppState2,
     ) -> Result<Option<Self>, Self::Rejection> {
         Ok(
-            <UserId as FromRequestParts<_>>::from_request_parts(parts, state)
+            <User as FromRequestParts<_>>::from_request_parts(parts, state)
                 .await
                 .ok(),
         )
     }
 }
 
-enum RequestType {
-    Api,
-    Browser,
-}
-
-async fn authenticate(
-    app_state: &AppState2,
-    mut request: Request,
-    next: Next,
-    key: &str,
-    request_type: RequestType,
-    err: Response,
-) -> Response {
-    if request.headers().contains_key(USER_ID_HEADER) {
-        return err;
-    }
-
-    if let AppState2::Dev { .. } = &app_state {
-        return next.run(request).await;
-    }
-
-    let Ok(mut db_conn) = app_state.db_conn().await else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-
-    let key = Key::from_str(key).unwrap();
-
-    let result = match request_type {
-        RequestType::Api => UserId::fetch_by_api_key(&key, &mut db_conn).await,
-        RequestType::Browser => UserId::fetch_by_session_id(&key, &mut db_conn).await,
-    };
-
-    let user_id = match result {
-        Ok(UserId(user_id)) => user_id,
-        Err(db::error::Error::RecordNotFound) => {
-            return err;
-        }
-        Err(_) => {
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
-
-    let user_id = user_id.to_string();
-
-    request
-        .headers_mut()
-        .insert(USER_ID_HEADER, user_id.parse().unwrap());
-
-    next.run(request).await
-}
-
-pub(super) async fn authenticate_api_request(
-    State(app_state): State<AppState2>,
-    request: Request,
-    next: Next,
-) -> Response {
-    let uri = request.uri().to_string();
-
-    // The 'session' route of the API has its own authentication. TODO: this is a bad implicit pattern, and we should fix this when we implement JWT auth
-    if uri.contains("/session") {
-        return next.run(request).await;
-    }
-
-    let err = Error::InvalidApiKey.into_response();
-
-    let Some(raw_api_key) = request.headers().get("X-API-Key").cloned() else {
-        return err;
-    };
-
-    let Ok(api_key) = raw_api_key.to_str() else {
-        return err;
-    };
-
-    authenticate(&app_state, request, next, api_key, RequestType::Api, err).await
-}
-
-pub(super) async fn authenticate_browser_request(
-    State(app_state): State<AppState2>,
-    mut request: Request,
-    next: Next,
-) -> Response {
-    let redirected_from = request.uri().to_string();
-
-    if redirected_from.contains("/login") {
-        return next.run(request).await;
-    }
-
-    let public_url = app_state.public_url();
-
-    let err = Error::InvalidSessionId{login_url: format!("https://{public_url}/login")}.into_response();
-
-    let Ok(cookies) = request
-        .extract_parts::<TypedHeader<headers::Cookie>>()
-        .await
-    else {
-        return err;
-    };
-
-    let Some(session_id) = cookies.get("SESSION") else {
-        return err;
-    };
-
-    authenticate(
-        &app_state,
-        request,
-        next,
-        session_id,
-        RequestType::Browser,
-        err,
-    )
-    .await
-}
-
-pub struct AuthService;
-impl FromRequestParts<AppState2> for AuthService {
+pub struct Frontend;
+impl FromRequestParts<AppState2> for Frontend {
     type Rejection = Error;
 
     async fn from_request_parts(
@@ -369,9 +240,9 @@ impl FromRequestParts<AppState2> for AuthService {
             return Ok(Self);
         };
 
-        let err = Error::InvalidAuthUserPassword;
+        let err = Error::InvalidFrontendCredentials;
 
-        let Ok(auth_service_credentials) = parts
+        let Ok(frontend_service_credentials) = parts
             .extract::<TypedHeader<headers::Authorization<Basic>>>()
             .await
         else {
@@ -379,9 +250,9 @@ impl FromRequestParts<AppState2> for AuthService {
         };
 
         if (
-            auth_service_credentials.username(),
-            auth_service_credentials.password(),
-        ) != ("auth_user", config.lock().unwrap().db_auth_user_password())
+            frontend_service_credentials.username(),
+            frontend_service_credentials.password(),
+        ) != ("scamplers-frontend", config.lock().unwrap().auth_secret())
         {
             return Err(err);
         }
@@ -395,20 +266,26 @@ impl FromRequestParts<AppState2> for AuthService {
 pub(super) enum Error {
     #[error("invalid API key")]
     InvalidApiKey,
-    #[error("invalid session ID")]
-    InvalidSessionId{login_url: String},
-    #[error("invalid user ID")]
-    InvalidUserId,
-    #[error("invalid auth_user password")]
-    InvalidAuthUserPassword,
-    #[error("no user ID found in header")]
-    NoUserId,
+    #[error("invalid auth user password")]
+    InvalidFrontendCredentials,
+    #[error(transparent)]
+    Other(db::error::Error)
+}
+impl From<db::error::Error> for Error {
+    fn from(err: db::error::Error) -> Self {
+        use db::error::Error::*;
+
+        match err {
+            RecordNotFound => Self::InvalidApiKey,
+            _ => Self::Other(err)
+        }
+    }
 }
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         use axum::http::StatusCode;
 
-        tracing::error!(error = self.as_value());
+        tracing::error!(auth_error = self.as_value());
 
         #[derive(Serialize)]
         struct ErrorResponse {
@@ -417,11 +294,7 @@ impl IntoResponse for Error {
         }
 
         match self {
-            Self::InvalidSessionId{login_url} => {
-                Redirect::temporary(&login_url)
-                    .into_response()
-            }
-            Self::InvalidApiKey => (
+            Self::InvalidApiKey | Self::InvalidFrontendCredentials => (
                 StatusCode::UNAUTHORIZED,
                 axum::Json(ErrorResponse {
                     status: StatusCode::UNAUTHORIZED.as_u16(),
@@ -429,9 +302,7 @@ impl IntoResponse for Error {
                 }),
             )
                 .into_response(),
-            Self::InvalidUserId | Self::NoUserId | Self::InvalidAuthUserPassword => {
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
+            Self::Other(_) => (StatusCode::INTERNAL_SERVER_ERROR, axum::Json(ErrorResponse{status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(), error: None})).into_response()
         }
     }
 }

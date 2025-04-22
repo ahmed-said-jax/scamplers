@@ -172,7 +172,6 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         name -> Text,
-        ms_tenant_id -> Nullable<Uuid>,
     }
 }
 
@@ -202,15 +201,6 @@ diesel::table! {
         cdna_volume_l -> Float4,
         #[sql_name = "library_volume_µl"]
         library_volume_l -> Float4,
-    }
-}
-
-diesel::table! {
-    ms_auth_flow (state) {
-        state -> Text,
-        flow -> Jsonb,
-        redirected_from -> Nullable<Text>,
-        expires_at -> Timestamp,
     }
 }
 
@@ -289,16 +279,6 @@ diesel::table! {
         begun_at -> Timestamp,
         finished_at -> Nullable<Timestamp>,
         notes -> Nullable<Array<Nullable<Text>>>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::HashedKey;
-
-    session (hashed_id) {
-        hashed_id -> HashedKey,
-        user_id -> Uuid,
     }
 }
 
@@ -406,7 +386,6 @@ diesel::joinable!(multiplexed_suspension_preparers -> multiplexed_suspension (su
 diesel::joinable!(multiplexed_suspension_preparers -> person (prepared_by));
 diesel::joinable!(person -> institution (institution_id));
 diesel::joinable!(sample_metadata -> lab (lab_id));
-diesel::joinable!(session -> person (user_id));
 diesel::joinable!(single_index_set -> index_kit (kit));
 diesel::joinable!(specimen -> sample_metadata (metadata_id));
 diesel::joinable!(specimen_measurement -> person (measured_by));
@@ -441,7 +420,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     lab,
     lab_membership,
     library_type_specification,
-    ms_auth_flow,
     multiplexed_suspension,
     multiplexed_suspension_measurement,
     multiplexed_suspension_preparers,
@@ -449,7 +427,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     person,
     sample_metadata,
     sequencing_run,
-    session,
     single_index_set,
     specimen,
     specimen_measurement,

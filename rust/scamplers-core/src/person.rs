@@ -34,13 +34,13 @@ use std::default;
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 #[derive(Clone, Copy)]
 pub enum UserRole {
-    #[cfg_attr(feature = "web", js_name = "app_admin")]
+    #[cfg_attr(feature = "backend", serde(alias = "AppAdmin"))]
     AppAdmin,
-    #[cfg_attr(feature = "web", js_name = "computational_staff")]
+    #[cfg_attr(feature = "backend", serde(alias = "CompuatationalStaff"))]
     ComputationalStaff,
-    #[cfg_attr(feature = "web", js_name = "biology_staff")]
+    #[cfg_attr(feature = "backend", serde(alias = "BiologyStaff"))]
     BiologyStaff,
-    #[cfg_attr(feature = "backend", default)]
+    #[cfg_attr(feature = "backend", default, serde(alias = "Unknown"))]
     Unknown,
 }
 
@@ -51,16 +51,18 @@ pub enum UserRole {
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)), garde(allow_unvalidated))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
 pub struct NewPerson {
-    pub id: Uuid,
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,
     #[cfg_attr(feature = "backend", garde(email))]
     pub email: String,
     pub orcid: Option<String>,
     pub institution_id: Uuid,
+    pub ms_user_id: Option<Uuid>,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     pub roles: Vec<UserRole>,
 }
+
+
 
 #[cfg_attr(feature = "backend", derive(Queryable, Selectable, Serialize, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)))]
@@ -73,6 +75,13 @@ pub struct Person {
     pub orcid: Option<String>,
     #[cfg_attr(feature = "backend", diesel(embed))]
     pub institution: Institution,
+}
+
+#[cfg_attr(feature = "backend", derive(Serialize, Debug))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+pub struct CreatedUser {
+    pub id: Uuid,
+    pub api_key: Option<String>
 }
 
 #[cfg_attr(feature = "backend", derive(Deserialize, Valuable, Default, Debug))]

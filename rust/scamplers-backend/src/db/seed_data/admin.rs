@@ -10,7 +10,7 @@ use scamplers_schema::person;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::db::model::person::WriteMsLogin;
+use crate::db::model::person::WriteLogin;
 
 use super::Write;
 

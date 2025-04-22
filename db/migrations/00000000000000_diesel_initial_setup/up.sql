@@ -112,9 +112,6 @@ select create_role_if_not_exists('computational_staff');
 select create_role_if_not_exists('login_user');
 alter role login_user with login createrole;
 
-select create_role_if_not_exists('auth_user');
-alter role auth_user with login;
-
 create type hashed_key as (
     prefix text,
     hash text

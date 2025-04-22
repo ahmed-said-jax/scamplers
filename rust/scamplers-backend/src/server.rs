@@ -27,7 +27,6 @@ use uuid::Uuid;
 mod api;
 pub mod auth;
 mod util;
-use auth::{authenticate_api_request, authenticate_browser_request};
 
 pub(super) async fn serve(
     log_dir: Option<Utf8PathBuf>,
@@ -66,7 +65,7 @@ pub(super) async fn serve(
     tracing::info!("ran database migrations");
 
     app_state
-        .set_login_and_auth_user_passwords()
+        .set_login_user_password()
         .await
         .context("failed to set password for login_user and/or auth_user")?;
 
@@ -215,34 +214,27 @@ impl AppState2 {
     }
 
     // In theory, this should be two separate functions - one that actually does the password setting, and one that
-    // constructs the arguments. This is the only time this sequence of events happens, so we can keep it as is
-    async fn set_login_and_auth_user_passwords(&self) -> anyhow::Result<()> {
-        let user_passwords = match self {
-            AppState2::Dev { .. } => [
-                ("login_user", Uuid::now_v7().to_string()),
-                ("auth_user", Uuid::now_v7().to_string()),
-            ],
+    // constructs the arguments. This is the only time this sequence of events happens, so we can keep it as is.
+    // Also, this shouldn't be a method of `AppState`
+    async fn set_login_user_password(&self) -> anyhow::Result<()> {
+
+        let password = match self {
+            AppState2::Dev { .. } => Uuid::now_v7().to_string(),
             AppState2::Prod { config, .. } => {
                 let config = config.lock().unwrap();
-
-                [
-                    ("login_user", config.db_login_user_password().to_string()),
-                    ("auth_user", config.db_auth_user_password().to_string()),
-                ]
+                config.db_login_user_password().to_string()
             }
         };
 
-        let mut db_conn = self.db_root_conn().await?;
+        const LOGIN_USER: &str = "login_user";
 
-        for (user, password) in user_passwords {
-            diesel::sql_query(format!(r#"alter user "{user}" with password '{password}'"#))
-                .execute(&mut db_conn)
-                .await?;
-        }
+        let mut db_conn = self.db_root_conn().await?;
+        diesel::sql_query(format!(r#"alter user "{LOGIN_USER}" with password '{password}'"#)).execute(&mut db_conn).await?;
 
         Ok(())
     }
 
+    // TODO: This also shouldn't be a method of `AppState`
     async fn write_seed_data(&self) -> anyhow::Result<()> {
         use AppState2::*;
 
@@ -273,17 +265,6 @@ impl AppState2 {
             Dev { .. } => (),
             Prod { db_root_pool, .. } => {
                 *db_root_pool = None;
-            }
-        }
-    }
-
-    fn public_url(&self) -> String {
-        use AppState2::*;
-
-        match self {
-            Dev { .. } => "http://localhost:8000".to_string(),
-            Prod { config, .. } => {
-                config.lock().unwrap().public_url().to_string()
             }
         }
     }
