@@ -32,9 +32,8 @@ services:
       target: final
     environment:
       PORT: &backend_port 8000
-      DB_HOST: &db_host postgres
+      DB_HOST: postgres
       DB_PORT: *db_port
-      PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
     expose:
       - *backend_port
     secrets:
@@ -44,59 +43,20 @@ services:
         uid: "10001"
       - source: db_login_user_password
         uid: "10001"
-      - source: db_auth_user_password
-        uid: "10001"
       - source: db_name
+        uid: "10001"
+      - source: auth_secret
         uid: "10001"
       - source: seed_data
         uid: "10001"
     volumes:
       - logs:/logs
-      - scamplers-frontend:/opt/scamplers-frontend
+      - scamplers-core:/opt/scamplers-core
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
       # TODO: interpolate backend_port
-      test: curl http://localhost:8000/health || exit 1
-      interval: 5s
-      start_period: 10s
-      start_interval: 1s
-      timeout: 5s
-      retries: 10
-  scamplers-auth:
-    restart: always
-    build:
-      args:
-        PYTHON_VERSION: 3.13
-      context: python/scamplers-auth
-      target: final
-    depends_on:
-      scamplers-backend:
-        condition: service_healthy
-    environment:
-      PORT: &auth_port 8000
-      DB_HOST: *db_host
-      DB_PORT: *db_port
-      BACKEND_HOST: &backend_host scamplers-backend
-      BACKEND_PORT: *backend_port
-      AUTH_SUBDOMAIN: &auth_subdomain auth
-      PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
-      MS_AUTH_PATH: &ms_auth_path /microsoft/login
-      MS_AUTH_REDIRECT_PATH: /microsoft/redirect
-    expose:
-      - *auth_port
-    secrets:
-      - source: db_auth_user_password
-        uid: "10001"
-      - source: db_name
-        uid: "10001"
-      - source: ms_auth_client_id
-        uid: "10001"
-      - source: ms_auth_client_credential
-        uid: "10001"
-    healthcheck:
-      # TODO: interpolate *auth_port instead of hardcoding 8000
       test: curl http://localhost:8000/health || exit 1
       interval: 5s
       start_period: 10s
@@ -109,29 +69,32 @@ services:
       context: typescript/scamplers-frontend
       args:
         NODE_VERSION: 23.11.0
+        NODE_ENV: production
       target: build
     environment:
         PORT: &frontend_port 8000
-        BACKEND_HOST: *backend_host
+        BACKEND_HOST: &backend_host scamplers-backend
         BACKEND_PORT: *backend_port
-    # depends_on:
-    #   scamplers-backend:
-    #     condition: service_healthy
-    #   scamplers-auth:
-    #     condition: service_healthy
-    # This healthcheck will be good for a proper server as well
-    # healthcheck:
-    #   test: [CMD, curl, "http://localhost:$PORT/health"]
-    #   interval: 5s
-    #   start_period: 5s
-    #   start_interval: 1s
-    #   timeout: 1s
-    #   retries: 5
+    depends_on:
+      scamplers-backend:
+        condition: service_healthy
+    healthcheck:
+      # TODO: interpolate frontend_port
+      test: CMD, curl, "http://localhost:8000/api/health
+      interval: 5s
+      start_period: 5s
+      start_interval: 1s
+      timeout: 1s
+      retries: 5
     volumes:
-      - scamplers-frontend:/opt/scamplers-frontend
+      - scamplers-core:/opt/scamplers-core
   caddy:
     image: caddy:2.9.1-alpine
     environment:
+      FRONTEND_HOST: scamplers-frontend
+      FRONTEND_PORT: *frontend_port
+      BACKEND_HOST: *backend_host
+      BACKEND_PORT: *backend_port
       PUBLIC_URL: ${SCAMPLERS_PUBLIC_URL}
     restart: always
     cap_add:
@@ -145,14 +108,14 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      scamplers-auth:
+      scamplers-frontend:
         condition: service_healthy
 volumes:
   db-data:
   logs:
   caddy-data:
   caddy-config:
-  scamplers-frontend:
+  scamplers-core:
 secrets:
   db_root_user:
     environment: SCAMPLERS_DB_ROOT_USER
@@ -160,13 +123,13 @@ secrets:
     environment: SCAMPLERS_DB_ROOT_PASSWORD
   db_login_user_password:
     environment: SCAMPLERS_DB_LOGIN_USER_PASSWORD
-  auth_secret:
-    environment: SCAMPLERS_AUTH_SECRET
   db_name:
     environment: SCAMPLERS_DB_NAME
-  ms_auth_client_id:
-    environment: SCAMPLERS_MS_AUTH_CLIENT_ID
-  ms_auth_client_credential:
-    environment: SCAMPLERS_MS_AUTH_CLIENT_CREDENTIAL
+  auth_secret:
+    environment: SCAMPLERS_AUTH_SECRET
+  auth_microsoft_entra_id_id:
+    environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_ID
+  auth_microsoft_entra_id_secret:
+    environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_SECRET
   seed_data:
     file: ${SCAMPLERS_SEED_DATA}

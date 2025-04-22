@@ -14,7 +14,8 @@ pub(super) fn router() -> Router<AppState2> {
         HashMap::from_iter([("available_endpoints", [""])]);
 
     let router = Router::new().route("/", get(|| async { axum::Json(endpoints) }))
-        .route("/me", get(me));
+        .route("/me", get(me))
+        .route("/user", post(new_user));
     // .route(
     //     "/institutions",
     //     get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>),
@@ -203,7 +204,7 @@ mod handlers {
     //     Ok(ValidJson(updated))
     // }
 
-    pub async fn new_user(_frontend_service: Frontend, State(app_state): State<AppState2>, ValidJson(person): ValidJson<NewPerson>) -> Result<ValidJson<CreatedUser>> {
+    pub (super) async fn new_user(_frontend_service: Frontend, State(app_state): State<AppState2>, ValidJson(person): ValidJson<NewPerson>) -> Result<ValidJson<CreatedUser>> {
         tracing::debug!(deserialized_person = person.as_value());
 
         let mut db_conn = app_state.db_conn().await?;
@@ -215,7 +216,7 @@ mod handlers {
 
     // This is kind of repetetive but it's fine for now
     #[debug_handler]
-    pub async fn me(
+    pub (super) async fn me(
         user_id: Option<User>,
         State(app_state): State<AppState2>,
     ) -> Result<ValidJson<Option<Person>>> {

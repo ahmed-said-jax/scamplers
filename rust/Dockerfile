@@ -5,7 +5,9 @@ WORKDIR /app
 
 RUN apt update && \
     apt install make openssl --yes && \
-    cargo install diesel_cli --no-default-features --features postgres-bundled
+    cargo install diesel_cli --no-default-features --features postgres-bundled && \
+    cargo install wasm-pack && \
+    rustup target add wasm32-unknown-unknown
 
 RUN --mount=type=bind,source=rust/Cargo.toml,target=rust/Cargo.toml \
     --mount=type=bind,source=rust/Cargo.lock,target=rust/Cargo.lock \
@@ -20,7 +22,9 @@ RUN --mount=type=bind,source=rust/Cargo.toml,target=rust/Cargo.toml \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     cd rust && \
     IN_DOCKER=true cargo build --locked --release && \
-    cp ./target/release/scamplers-backend /bin/scamplers-backend
+    cp ./target/release/scamplers-backend /bin/scamplers-backend && \
+    wasm-pack build scamplers-core --release -- --features web && \
+    mv pkg/* /opt/scamplers-core
 
 FROM debian:bookworm AS final
 
@@ -30,6 +34,7 @@ RUN mkdir app
 
 COPY --from=build /bin/scamplers-backend /bin/
 COPY --from=build /usr/local/cargo/bin/diesel /bin/
+COPY --from=build /opt/scamplers-core /opt/scamplers-core
 COPY rust/scamplers-schema /app/scamplers-schema
 COPY db /app/db
 COPY rust/check-schema.sh /bin/check-schema.sh

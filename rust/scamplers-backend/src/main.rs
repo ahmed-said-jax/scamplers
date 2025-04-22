@@ -14,7 +14,6 @@ async fn main() -> anyhow::Result<()> {
         Command::Prod { config, log_dir } => {
             serve_prod_app(config, Some(log_dir)).await?
         }
-        _ => todo!(),
     }
 
     Ok(())

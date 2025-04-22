@@ -35,7 +35,6 @@ argon2 = {workspace = true}
 axum-extra = {workspace = true}
 rand = {workspace = true}
 dotenvy = {workspace = true}
-josekit = {workspace = true}
 
 [lints]
 workspace = true

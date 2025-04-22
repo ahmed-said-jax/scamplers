@@ -8,7 +8,10 @@
 <div>
     {#if !data.session}
         <SignIn provider="microsoft-entra-id" signInPage="signin" />
+    {:else}
+        <div>Hello, {data.session.user.name}</div>
     {/if}
+
 </div>
 
 {@render children()}

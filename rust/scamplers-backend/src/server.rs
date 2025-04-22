@@ -290,37 +290,11 @@ async fn run_migrations(
 fn app(app_state: AppState2) -> Router {
     use AppState2::*;
 
-    let router = Router::new()
+    Router::new()
         .layer(TraceLayer::new_for_http())
-        .route("/health", get(async || ()));
-
-    let api_router = match &app_state {
-        Dev { .. } => api::router(),
-        Prod { .. } => api::router() // .layer(middleware::from_fn_with_state(
-        //app_state.clone(),
-            //authenticate_api_request,
-        // )),
-    };
-
-    let mut router = router.nest("/api", api_router);
-
-    if matches!(&app_state, Prod { .. }) {
-        // Create the frontend router, which just serves a static file directory, and add an authentication layer
-        // let auth_layer =
-        //     middleware::from_fn_with_state(app_state.clone(), authenticate_browser_request);
-        let frontend_service = ServiceBuilder::new()
-            // .layer(auth_layer.clone())
-            .service(ServeDir::new("/opt/scamplers-frontend"));
-
-        // Nest the just-created service
-        router = router.fallback_service(frontend_service);
-
-        // The frontend also calls the API, but from a different route (because the authentication is different). Nest
-        // that too
-        router = router.nest("/frontend/api", api::router());
-    }
-
-    router.with_state(app_state)
+        .route("/health", get(async || ()))
+        .nest("/api", api::router())
+        .with_state(app_state)
 }
 
 // I don't entirely understand why I need to manually call `drop` here
