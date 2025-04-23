@@ -1,6 +1,7 @@
 use {
     _uuid::Bytes,
     std::{fmt::Display, str::FromStr},
+    serde::{Deserialize, Serialize},
 };
 
 #[cfg(feature = "backend")]
@@ -10,15 +11,15 @@ use {
         expression::AsExpression,
         sql_types,
     },
-    serde::{Deserialize, Serialize},
 };
+
 
 #[cfg_attr(
     feature = "backend",
-    derive(Deserialize, Serialize, FromSqlRow, AsExpression)
+    derive(FromSqlRow, AsExpression)
 )]
 #[cfg_attr(feature = "backend", diesel(sql_type = sql_types::Uuid))]
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Debug, Hash, Default)]
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Debug, Hash, Default, Deserialize, Serialize)]
 pub struct Uuid(_uuid::Uuid);
 
 impl Display for Uuid {

@@ -7,9 +7,6 @@ pub mod person;
 mod sample_metadata;
 pub mod sequencing_run;
 
-#[cfg(feature = "web")]
-use wasm_bindgen::convert::{IntoWasmAbi, WasmAbi, WasmPrimitive};
-
 #[cfg(feature = "python")]
 mod python_modules {
     use crate::institution::*;

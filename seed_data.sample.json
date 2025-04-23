@@ -10,16 +10,14 @@
   ],
   "institutions": [
     {
-      "name": "Microsoft",
-      "ms_tenant_id": "9188040d-6c67-4c5b-b112-36a304b66dad"
+      "id": "9188040d-6c67-4c5b-b112-36a304b66dad",
+      "name": "Microsoft"
     }
   ],
   "app_admin": {
-    "person": {
       "name": "Ahmed Said",
       "email": "",
-      "ms_user_id": ""
-    },
-    "institution_name": "Microsoft"
+      "ms_user_id": "",
+      "institution_id": "9188040d-6c67-4c5b-b112-36a304b66dad"
   }
 }

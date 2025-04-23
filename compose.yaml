@@ -66,12 +66,14 @@ services:
   scamplers-frontend:
     restart: always
     build:
-      context: typescript/scamplers-frontend
+      context: .
+      dockerfile: typescript/scamplers-frontend/Dockerfile
       args:
         NODE_VERSION: 23.11.0
         NODE_ENV: production
       target: build
     environment:
+        IN_DOCKER: "true"
         PORT: &frontend_port 8000
         BACKEND_HOST: &backend_host scamplers-backend
         BACKEND_PORT: *backend_port

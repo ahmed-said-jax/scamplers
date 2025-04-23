@@ -8,7 +8,7 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 _uuid = {workspace = true}
-serde = {workspace = true, optional = true }
+serde = {workspace = true}
 diesel = {workspace = true, optional = true }
 diesel-async = {workspace = true, optional = true}
 valuable = {workspace = true, optional = true}
@@ -18,5 +18,5 @@ wasm-bindgen = { workspace = true, optional = true }
 workspace = true
 
 [features]
-backend = ["serde", "diesel", "valuable", "_uuid/serde", "_uuid/v7", "diesel-async"]
+backend = ["diesel", "valuable", "_uuid/v7", "diesel-async"]
 web = ["wasm-bindgen", "_uuid/js"]

@@ -288,12 +288,9 @@ async fn run_migrations(
 }
 
 fn app(app_state: AppState2) -> Router {
-    use AppState2::*;
-
-    Router::new()
+    api::router()
         .layer(TraceLayer::new_for_http())
         .route("/health", get(async || ()))
-        .nest("/api", api::router())
         .with_state(app_state)
 }
 

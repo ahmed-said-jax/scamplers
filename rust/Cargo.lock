@@ -2249,6 +2249,7 @@ dependencies = [
  "scamplers-schema",
  "scraper",
  "serde",
+ "serde_json",
  "strum",
  "thiserror 2.0.12",
  "uuid 0.1.0",

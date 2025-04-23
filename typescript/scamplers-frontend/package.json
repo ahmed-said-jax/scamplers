@@ -48,6 +48,9 @@
 	"dependencies": {
 		"@auth/core": "^0.39.0",
 		"@auth/sveltekit": "^1.9.0",
+		"@types/node": "^22.14.1",
+		"node": "^20.19.1",
+		"scamplers-core": "file:../scamplers-core",
 		"vite-plugin-wasm": "^3.4.1"
 	}
 }

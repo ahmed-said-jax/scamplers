@@ -10,7 +10,8 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 thiserror = {workspace = true, optional = true}
-serde = {workspace = true, optional = true }
+serde = {workspace = true }
+serde_json = {workspace = true, optional = true}
 diesel = {workspace = true, optional = true}
 chrono = {workspace = true}
 valuable = {workspace = true, optional = true}
@@ -22,8 +23,8 @@ scamplers-schema = {path = "../scamplers-schema", optional = true}
 uuid = {path = "../uuid"}
 
 [features]
-backend = ["diesel", "valuable", "strum", "scraper", "garde", "serde", "uuid/backend", "scamplers-schema"]
-web = ["wasm-bindgen", "uuid/web"]
+backend = ["diesel", "valuable", "strum", "scraper", "garde", "uuid/backend", "scamplers-schema"]
+web = ["wasm-bindgen", "uuid/web", "serde_json"]
 
 [lints]
 workspace = true
