@@ -29,7 +29,7 @@ use std::default;
     feature = "backend",
     strum(serialize_all = "snake_case"),
 )]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum UserRole {
@@ -45,7 +45,7 @@ pub enum UserRole {
     derive(Insertable, Validate, Valuable, Debug)
 )]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)), garde(allow_unvalidated))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
@@ -70,7 +70,7 @@ impl NewPerson {
 
 #[cfg_attr(feature = "backend", derive(Queryable, Selectable, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
 pub struct Person {
     pub id: Uuid,
@@ -83,7 +83,7 @@ pub struct Person {
 }
 
 #[cfg_attr(feature = "backend", derive(Debug))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
 pub struct CreatedUser {
     pub id: Uuid,
@@ -91,7 +91,7 @@ pub struct CreatedUser {
 }
 
 #[cfg_attr(feature = "backend", derive(Valuable, Default, Debug))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
 pub struct PersonQuery {
     #[cfg_attr(feature = "backend", serde(default))]

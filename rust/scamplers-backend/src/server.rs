@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-use std::sync::{Arc, Mutex};
+use std::{env, sync::{Arc, Mutex}};
 
 use anyhow::{Context, anyhow};
 // use auth::{authenticate_api_request, authenticate_browser_request};
@@ -22,32 +22,20 @@ use testcontainers_modules::{
 use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 use tower_http::{services::fs::ServeDir, trace::TraceLayer};
-use util::{DevContainer, ToAddress};
+use util::{DevContainer};
 use uuid::Uuid;
 mod api;
 pub mod auth;
 mod util;
 
-pub(super) async fn serve(
+pub async fn serve(
+    mut config: Config,
     log_dir: Option<Utf8PathBuf>,
-    mut config: Option<Config>,
-    app_addr: Option<(String, u16)>,
 ) -> anyhow::Result<()> {
     initialize_logging(log_dir);
 
-    if let Some(config) = &mut config {
-        config.read_secrets().context("failed to read secrets directory")?;
-    }
-
-    let app_addr = match (&config, app_addr) {
-        (Some(config), None) => config.app_address(),
-        (None, Some(host_port)) => host_port.to_address(),
-        _ => {
-            return Err(anyhow!(
-                "exactly one of `config` or `app_addr` must be supplied"
-            ));
-        }
-    };
+    config.read_secrets().context("failed to read secrets directory")?;
+    let app_addr = config.app_address();
 
     let mut app_state = AppState2::new(config)
         .await
@@ -101,7 +89,7 @@ fn initialize_logging(log_dir: Option<Utf8PathBuf>) {
     match log_dir {
         None => {
             let dev_test_log_filter = Targets::new()
-                .with_target(env!("CARGO_PKG_NAME"), Level::DEBUG)
+                .with_target("scamplers_backend", Level::DEBUG)
                 .with_target("tower_http", Level::TRACE);
             let log_layer = log_layer.pretty().with_filter(dev_test_log_filter);
 
@@ -126,6 +114,8 @@ enum AppState2 {
         db_pool: Pool<AsyncPgConnection>,
         _pg_container: Arc<ContainerAsync<Postgres>>,
         user_id: Uuid,
+        http_client: reqwest::Client,
+        config: Arc<Mutex<Config>>
     },
     Prod {
         db_pool: Pool<AsyncPgConnection>,
@@ -135,47 +125,46 @@ enum AppState2 {
     },
 }
 impl AppState2 {
-    async fn new(config: Option<Config>) -> anyhow::Result<Self> {
+    async fn new(config: Config) -> anyhow::Result<Self> {
         let container_err = "failed to start postgres container instance";
 
-        let state = match config {
-            None => {
-                let pg_container: ContainerAsync<Postgres> =
-                    ContainerAsync::new().await.context(container_err)?;
-                let db_root_url = pg_container.db_url().await?;
+        let state = if config.is_dev() {
+            let pg_container: ContainerAsync<Postgres> =
+                ContainerAsync::new().await.context(container_err)?;
+            let db_root_url = pg_container.db_url().await?;
 
-                let mut db_conn = AsyncPgConnection::establish(&db_root_url).await?;
-                let user_id = Uuid::now_v7();
-                diesel::sql_query(format!(r#"create user "{user_id}" with superuser"#))
-                    .execute(&mut db_conn)
-                    .await
-                    .context("failed to create dev superuser")?;
+            let mut db_conn = AsyncPgConnection::establish(&db_root_url).await?;
+            let user_id = Uuid::now_v7();
+            diesel::sql_query(format!(r#"create user "{user_id}" with superuser"#))
+                .execute(&mut db_conn)
+                .await
+                .context("failed to create dev superuser")?;
 
-                let db_config =
-                    AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_url);
-                let db_pool = Pool::builder(db_config).build()?;
+            let db_config =
+                AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_url);
+            let db_pool = Pool::builder(db_config).build()?;
 
-                Self::Dev {
-                    db_pool,
-                    _pg_container: Arc::new(pg_container),
-                    user_id,
-                }
+            Self::Dev {
+                db_pool,
+                _pg_container: Arc::new(pg_container),
+                user_id,
+                http_client: reqwest::Client::new(),
+                config: Arc::new(Mutex::new(config))
             }
-            Some(config) => {
-                let db_config =
-                    AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_login_url());
-                let db_pool = Pool::builder(db_config).build()?;
+        } else {
+            let db_config =
+                AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_login_url());
+            let db_pool = Pool::builder(db_config).build()?;
 
-                let db_root_config =
-                    AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_root_url());
-                let db_root_pool = Some(Pool::builder(db_root_config).max_size(1).build()?);
+            let db_root_config =
+                AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_root_url());
+            let db_root_pool = Some(Pool::builder(db_root_config).max_size(1).build()?);
 
-                Self::Prod {
-                    db_pool,
-                    db_root_pool,
-                    http_client: reqwest::Client::new(),
-                    config: Arc::new(Mutex::new(config)),
-                }
+            Self::Prod {
+                db_pool,
+                db_root_pool,
+                http_client: reqwest::Client::new(),
+                config: Arc::new(Mutex::new(config)),
             }
         };
 
@@ -241,12 +230,7 @@ impl AppState2 {
         let mut db_conn = self.db_root_conn().await?;
 
         match self {
-            Dev { .. } => Ok(()),
-            Prod {
-                http_client,
-                config,
-                ..
-            } => {
+            Dev { http_client, config, .. } | Prod{http_client, config, ..} => {
                 let mut config = config.lock().unwrap();
 
                 let seed_data = config.seed_data()?;

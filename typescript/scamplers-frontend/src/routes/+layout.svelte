@@ -11,7 +11,6 @@
     {:else}
         <div>Hello, {data.session.user.name}</div>
     {/if}
-
 </div>
 
 {@render children()}

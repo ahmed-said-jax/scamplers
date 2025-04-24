@@ -8,6 +8,8 @@ use crate::db::seed_data::SeedData;
 
 #[derive(Args)]
 pub struct Config {
+    #[arg(long, default_value_t)]
+    dev: bool,
     #[arg(long)]
     secrets_dir: Option<Utf8PathBuf>,
     #[arg(long, env = "SCAMPLERS_DB_ROOT_USER", default_value_t)]
@@ -16,14 +18,14 @@ pub struct Config {
     db_root_password: String,
     #[arg(long, env = "SCAMPLERS_DB_LOGIN_USER_PASSWORD", default_value_t)]
     db_login_user_password: String,
-    #[arg(long, env = "SCAMPLERS_AUTH_SECRET", default_value_t)]
-    auth_secret: String,
-    #[arg(long, env = "SCAMPLERS_DB_HOST")]
+    #[arg(long, env = "SCAMPLERS_DB_HOST", default_value_t = String::from("localhost"))]
     db_host: String,
-    #[arg(long, env = "SCAMPLERS_DB_PORT")]
+    #[arg(long, env = "SCAMPLERS_DB_PORT", default_value_t = 5432)]
     db_port: u16,
     #[arg(long, env = "SCAMPLERS_DB_NAME", default_value_t)]
     db_name: String,
+    #[arg(long, env = "SCAMPLERS_AUTH_SECRET", default_value_t)]
+    auth_secret: String,
     #[arg(long, env = "SCAMPLERS_BACKEND_HOST", default_value_t = String::from("localhost"))]
     host: String,
     #[arg(long, env = "SCAMPLERS_BACKEND_PORT", default_value_t = 8000)]
@@ -34,14 +36,18 @@ pub struct Config {
     seed_data_path: Option<Utf8PathBuf>,
 }
 impl Config {
+    pub fn is_dev(&self) -> bool {
+        self.dev
+    }
+
     pub fn read_secrets(&mut self) -> anyhow::Result<()> {
         let Self {
             secrets_dir,
             db_root_user,
             db_root_password,
             db_login_user_password,
-            auth_secret,
             db_name,
+            auth_secret,
             seed_data,
             seed_data_path,
             ..
@@ -135,25 +141,10 @@ impl Config {
     }
 }
 
-#[derive(Subcommand)]
-pub enum Command {
-    Dev {
-        #[arg(default_value_t = String::from("localhost"))]
-        host: String,
-        #[arg(default_value_t = 8000)]
-        port: u16,
-    },
-    Prod {
-        #[command(flatten)]
-        config: Config,
-        #[arg(short, long)]
-        log_dir: Utf8PathBuf,
-    },
-}
-
 #[derive(Parser)]
 #[command(version)]
 pub struct Cli {
-    #[command(subcommand)]
-    pub command: Command,
+    #[command(flatten)]
+    pub config: Config,
+    pub log_dir: Option<Utf8PathBuf>,
 }

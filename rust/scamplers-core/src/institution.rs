@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
     derive(Insertable, Valuable, Validate, Debug)
 )]
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)), garde(allow_unvalidated))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
 pub struct NewInstitution {
     pub id: Uuid,
@@ -37,7 +37,7 @@ impl NewInstitution {
 
 #[cfg_attr(feature = "backend", derive(Queryable, Selectable, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone))]
+#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[cfg_attr(feature = "web", derive(Clone))]
 #[derive(Deserialize, Serialize)]
 pub struct Institution {
