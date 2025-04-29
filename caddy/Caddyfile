@@ -1,7 +1,7 @@
 {$PUBLIC_URL} {
-    reverse_proxy {$FRONTEND_HOST}:{$FRONTEND_PORT}
+	reverse_proxy {$FRONTEND_HOST}:{$FRONTEND_PORT}
 }
 
 api.{$PUBLIC_URL} {
-    reverse_proxy {$BACKEND_HOST}:{$BACKEND_PORT}
+	reverse_proxy {$BACKEND_HOST}:{$BACKEND_PORT}
 }

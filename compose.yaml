@@ -23,7 +23,6 @@ services:
       timeout: 5s
       retries: 10
   scamplers-backend:
-    restart: always
     build:
       args:
         RUST_VERSION: 1.86
@@ -64,7 +63,6 @@ services:
       timeout: 5s
       retries: 10
   scamplers-frontend:
-    restart: always
     build:
       context: .
       dockerfile: typescript/scamplers-frontend/Dockerfile
@@ -80,14 +78,14 @@ services:
     depends_on:
       scamplers-backend:
         condition: service_healthy
-    healthcheck:
-      # TODO: interpolate frontend_port
-      test: curl http://localhost:8000/health || exit 1
-      interval: 5s
-      start_period: 5s
-      start_interval: 1s
-      timeout: 1s
-      retries: 5
+    # healthcheck:
+    #   # TODO: interpolate frontend_port
+    #   test: curl http://localhost:8000/health || exit 1
+    #   interval: 5s
+    #   start_period: 5s
+    #   start_interval: 1s
+    #   timeout: 1s
+    #   retries: 5
     volumes:
       - scamplers-core:/opt/scamplers-core
   caddy:
@@ -110,7 +108,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      scamplers-frontend:
+      scamplers-backend:
         condition: service_healthy
 volumes:
   db-data:

@@ -3,6 +3,8 @@
 ARG NODE_VERSION=23.11.0
 
 FROM node:${NODE_VERSION} as base
+RUN npm install --global npm@latest
+
 
 WORKDIR /usr/src/app
 

@@ -16,7 +16,7 @@ export const handleFetch: HandleFetch = async ({event, fetch}) => {
 }
 
 async function authorizationHandle({ event, resolve }) {
-  if (event.url.pathname === '/auth/signin') {
+  if (["/auth/signin", "/health"].includes(event.url.pathname)) {
     return resolve(event)
   }
 
