@@ -1,18 +1,18 @@
 <script lang="ts">
-  import '../app.css';
+	import '../app.css';
 
-  let { data, children } = $props();
+	let { data, children } = $props();
 </script>
 
 <div>
-    <div>Hello, {data.session.user.name}</div>
-    <nav>
-        <ul>
-            <li>
-                <a href="/profile">Profile</a>
-            </li>
-        </ul>
-    </nav>
+	<div>Hello, {data.session.user.name}</div>
+	<nav>
+		<ul>
+			<li>
+				<a href="/profile">Profile</a>
+			</li>
+		</ul>
+	</nav>
 </div>
 
 {@render children()}

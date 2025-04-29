@@ -53,7 +53,7 @@ ENV NODE_ENV production
 
 USER node
 
-COPY package.json .
+COPY typescript/scamplers-frontend/package.json .
 
 COPY --from=deps /usr/src/app/typescript/scamplers-frontend/node_modules ./node_modules
 COPY --from=build /usr/src/app/typescript/scamplers-frontend/build ./build
