@@ -4,7 +4,6 @@ use regex::Regex;
 use serde::Serialize;
 use valuable::Valuable;
 
-use scamplers_schema::*;
 
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]

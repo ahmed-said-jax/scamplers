@@ -9,16 +9,14 @@ use argon2::{
 };
 use axum::{
     RequestExt, RequestPartsExt,
-    extract::{FromRequestParts, OptionalFromRequestParts, Request, State},
-    http::HeaderValue,
-    middleware::Next,
-    response::{IntoResponse, Redirect, Response},
+    extract::{FromRequestParts, OptionalFromRequestParts},
+    response::IntoResponse,
 };
 use axum_extra::{
     TypedHeader,
     headers::{
         self,
-        authorization::{Basic, Bearer},
+        authorization::Basic,
     },
 };
 use diesel::{
@@ -27,7 +25,7 @@ use diesel::{
     pg::Pg,
     prelude::*,
     serialize::{ToSql, WriteTuple},
-    sql_types::{self, Bool, Record, SqlType, Text},
+    sql_types::{self, Bool, Record, Text},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use rand::{
@@ -35,9 +33,7 @@ use rand::{
     distr::Alphanumeric,
     rngs::{OsRng, StdRng},
 };
-use reqwest::{StatusCode, header::AsHeaderName};
 use serde::{Deserialize, Serialize};
-use strum::Display;
 use uuid::Uuid;
 use valuable::Valuable;
 

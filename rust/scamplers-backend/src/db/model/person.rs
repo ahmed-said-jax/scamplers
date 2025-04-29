@@ -1,5 +1,5 @@
 use diesel::{dsl::InnerJoin, prelude::*};
-use diesel_async::{AsyncPgConnection, RunQueryDsl, SaveChangesDsl, methods::ExecuteDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl, methods::ExecuteDsl};
 use scamplers_core::person::{CreatedUser, NewPerson, Person, PersonQuery};
 use scamplers_schema::{
     institution,
@@ -11,7 +11,6 @@ use scamplers_schema::{
         },
     },
 };
-use serde::Serialize;
 use uuid::Uuid;
 
 use diesel::{
@@ -26,7 +25,7 @@ define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
     db::{
-        self, AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, Write,
+        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression,
         util::{AsIlike, DbEnum},
     },
     server::auth::{ApiKey, HashedKey},

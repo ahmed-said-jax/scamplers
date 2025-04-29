@@ -3,16 +3,9 @@ use anyhow::Context;
 use diesel_async::AsyncPgConnection;
 use garde::Validate;
 use index_set::IndexSetFileUrl;
-use scamplers_core::{
-    institution::NewInstitution,
-    person::{NewPerson, UserRole},
-};
-use scamplers_schema::person;
+use scamplers_core::institution::NewInstitution;
 use serde::Deserialize;
-use uuid::Uuid;
 mod index_set;
-use diesel::{pg::Pg, prelude::*};
-use diesel_async::RunQueryDsl;
 mod admin;
 
 use super::Write;

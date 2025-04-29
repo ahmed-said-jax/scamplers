@@ -2,15 +2,12 @@ use std::fmt::Debug;
 use std::str::FromStr;
 
 use diesel::{
-    BoxableExpression, QueryDsl,
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
-    query_dsl::methods::FilterDsl,
     serialize::ToSql,
     sql_types,
 };
-use diesel_async::AsyncPgConnection;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use valuable::Valuable;
 

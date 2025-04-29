@@ -1,15 +1,12 @@
 #![allow(async_fn_in_trait)]
-use std::{
-    env,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 // use auth::{authenticate_api_request, authenticate_browser_request};
 use crate::{config::Config, db};
 use axum::{
-    Router, ServiceExt, middleware,
-    routing::{get, post},
+    Router,
+    routing::get,
 };
 use camino::Utf8PathBuf;
 use diesel_async::{
@@ -20,11 +17,10 @@ use diesel_async::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use testcontainers_modules::{
     postgres::Postgres,
-    testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
+    testcontainers::ContainerAsync,
 };
 use tokio::{net::TcpListener, signal};
-use tower::ServiceBuilder;
-use tower_http::{services::fs::ServeDir, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 use util::DevContainer;
 use uuid::Uuid;
 mod api;

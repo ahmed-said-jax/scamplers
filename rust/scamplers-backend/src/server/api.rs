@@ -6,7 +6,6 @@ use axum::{
 };
 
 use super::AppState2;
-use crate::db::model::person::fetch_by_filter;
 
 mod error;
 
@@ -38,27 +37,26 @@ pub(super) fn router() -> Router<AppState2> {
 mod handlers {
 
     use axum::{
-        debug_handler,
-        extract::{FromRequest, Path, State, rejection::JsonRejection},
+        extract::{FromRequest, State, rejection::JsonRejection},
         response::{IntoResponse, Response},
     };
-    use axum_extra::extract::Query;
-    use diesel::prelude::*;
-    use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+    
+    
+    
     use garde::Validate;
-    use scamplers_core::person::{CreatedUser, NewPerson, Person};
+    use scamplers_core::person::{CreatedUser, NewPerson};
     use serde::Serialize;
-    use serde_json::json;
-    use uuid::Uuid;
+    
+    
     use valuable::Valuable;
 
     use super::error::{Error, Result};
-    use crate::db::Write;
+    
     use crate::{
         db::model::person::WriteLogin,
         server::{
             AppState2,
-            auth::{ApiKey, Frontend, HashedKey, User},
+            auth::Frontend,
         },
     };
 

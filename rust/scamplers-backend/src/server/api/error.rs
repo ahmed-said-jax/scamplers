@@ -1,21 +1,11 @@
-use argon2::{PasswordHasher, password_hash::SaltString};
 use axum::{
-    RequestPartsExt, Router,
-    extract::{
-        FromRequest, FromRequestParts, Query, Request,
-        rejection::{JsonRejection, PathRejection},
-    },
+    extract::rejection::{JsonRejection, PathRejection},
     http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::IntoResponse,
 };
-use axum_extra::{TypedHeader, extract::QueryRejection, headers};
-use diesel::prelude::*;
-use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool};
-use garde::Validate;
-use serde::{Deserialize, Serialize};
-use strum::VariantArray;
-use tower_http::trace::TraceLayer;
-use uuid::Uuid;
+use axum_extra::extract::QueryRejection;
+use diesel_async::pooled_connection::deadpool;
+use serde::Serialize;
 use valuable::Valuable;
 
 use crate::db;

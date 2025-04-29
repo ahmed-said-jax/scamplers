@@ -5,11 +5,8 @@ mod util;
 
 use diesel::BoxableExpression;
 use diesel::pg::Pg;
-use diesel::query_builder::QueryFragment;
-use diesel::query_dsl::methods::FilterDsl;
 use diesel::sql_types;
-use diesel::{prelude::*, query_dsl::methods::LimitDsl};
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::AsyncPgConnection;
 use util::QueryLimit;
 
 type BoxedDieselExpression<'a, Table> =
