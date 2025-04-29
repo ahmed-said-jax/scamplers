@@ -1,5 +1,4 @@
 {
-  "build": "prod",
   "index_set_urls": [
     "https://cdn.10xgenomics.com/raw/upload/v1655155470/support/in-line%20documents/Chromium-i7-Multiplex-Kit-N-Set-A-sample-indexes-plate.json",
     "https://cdn.10xgenomics.com/raw/upload/v1655155349/support/in-line%20documents/Single_Index_Kit_N_Set_A.json",
