@@ -16,13 +16,13 @@ export const handleFetch: HandleFetch = async ({event, fetch}) => {
 }
 
 async function authorizationHandle({ event, resolve }) {
-  if (event.url.pathname === '/signin') {
+  if (event.url.pathname === '/auth/signin') {
     return resolve(event)
   }
 
   const session = await event.locals.auth();
   if (!session) {
-    throw redirect(303, '/signin');
+    throw redirect(303, '/auth/signin');
   }
 
   return resolve(event);

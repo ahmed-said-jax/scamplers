@@ -87,7 +87,7 @@ pub struct Person {
 #[derive(Deserialize, Serialize)]
 pub struct CreatedUser {
     pub id: Uuid,
-    pub api_key: Option<String>
+    pub api_key: String
 }
 
 #[cfg_attr(feature = "backend", derive(Valuable, Default, Debug))]

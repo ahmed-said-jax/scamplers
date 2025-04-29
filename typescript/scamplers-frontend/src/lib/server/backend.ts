@@ -8,19 +8,11 @@ const BACKEND_PORT = env.SCAMPLERS_BACKEND_PORT ?? env.BACKEND_PORT;
 export const BACKEND_URL = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
 
 export async function backendRequest({ event, request }: { event?: RequestEvent; request?: Request; }): Promise<Request> {
-  if ((typeof request === 'undefined') === (typeof event === 'undefined')) {
-    throw 'must specify exactly one of `request` and `event`';
+  if (!request === !event ) {
+    throw 'must specify exactly one of `request` or `event`';
   }
 
-  let updated_request: Request;
-
-  if (request) {
-    updated_request = request;
-  } else if (event) {
-    updated_request = event.request;
-  } else {
-    throw 'this code is unreachable';
-  }
+  const updatedRequest = request ?? event!.request;
 
   const auth = btoa(`scamplers-frontend:${AUTH_SECRET}`);
 
@@ -32,8 +24,8 @@ export async function backendRequest({ event, request }: { event?: RequestEvent;
   }
 
   for (const [name, value] of headers) {
-    updated_request.headers.set(name, value);
+    updatedRequest.headers.set(name, value);
   }
 
-  return updated_request;
+  return updatedRequest;
 }

@@ -7,7 +7,7 @@ use scamplers_schema::{
         self,
         dsl::{
             email as email_col, id as id_col, institution_id as institution_col,
-            ms_user_id as ms_user_id_col, name as name_col,
+            ms_user_id as ms_user_id_col, name as name_col, hashed_api_key as hashed_api_key_col
         },
     }
 };
@@ -119,10 +119,12 @@ impl WriteLogin for NewPerson {
         let api_key = Key::new();
         let hashed_api_key = api_key.hash();
 
+        // Instantiate a `NewUser` so we can use it as a wholesale insert
         let new_user = NewUser {person: self, hashed_api_key};
-        let NewUser { person: NewPerson { name, email, institution_id, roles, .. }, .. } = &new_user;
 
-        // If it's a new user, then we can add the API key. If not,
+        // Also destructure the `NewUser` so we have granular control over which columns to set
+        let NewUser { person: NewPerson { name, email, institution_id, roles, .. }, hashed_api_key } = &new_user;
+
         let result = diesel::insert_into(person::table)
             .values(&new_user)
             .on_conflict(ms_user_id_col)
@@ -131,6 +133,7 @@ impl WriteLogin for NewPerson {
                 name_col.eq(name),
                 email_col.eq(email),
                 institution_col.eq(institution_id),
+                hashed_api_key_col.eq(hashed_api_key)
             ))
             .returning(id_col)
             .get_result(db_conn)
@@ -169,12 +172,6 @@ impl WriteLogin for NewPerson {
             .execute(db_conn)
             .await?;
 
-        let api_key = if user_is_new {
-            Some(api_key.to_string())
-        } else {
-            None
-        };
-
-        Ok(CreatedUser{id: user_id, api_key})
+        Ok(CreatedUser{id: user_id, api_key: api_key.to_string()})
     }
 }

@@ -14,7 +14,7 @@ pub(super) fn router() -> Router<AppState2> {
         HashMap::from_iter([("available_endpoints", [""])]);
 
     let router = Router::new().route("/", get(|| async { axum::Json(endpoints) }))
-        .route("/me", get(me))
+        // .route("/me", get(me))
         .route("/user", post(new_user));
     // .route(
     //     "/institutions",
@@ -214,21 +214,21 @@ mod handlers {
         Ok(ValidJson(created_user))
     }
 
-    // This is kind of repetetive but it's fine for now
-    #[debug_handler]
-    pub (super) async fn me(
-        user_id: Option<User>,
-        State(app_state): State<AppState2>,
-    ) -> Result<ValidJson<Option<Person>>> {
-        use crate::db::model::person::fetch_by_id;
+    // // This is kind of repetetive but it's fine for now
+    // #[debug_handler]
+    // pub (super) async fn me(
+    //     user_id: Option<User>,
+    //     State(app_state): State<AppState2>,
+    // ) -> Result<ValidJson<Option<Person>>> {
+    //     use crate::db::model::person::fetch_by_id;
 
-        tracing::debug!(user_id = user_id.as_value());
+    //     tracing::debug!(user_id = user_id.as_value());
 
-        let Some(User(user_id)) = user_id else {
-            return Ok(ValidJson(None));
-        };
+    //     let Some(User(user_id)) = user_id else {
+    //         return Ok(ValidJson(None));
+    //     };
 
-        let mut conn = app_state.db_conn().await?;
-        Ok(ValidJson(Some(fetch_by_id(user_id, &mut conn).await?)))
-    }
+    //     let mut conn = app_state.db_conn().await?;
+    //     Ok(ValidJson(Some(fetch_by_id(user_id, &mut conn).await?)))
+    // }
 }

@@ -29,7 +29,6 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
     Entra({
       clientId: MICROSOFT_ENTRA_ID_ID,
       clientSecret: MICROSOFT_ENTRA_ID_SECRET,
-      client: {token_endpoint_auth_method: "client_secret_post"},
     }),
   ],
   callbacks: {
