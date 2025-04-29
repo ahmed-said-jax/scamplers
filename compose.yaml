@@ -89,9 +89,12 @@ services:
     volumes:
       - scamplers-core:/opt/scamplers-core
     secrets:
-      - auth_secret
-      - auth_microsoft_entra_id_id
-      - auth_microsoft_entra_id_secret
+      - source: auth_secret
+        uid: "10001"
+      - source: auth_microsoft_entra_id_id
+        uid: "10001"
+      - source: auth_microsoft_entra_id_secret
+        uid: "10001"
   caddy:
     image: caddy:2.9.1-alpine
     environment:
@@ -112,7 +115,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      scamplers-backend:
+      scamplers-frontend:
         condition: service_healthy
 volumes:
   db-data:
