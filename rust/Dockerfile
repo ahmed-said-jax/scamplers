@@ -50,4 +50,4 @@ USER appuser
 
 EXPOSE ${PORT}
 
-CMD /bin/check-schema.sh && /bin/scamplers-backend prod --log-dir logs --host 0.0.0.0 --port $PORT --secrets-dir /run/secrets --db-host $DB_HOST --db-port $DB_PORT
+CMD /bin/check-schema.sh && /bin/scamplers-backend --log-dir logs --host 0.0.0.0 --port $PORT --secrets-dir /run/secrets --db-host $DB_HOST --db-port $DB_PORT

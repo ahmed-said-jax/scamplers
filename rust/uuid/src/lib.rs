@@ -1,25 +1,21 @@
 use {
     _uuid::Bytes,
-    std::{fmt::Display, str::FromStr},
     serde::{Deserialize, Serialize},
+    std::{fmt::Display, str::FromStr},
 };
 
 #[cfg(feature = "backend")]
-use {
-    diesel::{
-        deserialize::{FromSql, FromSqlRow},
-        expression::AsExpression,
-        sql_types,
-    },
+use diesel::{
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    sql_types,
 };
 
-
-#[cfg_attr(
-    feature = "backend",
-    derive(FromSqlRow, AsExpression)
-)]
+#[cfg_attr(feature = "backend", derive(FromSqlRow, AsExpression))]
 #[cfg_attr(feature = "backend", diesel(sql_type = sql_types::Uuid))]
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Debug, Hash, Default, Deserialize, Serialize)]
+#[derive(
+    Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Debug, Hash, Default, Deserialize, Serialize,
+)]
 pub struct Uuid(_uuid::Uuid);
 
 impl Display for Uuid {
@@ -54,7 +50,11 @@ mod web {
     use std::str::FromStr;
     use wasm_bindgen::{
         JsValue,
-        convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi, VectorIntoWasmAbi, VectorFromWasmAbi, js_value_vector_from_abi, js_value_vector_into_abi, TryFromJsValue},
+        convert::{
+            FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi, TryFromJsValue,
+            VectorFromWasmAbi, VectorIntoWasmAbi, js_value_vector_from_abi,
+            js_value_vector_into_abi,
+        },
         describe::{WasmDescribe, WasmDescribeVector},
     };
 
@@ -74,7 +74,9 @@ mod web {
         type Error = _uuid::Error;
 
         fn try_from_js_value(value: JsValue) -> Result<Self, Self::Error> {
-            Ok(Self::from_str(&String::try_from_js_value(value).unwrap_or_default())?)
+            Ok(Self::from_str(
+                &String::try_from_js_value(value).unwrap_or_default(),
+            )?)
         }
     }
 
@@ -90,7 +92,7 @@ mod web {
         type Abi = <Self as IntoWasmAbi>::Abi;
 
         unsafe fn from_abi(js: Self::Abi) -> Self {
-            Self(unsafe {String::from_abi(js).parse().unwrap_or_default()})
+            Self(unsafe { String::from_abi(js).parse().unwrap_or_default() })
         }
     }
 

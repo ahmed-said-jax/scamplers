@@ -31,9 +31,7 @@ impl Write for NewAdmin {
         self,
         db_conn: &mut AsyncPgConnection,
     ) -> super::super::error::Result<Self::Returns> {
-        let Self {
-            mut person
-        } = self;
+        let Self { mut person } = self;
 
         person.roles.push(UserRole::AppAdmin);
 

@@ -1,6 +1,9 @@
 use std::{collections::HashMap, hash::RandomState};
 
-use axum::{routing::{get, post}, Router};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 
 use super::AppState2;
 use crate::db::model::person::fetch_by_filter;
@@ -13,7 +16,8 @@ pub(super) fn router() -> Router<AppState2> {
     let endpoints: HashMap<&str, [&str; 1], RandomState> =
         HashMap::from_iter([("available_endpoints", [""])]);
 
-    let router = Router::new().route("/", get(|| async { axum::Json(endpoints) }))
+    let router = Router::new()
+        .route("/", get(|| async { axum::Json(endpoints) }))
         // .route("/me", get(me))
         .route("/user", post(new_user));
     // .route(
@@ -35,11 +39,12 @@ mod handlers {
 
     use axum::{
         debug_handler,
-        extract::{rejection::JsonRejection, FromRequest, Path, State}, response::{IntoResponse, Response},
+        extract::{FromRequest, Path, State, rejection::JsonRejection},
+        response::{IntoResponse, Response},
     };
     use axum_extra::extract::Query;
     use diesel::prelude::*;
-    use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt, RunQueryDsl};
+    use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
     use garde::Validate;
     use scamplers_core::person::{CreatedUser, NewPerson, Person};
     use serde::Serialize;
@@ -47,11 +52,17 @@ mod handlers {
     use uuid::Uuid;
     use valuable::Valuable;
 
-    use crate::{db::model::person::{WriteLogin}, server::{auth::{Frontend, HashedKey, Key, User}, AppState2}};
-    use super::error::{Result, Error};
+    use super::error::{Error, Result};
     use crate::db::Write;
+    use crate::{
+        db::model::person::WriteLogin,
+        server::{
+            AppState2,
+            auth::{ApiKey, Frontend, HashedKey, User},
+        },
+    };
 
-    pub (super) struct ValidJson<T>(T);
+    pub(super) struct ValidJson<T>(T);
 
     impl<S, T> FromRequest<S> for ValidJson<T>
     where
@@ -62,7 +73,10 @@ mod handlers {
     {
         type Rejection = Error;
 
-        async fn from_request(req: axum::extract::Request, state: &S) -> std::result::Result<Self, Self::Rejection> {
+        async fn from_request(
+            req: axum::extract::Request,
+            state: &S,
+        ) -> std::result::Result<Self, Self::Rejection> {
             let axum::Json(data) = axum::Json::<T>::from_request(req, state).await?;
             data.validate()?;
 
@@ -204,7 +218,11 @@ mod handlers {
     //     Ok(ValidJson(updated))
     // }
 
-    pub (super) async fn new_user(_frontend_service: Frontend, State(app_state): State<AppState2>, ValidJson(person): ValidJson<NewPerson>) -> Result<ValidJson<CreatedUser>> {
+    pub(super) async fn new_user(
+        _frontend_service: Frontend,
+        State(app_state): State<AppState2>,
+        ValidJson(person): ValidJson<NewPerson>,
+    ) -> Result<ValidJson<CreatedUser>> {
         tracing::debug!(deserialized_person = person.as_value());
 
         let mut db_conn = app_state.db_conn().await?;

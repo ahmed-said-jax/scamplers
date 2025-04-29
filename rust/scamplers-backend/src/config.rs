@@ -68,7 +68,7 @@ impl Config {
         *db_login_user_password = read_secret("db_login_user_password")?;
         *auth_secret = read_secret("auth_secret")?;
         *db_name = read_secret("db_name")?;
-        *seed_data= serde_json::from_str(&read_secret("seed_data")?)?;
+        *seed_data = serde_json::from_str(&read_secret("seed_data")?)?;
         *seed_data_path = None;
 
         Ok(())
@@ -146,5 +146,6 @@ impl Config {
 pub struct Cli {
     #[command(flatten)]
     pub config: Config,
+    #[arg(long, env = "SCAMPLERS_LOG_DIR")]
     pub log_dir: Option<Utf8PathBuf>,
 }

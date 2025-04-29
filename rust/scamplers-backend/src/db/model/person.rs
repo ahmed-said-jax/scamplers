@@ -6,10 +6,10 @@ use scamplers_schema::{
     person::{
         self,
         dsl::{
-            email as email_col, id as id_col, institution_id as institution_col,
-            ms_user_id as ms_user_id_col, name as name_col, hashed_api_key as hashed_api_key_col
+            email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
+            institution_id as institution_col, ms_user_id as ms_user_id_col, name as name_col,
         },
-    }
+    },
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -24,9 +24,13 @@ define_sql_function! {fn revoke_roles_from_user(user_id: Text, roles: Array<Text
 define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
-use crate::{db::{
-    self, util::{AsIlike, DbEnum}, AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, Write
-}, server::auth::{HashedKey, Key}};
+use crate::{
+    db::{
+        self, AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, Write,
+        util::{AsIlike, DbEnum},
+    },
+    server::auth::{ApiKey, HashedKey},
+};
 
 impl<Table> AsDieselFilter<Table> for PersonQuery
 where
@@ -90,8 +94,15 @@ pub async fn fetch_by_filter(
     Ok(people)
 }
 
-pub async fn fetch_by_id(id: Uuid, db_conn: &mut AsyncPgConnection) -> crate::db::error::Result<Person> {
-    Ok(Person::as_diesel_query_base().filter(id_col.eq(id)).select(Person::as_select()).first(db_conn).await?)
+pub async fn fetch_by_id(
+    id: Uuid,
+    db_conn: &mut AsyncPgConnection,
+) -> crate::db::error::Result<Person> {
+    Ok(Person::as_diesel_query_base()
+        .filter(id_col.eq(id))
+        .select(Person::as_select())
+        .first(db_conn)
+        .await?)
 }
 
 pub trait WriteLogin {
@@ -113,36 +124,56 @@ impl WriteLogin for NewPerson {
         struct NewUser {
             #[diesel(embed)]
             person: NewPerson,
-            hashed_api_key: HashedKey
+            hashed_api_key: HashedKey,
         }
 
-        let api_key = Key::new();
+        let api_key = ApiKey::new();
         let hashed_api_key = api_key.hash();
 
         // Instantiate a `NewUser` so we can use it as a wholesale insert
-        let new_user = NewUser {person: self, hashed_api_key};
+        let new_user = NewUser {
+            person: self,
+            hashed_api_key,
+        };
 
         // Also destructure the `NewUser` so we have granular control over which columns to set
-        let NewUser { person: NewPerson { name, email, institution_id, roles, .. }, hashed_api_key } = &new_user;
+        let NewUser {
+            person:
+                NewPerson {
+                    name,
+                    email,
+                    institution_id,
+                    roles,
+                    ms_user_id,
+                    ..
+                },
+            hashed_api_key,
+        } = &new_user;
+
+        // This is a closure because this tuple doesn't implement `Clone`, and passing it by reference doesn't work
+        let update = || {
+            (
+                name_col.eq(name),
+                email_col.eq(email),
+                ms_user_id_col.eq(ms_user_id),
+                institution_col.eq(institution_id),
+                hashed_api_key_col.eq(hashed_api_key),
+            )
+        };
 
         let result = diesel::insert_into(person::table)
             .values(&new_user)
             .on_conflict(ms_user_id_col)
             .do_update()
-            .set((
-                name_col.eq(name),
-                email_col.eq(email),
-                institution_col.eq(institution_id),
-                hashed_api_key_col.eq(hashed_api_key)
-            ))
+            .set(update())
             .returning(id_col)
             .get_result(db_conn)
             .await;
 
         let result = result.map_err(Error::from);
 
-        let (user_id, user_is_new) = match &result {
-            Ok(id) => (*id, true),
+        let id: Uuid = match &result {
+            Ok(id) => *id,
             Err(Error::DuplicateRecord { field, .. }) => {
                 let Some(field) = field else {
                     return Err(result.unwrap_err());
@@ -151,15 +182,12 @@ impl WriteLogin for NewPerson {
                     return Err(result.unwrap_err());
                 }
 
-                let query = PersonQuery {
-                    email: Some(email.clone()),
-                    ..Default::default()
-                };
-
-                let p = fetch_by_filter(Some(query), db_conn).await?;
-                let p = &p[0];
-
-                (p.id, false)
+                diesel::update(person::table)
+                    .filter(email_col.eq(email))
+                    .set(update())
+                    .returning(id_col)
+                    .get_result(db_conn)
+                    .await?
             }
             _ => {
                 return Err(result.unwrap_err());
@@ -168,10 +196,13 @@ impl WriteLogin for NewPerson {
 
         let roles: Vec<_> = roles.clone().into_iter().map(|r| DbEnum(r)).collect();
 
-        diesel::select(create_user_if_not_exists(user_id.to_string(), &roles))
+        diesel::select(create_user_if_not_exists(id.to_string(), &roles))
             .execute(db_conn)
             .await?;
 
-        Ok(CreatedUser{id: user_id, api_key: api_key.to_string()})
+        Ok(CreatedUser {
+            id,
+            api_key: api_key.to_string(),
+        })
     }
 }

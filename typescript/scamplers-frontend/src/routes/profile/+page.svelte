@@ -8,11 +8,9 @@
       return;
     }
 
-    console.log(JSON.stringify(data));
-
     const response = await fetch("/auth/session");
-    const session = await response.json();
-    apiKey = session.user.apiKey;
+    const fullSession = await response.json();
+    apiKey = fullSession.user.apiKey;
   }
 
   const {name, email} = data.session.user;

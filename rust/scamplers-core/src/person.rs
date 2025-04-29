@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "backend")]
 use {
     diesel::{pg::Pg, prelude::*},
@@ -5,14 +6,11 @@ use {
     scamplers_schema::person,
     valuable::Valuable,
 };
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::*;
 
 use {crate::institution::Institution, uuid::Uuid};
-
-use std::default;
 
 #[cfg_attr(
     feature = "backend",
@@ -25,10 +23,7 @@ use std::default;
         Debug
     )
 )]
-#[cfg_attr(
-    feature = "backend",
-    strum(serialize_all = "snake_case"),
-)]
+#[cfg_attr(feature = "backend", strum(serialize_all = "snake_case"))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
@@ -40,10 +35,7 @@ pub enum UserRole {
     Unknown,
 }
 
-#[cfg_attr(
-    feature = "backend",
-    derive(Insertable, Validate, Valuable, Debug)
-)]
+#[cfg_attr(feature = "backend", derive(Insertable, Validate, Valuable, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)), garde(allow_unvalidated))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
@@ -64,7 +56,14 @@ impl NewPerson {
     #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
     #[cfg(feature = "web")]
     pub fn new(name: String, email: String, institution_id: Uuid, ms_user_id: Uuid) -> Self {
-        Self {name, email, institution_id, ms_user_id: Some(ms_user_id), roles: vec![], orcid: None}
+        Self {
+            name,
+            email,
+            institution_id,
+            ms_user_id: Some(ms_user_id),
+            roles: vec![],
+            orcid: None,
+        }
     }
 }
 
@@ -87,7 +86,7 @@ pub struct Person {
 #[derive(Deserialize, Serialize)]
 pub struct CreatedUser {
     pub id: Uuid,
-    pub api_key: String
+    pub api_key: String,
 }
 
 #[cfg_attr(feature = "backend", derive(Valuable, Default, Debug))]

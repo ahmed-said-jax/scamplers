@@ -1,7 +1,5 @@
 use clap::Parser;
-use scamplers_backend::{
-    config::Cli, server::serve
-};
+use scamplers_backend::{config::Cli, server::serve};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

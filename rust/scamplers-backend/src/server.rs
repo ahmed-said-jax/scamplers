@@ -1,5 +1,8 @@
 #![allow(async_fn_in_trait)]
-use std::{env, sync::{Arc, Mutex}};
+use std::{
+    env,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::{Context, anyhow};
 // use auth::{authenticate_api_request, authenticate_browser_request};
@@ -22,19 +25,18 @@ use testcontainers_modules::{
 use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 use tower_http::{services::fs::ServeDir, trace::TraceLayer};
-use util::{DevContainer};
+use util::DevContainer;
 use uuid::Uuid;
 mod api;
 pub mod auth;
 mod util;
 
-pub async fn serve(
-    mut config: Config,
-    log_dir: Option<Utf8PathBuf>,
-) -> anyhow::Result<()> {
+pub async fn serve(mut config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
     initialize_logging(log_dir);
 
-    config.read_secrets().context("failed to read secrets directory")?;
+    config
+        .read_secrets()
+        .context("failed to read secrets directory")?;
     let app_addr = config.app_address();
 
     let mut app_state = AppState2::new(config)
@@ -115,7 +117,7 @@ enum AppState2 {
         _pg_container: Arc<ContainerAsync<Postgres>>,
         user_id: Uuid,
         http_client: reqwest::Client,
-        config: Arc<Mutex<Config>>
+        config: Arc<Mutex<Config>>,
     },
     Prod {
         db_pool: Pool<AsyncPgConnection>,
@@ -140,8 +142,7 @@ impl AppState2 {
                 .await
                 .context("failed to create dev superuser")?;
 
-            let db_config =
-                AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_url);
+            let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&db_root_url);
             let db_pool = Pool::builder(db_config).build()?;
 
             Self::Dev {
@@ -149,7 +150,7 @@ impl AppState2 {
                 _pg_container: Arc::new(pg_container),
                 user_id,
                 http_client: reqwest::Client::new(),
-                config: Arc::new(Mutex::new(config))
+                config: Arc::new(Mutex::new(config)),
             }
         } else {
             let db_config =
@@ -206,7 +207,6 @@ impl AppState2 {
     // constructs the arguments. This is the only time this sequence of events happens, so we can keep it as is.
     // Also, this shouldn't be a method of `AppState`
     async fn set_login_user_password(&self) -> anyhow::Result<()> {
-
         let password = match self {
             AppState2::Dev { .. } => Uuid::now_v7().to_string(),
             AppState2::Prod { config, .. } => {
@@ -218,7 +218,11 @@ impl AppState2 {
         const LOGIN_USER: &str = "login_user";
 
         let mut db_conn = self.db_root_conn().await?;
-        diesel::sql_query(format!(r#"alter user "{LOGIN_USER}" with password '{password}'"#)).execute(&mut db_conn).await?;
+        diesel::sql_query(format!(
+            r#"alter user "{LOGIN_USER}" with password '{password}'"#
+        ))
+        .execute(&mut db_conn)
+        .await?;
 
         Ok(())
     }
@@ -230,7 +234,16 @@ impl AppState2 {
         let mut db_conn = self.db_root_conn().await?;
 
         match self {
-            Dev { http_client, config, .. } | Prod{http_client, config, ..} => {
+            Dev {
+                http_client,
+                config,
+                ..
+            }
+            | Prod {
+                http_client,
+                config,
+                ..
+            } => {
                 let mut config = config.lock().unwrap();
 
                 let seed_data = config.seed_data()?;

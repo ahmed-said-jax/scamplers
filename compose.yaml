@@ -82,7 +82,7 @@ services:
         condition: service_healthy
     healthcheck:
       # TODO: interpolate frontend_port
-      test: CMD, curl, "http://localhost:8000/api/health
+      test: curl http://localhost:8000/health || exit 1
       interval: 5s
       start_period: 5s
       start_interval: 1s

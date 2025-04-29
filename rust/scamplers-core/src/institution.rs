@@ -13,17 +13,14 @@ use wasm_bindgen::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(
-    feature = "backend",
-    derive(Insertable, Valuable, Validate, Debug)
-)]
+#[cfg_attr(feature = "backend", derive(Insertable, Valuable, Validate, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = institution, check_for_backend(Pg)), garde(allow_unvalidated))]
 #[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
 #[derive(Deserialize, Serialize)]
 pub struct NewInstitution {
     pub id: Uuid,
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
-    pub name: String
+    pub name: String,
 }
 
 #[cfg_attr(feature = "web", wasm_bindgen)]

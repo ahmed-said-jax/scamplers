@@ -1,4 +1,7 @@
-use std::{fmt::{Debug, Display}, str::FromStr};
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 
 use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
@@ -44,12 +47,11 @@ use super::AppState2;
 
 const KEY_PREFIX_LENGTH: usize = 8;
 const KEY_LENGTH: usize = 32;
-const USER_ID_HEADER: &str = "SCAMPLERS_USER_ID";
 
 #[derive(Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct Key(String);
-impl Key {
+pub struct ApiKey(String);
+impl ApiKey {
     pub fn new() -> Self {
         Self::default()
     }
@@ -102,14 +104,14 @@ impl Key {
         &inner
     }
 }
-impl FromStr for Key {
+impl FromStr for ApiKey {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s.to_string()))
     }
 }
-impl Default for Key {
+impl Default for ApiKey {
     fn default() -> Self {
         let mut rng = StdRng::from_os_rng();
         let key = (0..KEY_LENGTH)
@@ -119,13 +121,13 @@ impl Default for Key {
         Self(key)
     }
 }
-impl Debug for Key {
+impl Debug for ApiKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.hash().fmt(f)
     }
 }
 
-impl Display for Key {
+impl Display for ApiKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(inner) = self;
         <String as Display>::fmt(inner, f)
@@ -165,10 +167,10 @@ impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
 }
 
 #[derive(Clone, Copy, Valuable)]
-pub(super) struct User(pub (super) Uuid);
+pub(super) struct User(pub(super) Uuid);
 impl User {
     async fn fetch_by_api_key(
-        api_key: &Key,
+        api_key: &ApiKey,
         conn: &mut AsyncPgConnection,
     ) -> db::error::Result<Self> {
         use scamplers_schema::person::dsl::{hashed_api_key, id, person};
@@ -201,7 +203,11 @@ impl FromRequestParts<AppState2> for User {
             return Ok(Self(*user_id));
         }
 
-        let Some(Ok(api_key)) = parts.headers.get("X-API-Key").map(|s| s.to_str().unwrap().parse()) else {
+        let Some(Ok(api_key)) = parts
+            .headers
+            .get("X-API-Key")
+            .map(|s| s.to_str().unwrap().parse())
+        else {
             return Err(Error::InvalidApiKey);
         };
 
@@ -269,7 +275,7 @@ pub(super) enum Error {
     #[error("invalid auth user password")]
     InvalidFrontendCredentials,
     #[error(transparent)]
-    Other(db::error::Error)
+    Other(db::error::Error),
 }
 impl From<db::error::Error> for Error {
     fn from(err: db::error::Error) -> Self {
@@ -277,7 +283,7 @@ impl From<db::error::Error> for Error {
 
         match err {
             RecordNotFound => Self::InvalidApiKey,
-            _ => Self::Other(err)
+            _ => Self::Other(err),
         }
     }
 }
@@ -302,7 +308,14 @@ impl IntoResponse for Error {
                 }),
             )
                 .into_response(),
-            Self::Other(_) => (StatusCode::INTERNAL_SERVER_ERROR, axum::Json(ErrorResponse{status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(), error: None})).into_response()
+            Self::Other(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                axum::Json(ErrorResponse {
+                    status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    error: None,
+                }),
+            )
+                .into_response(),
         }
     }
 }
