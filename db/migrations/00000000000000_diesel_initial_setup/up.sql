@@ -36,11 +36,11 @@ BEGIN
 END;
 $$ language plpgsql;
 
-create function user_exists(user_id text) returns boolean language plpgsql volatile strict as $$
-    declare user_exists boolean;
+create function role_exists(user_id text) returns boolean language plpgsql volatile strict as $$
+    declare role_exists boolean;
     begin
-        select exists (select 1 from pg_roles where rolname = user_id) into user_exists;
-        return user_exists;
+        select exists (select 1 from pg_roles where rolname = user_id) into role_exists;
+        return role_exists;
     end;
 $$;
 
@@ -62,7 +62,7 @@ create function revoke_roles_from_user(
 ) returns void language plpgsql volatile strict as $$
     declare r text;
     begin
-        if not user_exists(user_id) then
+        if not role_exists(user_id) then
             return;
         end if;
 
@@ -72,15 +72,23 @@ create function revoke_roles_from_user(
     end;
 $$;
 
+create function create_role_if_not_exists(
+    role_name text
+) returns void language plpgsql volatile strict as $$
+    begin
+        if not role_exists(role_name) then
+            execute format('create role %I', role_name);
+        end if;
+    end;
+$$;
+
 create function create_user_if_not_exists(
     user_id text,
     roles text []
 ) returns void language plpgsql volatile strict as $$
     begin
-        if not user_exists(user_id) then
-            execute format('create user %I', user_id);
-        end if;
-
+        perform create_role_if_not_exists(user_id);
+        execute format('alter role %I with login', user_id);
         execute format('grant %I to login_user', user_id);
         perform grant_roles_to_user(user_id, roles);
     end;
@@ -96,12 +104,13 @@ create function get_user_roles(
     end;
 $$;
 
-create role app_admin;
-create role biology_staff;
-create role computational_staff;
+select create_role_if_not_exists('app_admin');
+select create_role_if_not_exists('biology_staff');
+select create_role_if_not_exists('computational_staff');
 
-create user login_user with createrole;
-create user auth_user;
+-- We don't use `create_user_if_not_exists` for `login_user` and `auth_user` because that function is for app users. TODO: e should rename the function and correct the corresponding
+select create_role_if_not_exists('login_user');
+alter role login_user with login createrole;
 
 create type hashed_key as (
     prefix text,

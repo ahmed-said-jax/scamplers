@@ -1,17 +1,27 @@
 <script lang="ts">
-	let api_key: string | null = $state(null);
+	let { data } = $props();
+	let apiKey = $state('');
 
-	async function generate_api_key() {
-		const response = await fetch('/frontend/api/api-key', {
-			method: 'POST'
-		});
+	async function toggleApiKey() {
+		if (apiKey) {
+			apiKey = '';
+			return;
+		}
 
-		let result = await response.json();
-		api_key = result.api_key;
+		const response = await fetch('/auth/session');
+		const fullSession = await response.json();
+		apiKey = fullSession.user.apiKey;
 	}
+
+	const { name, email } = data.session.user;
 </script>
 
-<button onclick={generate_api_key}>Generate API Key</button>
-{#if api_key}
-	<div>API Key: {api_key}</div>
-{/if}
+<div>
+	<ul>
+		<li><strong>{name}</strong></li>
+		<li>{email}</li>
+	</ul>
+	<button onclick={toggleApiKey}
+		>{#if !apiKey}View API Key{:else}{apiKey} - Hide API Key{/if}</button
+	>
+</div>

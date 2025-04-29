@@ -1,26 +1,18 @@
 <script lang="ts">
 	import '../app.css';
-	import type { LayoutProps } from './$types';
-	import { onMount } from 'svelte';
 
-	let { children }: LayoutProps = $props();
-
-	let me: {name: string} | null = $state(null);
-
-	onMount(async () => {
-		const response = await fetch('/frontend/api/me', { method: 'GET' });
-		me = await response.json();
-	});
+	let { data, children } = $props();
 </script>
 
-<h1>Scamplers</h1>
-
-{#if me}
+<div>
+	<div>Hello, {data.session.user.name}</div>
 	<nav>
-		<a href="/">Home</a>
-		<a href="/profile">Profile</a>
+		<ul>
+			<li>
+				<a href="/profile">Profile</a>
+			</li>
+		</ul>
 	</nav>
-	<p>Hello {me.name}</p>
-{/if}
+</div>
 
 {@render children()}
