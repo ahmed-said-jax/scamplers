@@ -7,7 +7,7 @@ default-members = ["scamplers-backend"]
 edition = "2024"
 
 [workspace.dependencies]
-clap = { version = "4.5.36", features = ["derive", "env"] }
+clap = { version = "4.5.37", features = ["derive", "env"] }
 anyhow = "1.0.98"
 axum = { version = "0.8.3", default-features = false, features = [
     "http2",
@@ -28,7 +28,7 @@ thiserror = "2.0.12"
 _uuid = { package = "uuid", version = "1.16.0", features = ["serde"]}
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140"}
-diesel = { version = "2.2.9", default-features = false, features = [
+diesel = { version = "2.2.10", default-features = false, features = [
     "without-deprecated",
     "chrono",
     "uuid",
