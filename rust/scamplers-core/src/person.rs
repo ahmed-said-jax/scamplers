@@ -37,7 +37,11 @@ pub enum UserRole {
 
 #[cfg_attr(feature = "backend", derive(Insertable, Validate, Valuable, Debug))]
 #[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)), garde(allow_unvalidated))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
+#[cfg_attr(
+    feature = "web",
+    wasm_bindgen(getter_with_clone, inspectable),
+    derive(Default)
+)]
 #[derive(Deserialize, Serialize)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
@@ -55,15 +59,8 @@ pub struct NewPerson {
 impl NewPerson {
     #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
     #[cfg(feature = "web")]
-    pub fn new(name: String, email: String, institution_id: Uuid, ms_user_id: Uuid) -> Self {
-        Self {
-            name,
-            email,
-            institution_id,
-            ms_user_id: Some(ms_user_id),
-            roles: vec![],
-            orcid: None,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
