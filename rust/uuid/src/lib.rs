@@ -45,8 +45,8 @@ impl Uuid {
     }
 }
 
-#[cfg(feature = "web")]
-mod web {
+#[cfg(feature = "typescript")]
+mod typescript {
     use std::str::FromStr;
     use wasm_bindgen::{
         JsValue,
@@ -74,9 +74,7 @@ mod web {
         type Error = _uuid::Error;
 
         fn try_from_js_value(value: JsValue) -> Result<Self, Self::Error> {
-            Ok(Self::from_str(
-                &String::try_from_js_value(value).unwrap_or_default(),
-            )?)
+            Ok(Self::from_str(&String::try_from_js_value(value).unwrap())?)
         }
     }
 
@@ -92,7 +90,7 @@ mod web {
         type Abi = <Self as IntoWasmAbi>::Abi;
 
         unsafe fn from_abi(js: Self::Abi) -> Self {
-            Self(unsafe { String::from_abi(js).parse().unwrap_or_default() })
+            Self(unsafe { String::from_abi(js).parse().unwrap() })
         }
     }
 

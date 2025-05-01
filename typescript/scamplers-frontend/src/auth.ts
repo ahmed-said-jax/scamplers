@@ -1,9 +1,10 @@
 import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
-import { NewPerson } from 'scamplers-core';
+import { NewPerson, CreatedUser } from 'scamplers-core';
 import { AUTH_SECRET, MICROSOFT_ENTRA_ID_ID, MICROSOFT_ENTRA_ID_SECRET } from '$lib/server/secrets';
 import { BACKEND_URL } from '$lib/server/backend';
 import { backendRequest } from '$lib/server/backend';
+import { type JWT } from '@auth/core/jwt';
 
 declare module '@auth/sveltekit' {
 	interface Session {
@@ -13,14 +14,20 @@ declare module '@auth/sveltekit' {
 		} & DefaultSession['user'];
 	}
 }
+declare module '@auth/core/jwt' {
+	interface JWT {
+		userId: string;
+		apiKey: string;
+	}
+}
 
-async function createUser(person: NewPerson): Promise<object> {
-	let request = new Request(`${BACKEND_URL}/user`, { method: 'POST', body: person.toString() });
+async function createUser(person: NewPerson): Promise<CreatedUser | null> {
+	let request = new Request(`${BACKEND_URL}/user`, { method: 'POST', body: person.to_json() });
 	request = await backendRequest({ request });
 
 	const response = await fetch(request);
 
-	return await response.json();
+	return CreatedUser.from_json(await response.text());
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
@@ -38,27 +45,50 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			}
 			return false;
 		},
-		async jwt({ token, profile }) {
+		async jwt({ token, profile }): Promise<JWT | null> {
 			if (!profile) {
 				return token;
 			}
 
-			const newPerson = new NewPerson();
-			newPerson.name = profile.name;
-			newPerson.email = profile.email;
-			newPerson.ms_user_id = profile.oid;
-			newPerson.institution_id = profile.tid;
+			if (
+				!(
+					profile.name &&
+					profile.email &&
+					typeof profile.oid === 'string' &&
+					typeof profile.tid === 'string'
+				)
+			) {
+				return null;
+			}
 
-			const { id, api_key } = await createUser(newPerson);
+			const newPerson = new NewPerson(
+				profile.name,
+				profile.email,
+				null,
+				profile.oid,
+				profile.tid,
+				[]
+			);
+
+			const createdUser = await createUser(newPerson);
+
+			if (!createdUser) {
+				return null;
+			}
+
+			const { id, api_key } = createdUser;
 
 			token.userId = id;
 			token.apiKey = api_key;
 
 			return token;
 		},
+
 		async session({ session, token }) {
-			session.user.id = token.userId;
-			session.user.apiKey = token.apiKey;
+			const { userId, apiKey } = token;
+
+			session.user.id = userId;
+			session.user.apiKey = apiKey;
 
 			return session;
 		}

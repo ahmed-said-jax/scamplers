@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["scamplers-backend","scamplers-core", "scamplers-schema", "uuid"]
+members = [
+    "scamplers-backend",
+    "scamplers-core",
+    "scamplers-macros",
+    "scamplers-schema",
+    "uuid",
+]
 default-members = ["scamplers-backend"]
 
 [workspace.package]
@@ -25,9 +31,9 @@ regex = "1.11.1"
 axum-extra = { version = "0.10.1", features = ["typed-header", "query"] }
 camino = { version = "1.1.9" }
 thiserror = "2.0.12"
-_uuid = { package = "uuid", version = "1.16.0", features = ["serde"]}
+_uuid = { package = "uuid", version = "1.16.0", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140"}
+serde_json = { version = "1.0.140" }
 diesel = { version = "2.2.10", default-features = false, features = [
     "without-deprecated",
     "chrono",
@@ -42,7 +48,10 @@ strum = { version = "0.27.1", features = ["derive"] }
 scraper = { version = "0.23.1", features = ["serde"] }
 wasm-bindgen = { version = "0.2.100", features = ["enable-interning"] }
 dotenvy = { version = "0.15.7" }
-testcontainers-modules = { version = "0.11.6", features = ["postgres", "blocking"] }
+testcontainers-modules = { version = "0.11.6", features = [
+    "postgres",
+    "blocking",
+] }
 diesel_migrations = { version = "2.2.0", features = ["postgres"] }
 diesel-async = { version = "0.5.2", features = [
     "postgres",
@@ -63,6 +72,8 @@ reqwest = { version = "0.12.14", default-features = false, features = [
     "json",
 ] }
 url = { version = "2.5.4", features = ["serde"] }
+syn = { version = "2.0.101" }
+quote = { version = "1.0.40" }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

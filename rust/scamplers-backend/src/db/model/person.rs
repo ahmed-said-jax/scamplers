@@ -24,10 +24,7 @@ define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<T
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
-    db::{
-        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression,
-        util::{AsIlike, DbEnum},
-    },
+    db::{AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, util::AsIlike},
     server::auth::{ApiKey, HashedKey},
 };
 
@@ -112,6 +109,7 @@ pub trait WriteLogin {
 }
 
 impl WriteLogin for NewPerson {
+    // TODO: this function is big and ugly. Split it up
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
@@ -192,8 +190,6 @@ impl WriteLogin for NewPerson {
                 return Err(result.unwrap_err());
             }
         };
-
-        let roles: Vec<_> = roles.clone().into_iter().map(|r| DbEnum(r)).collect();
 
         diesel::select(create_user_if_not_exists(id.to_string(), &roles))
             .execute(db_conn)

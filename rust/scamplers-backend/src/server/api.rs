@@ -40,24 +40,21 @@ mod handlers {
         extract::{FromRequest, State, rejection::JsonRejection},
         response::{IntoResponse, Response},
     };
-    
-    
-    
+
     use garde::Validate;
-    use scamplers_core::person::{CreatedUser, NewPerson};
+    use scamplers_core::{
+        institution::NewInstitution,
+        person::{CreatedUser, NewPerson, Person},
+    };
     use serde::Serialize;
-    
-    
+
     use valuable::Valuable;
 
     use super::error::{Error, Result};
-    
+
     use crate::{
-        db::model::person::WriteLogin,
-        server::{
-            AppState2,
-            auth::Frontend,
-        },
+        db::{Write, model::person::WriteLogin},
+        server::{AppState2, auth::Frontend},
     };
 
     pub(super) struct ValidJson<T>(T);

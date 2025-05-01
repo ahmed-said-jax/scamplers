@@ -2246,6 +2246,7 @@ dependencies = [
  "chrono",
  "diesel",
  "garde",
+ "scamplers-macros",
  "scamplers-schema",
  "scraper",
  "serde",
@@ -2255,6 +2256,14 @@ dependencies = [
  "uuid 0.1.0",
  "valuable",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "scamplers-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

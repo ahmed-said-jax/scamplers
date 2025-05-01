@@ -1,48 +1,30 @@
-use serde::{Deserialize, Serialize};
+use std::default;
+
+use crate::institution::Institution;
+
 #[cfg(feature = "backend")]
 use {
-    diesel::{pg::Pg, prelude::*},
-    garde::Validate,
+    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct},
     scamplers_schema::person,
-    valuable::Valuable,
 };
 
-#[cfg(feature = "web")]
-use wasm_bindgen::prelude::*;
+#[cfg(feature = "typescript")]
+use scamplers_macros::{api_enum, api_request, api_response};
 
-use {crate::institution::Institution, uuid::Uuid};
+use uuid::Uuid;
 
-#[cfg_attr(
-    feature = "backend",
-    derive(
-        Validate,
-        Valuable,
-        strum::EnumString,
-        strum::IntoStaticStr,
-        Default,
-        Debug
-    )
-)]
-#[cfg_attr(feature = "backend", strum(serialize_all = "snake_case"))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
-#[derive(Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "backend", db_enum)]
+#[cfg_attr(feature = "typescript", api_enum)]
 pub enum UserRole {
     AppAdmin,
     ComputationalStaff,
     BiologyStaff,
-    #[cfg_attr(feature = "backend", default)]
+    #[default]
     Unknown,
 }
 
-#[cfg_attr(feature = "backend", derive(Insertable, Validate, Valuable, Debug))]
-#[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)), garde(allow_unvalidated))]
-#[cfg_attr(
-    feature = "web",
-    wasm_bindgen(getter_with_clone, inspectable),
-    derive(Default)
-)]
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "backend", insert_struct(person))]
+#[cfg_attr(feature = "typescript", api_request)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,
@@ -55,19 +37,8 @@ pub struct NewPerson {
     pub roles: Vec<UserRole>,
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-impl NewPerson {
-    #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
-    #[cfg(feature = "web")]
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-#[cfg_attr(feature = "backend", derive(Queryable, Selectable, Debug))]
-#[cfg_attr(feature = "backend", diesel(table_name = person, check_for_backend(Pg)))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "backend", select_struct(person))]
+#[cfg_attr(feature = "typescript", api_response)]
 pub struct Person {
     pub id: Uuid,
     pub name: String,
@@ -78,20 +49,18 @@ pub struct Person {
     pub institution: Institution,
 }
 
-#[cfg_attr(feature = "backend", derive(Debug))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
-#[derive(Deserialize, Serialize)]
-pub struct CreatedUser {
-    pub id: Uuid,
-    pub api_key: String,
-}
-
-#[cfg_attr(feature = "backend", derive(Valuable, Default, Debug))]
-#[cfg_attr(feature = "web", wasm_bindgen(getter_with_clone, inspectable))]
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "backend", filter_struct(person))]
+#[cfg_attr(feature = "typescript", api_request)]
 pub struct PersonQuery {
     #[cfg_attr(feature = "backend", serde(default))]
     pub ids: Vec<Uuid>,
     pub name: Option<String>,
     pub email: Option<String>,
+}
+
+#[cfg_attr(feature = "backend", derive(serde::Serialize))]
+#[cfg_attr(feature = "typescript", api_response)]
+pub struct CreatedUser {
+    pub id: Uuid,
+    pub api_key: String,
 }
