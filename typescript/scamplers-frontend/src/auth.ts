@@ -43,9 +43,12 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				return token;
 			}
 
-			const newPerson = new NewPerson(profile.name, profile.email, profile.tid, profile.oid);
+			const newPerson = new NewPerson();
+			newPerson.name = profile.name;
+			newPerson.email = profile.email;
+			newPerson.ms_user_id = profile.oid;
+			newPerson.institution_id = profile.tid;
 
-			// TODO: handle potential errors better here
 			const { id, api_key } = await createUser(newPerson);
 
 			token.userId = id;

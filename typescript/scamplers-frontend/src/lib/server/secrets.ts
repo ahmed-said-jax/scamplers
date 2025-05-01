@@ -1,8 +1,9 @@
 import { env } from '$env/dynamic/private';
+import { readFile } from 'node:fs/promises';
 
 async function read_secret(name: string): Promise<string | undefined> {
 	if (env.IN_DOCKER) {
-		return await Deno.readTextFile(`/run/secrets/${name}`);
+		return await readFile(`/run/secrets/${name}`, { encoding: 'utf8' });
 	}
 
 	return env[`SCAMPLERS_${name.toUpperCase()}`];
