@@ -14,10 +14,7 @@ use axum::{
 };
 use axum_extra::{
     TypedHeader,
-    headers::{
-        self,
-        authorization::Basic,
-    },
+    headers::{self, authorization::Basic},
 };
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
@@ -57,7 +54,7 @@ impl ApiKey {
         &key[..KEY_PREFIX_LENGTH]
     }
 
-    pub fn hash(&self) -> HashedKey {
+    pub fn hash(&self) -> HashedApiKey {
         let Self(key) = self;
 
         let mut salt = [0u8; 16];
@@ -71,13 +68,13 @@ impl ApiKey {
             .unwrap()
             .to_string();
 
-        HashedKey {
+        HashedApiKey {
             prefix: self.prefix().to_string(),
             hash,
         }
     }
 
-    fn is_same_hash(&self, other: &HashedKey) -> bool {
+    fn is_same_hash(&self, other: &HashedApiKey) -> bool {
         let argon2 = Argon2::default();
 
         let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
@@ -132,12 +129,12 @@ impl Display for ApiKey {
 
 #[derive(AsExpression, Debug, FromSqlRow, Deserialize, Valuable)]
 #[diesel(sql_type = scamplers_schema::sql_types::HashedKey)]
-pub struct HashedKey {
+pub struct HashedApiKey {
     prefix: String,
     hash: String,
 }
 
-impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
+impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedApiKey {
     fn to_sql<'b>(
         &'b self,
         out: &mut diesel::serialize::Output<'b, '_, Pg>,
@@ -151,7 +148,7 @@ impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
     }
 }
 
-impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
+impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedApiKey {
     fn from_sql(
         bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
     ) -> diesel::deserialize::Result<Self> {

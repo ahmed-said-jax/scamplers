@@ -3,10 +3,10 @@ use anyhow::Context;
 use diesel_async::AsyncPgConnection;
 use garde::Validate;
 use index_set::IndexSetFileUrl;
-use scamplers_core::institution::NewInstitution;
+use scamplers_core::model::institution::NewInstitution;
 use serde::Deserialize;
-mod index_set;
 mod admin;
+mod index_set;
 
 use super::Write;
 

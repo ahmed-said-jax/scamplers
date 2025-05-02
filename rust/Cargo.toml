@@ -72,8 +72,12 @@ reqwest = { version = "0.12.14", default-features = false, features = [
     "json",
 ] }
 url = { version = "2.5.4", features = ["serde"] }
-syn = { version = "2.0.101" }
+syn = { version = "2.0.101", features = ["full"] }
 quote = { version = "1.0.40" }
+heck = { version = "0.5.0" }
+serde-wasm-bindgen = { version = "0.6.5" }
+wasm-bindgen-futures = { version = "0.4.50" }
+derive_builder = { version = "0.20.2" }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

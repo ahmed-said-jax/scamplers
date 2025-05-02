@@ -15,7 +15,7 @@ export const handleFetch: HandleFetch = async ({ event, fetch }) => {
 	return fetch(request);
 };
 
-async function authorizationHandle({ event, resolve }) {
+const authorizationHandle: Handle = async ({ event, resolve }) => {
 	if (['/auth/signin', '/health'].includes(event.url.pathname)) {
 		return resolve(event);
 	}
@@ -26,6 +26,6 @@ async function authorizationHandle({ event, resolve }) {
 	}
 
 	return resolve(event);
-}
+};
 
-export const handle: Handle = sequence(authenticationHandle, authorizationHandle);
+export const handle = sequence(authenticationHandle, authorizationHandle);

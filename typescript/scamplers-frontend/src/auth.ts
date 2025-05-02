@@ -1,6 +1,6 @@
 import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
-import { NewPerson, CreatedUser } from 'scamplers-core';
+import { NewPerson, CreatedUser, NewPersonBuilder } from 'scamplers-core';
 import { AUTH_SECRET, MICROSOFT_ENTRA_ID_ID, MICROSOFT_ENTRA_ID_SECRET } from '$lib/server/secrets';
 import { BACKEND_URL } from '$lib/server/backend';
 import { backendRequest } from '$lib/server/backend';
@@ -61,14 +61,11 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				return null;
 			}
 
-			const newPerson = new NewPerson(
-				profile.name,
-				profile.email,
-				null,
-				profile.oid,
-				profile.tid,
-				[]
-			);
+			const newPerson = NewPerson.new();
+			newPerson.name(profile.name);
+			newPerson.email(profile.email);
+			newPerson.ms_user_id(profile.oid);
+			newPerson.
 
 			const createdUser = await createUser(newPerson);
 

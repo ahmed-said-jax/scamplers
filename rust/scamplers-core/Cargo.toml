@@ -22,6 +22,10 @@ garde = { workspace = true, optional = true }
 scamplers-schema = { path = "../scamplers-schema", optional = true }
 uuid = { path = "../uuid" }
 scamplers-macros = { path = "../scamplers-macros" }
+reqwest = { workspace = true, optional = true }
+serde-wasm-bindgen = { workspace = true, optional = true }
+wasm-bindgen-futures = { workspace = true, optional = true }
+derive_builder = { workspace = true, optional = true }
 
 [features]
 backend = [
@@ -33,7 +37,15 @@ backend = [
     "uuid/backend",
     "scamplers-schema",
 ]
-typescript = ["wasm-bindgen", "uuid/typescript", "serde_json"]
+typescript = [
+    "wasm-bindgen",
+    "uuid/typescript",
+    "serde_json",
+    "serde-wasm-bindgen",
+    "reqwest",
+    "wasm-bindgen-futures",
+    "derive_builder",
+]
 
 [lints]
 workspace = true

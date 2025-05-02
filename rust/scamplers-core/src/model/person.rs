@@ -1,6 +1,6 @@
 use std::default;
 
-use crate::institution::Institution;
+use super::institution::Institution;
 
 #[cfg(feature = "backend")]
 use {
@@ -56,11 +56,4 @@ pub struct PersonQuery {
     pub ids: Vec<Uuid>,
     pub name: Option<String>,
     pub email: Option<String>,
-}
-
-#[cfg_attr(feature = "backend", derive(serde::Serialize))]
-#[cfg_attr(feature = "typescript", api_response)]
-pub struct CreatedUser {
-    pub id: Uuid,
-    pub api_key: String,
 }

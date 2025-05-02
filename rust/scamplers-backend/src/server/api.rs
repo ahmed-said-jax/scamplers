@@ -42,9 +42,9 @@ mod handlers {
     };
 
     use garde::Validate;
-    use scamplers_core::{
+    use scamplers_core::model::{
         institution::NewInstitution,
-        person::{CreatedUser, NewPerson, Person},
+        person::{NewPerson, Person},
     };
     use serde::Serialize;
 
@@ -54,7 +54,10 @@ mod handlers {
 
     use crate::{
         db::{Write, model::person::WriteLogin},
-        server::{AppState2, auth::Frontend},
+        server::{
+            AppState2,
+            auth::{ApiKey, Frontend},
+        },
     };
 
     pub(super) struct ValidJson<T>(T);
@@ -217,7 +220,7 @@ mod handlers {
         _frontend_service: Frontend,
         State(app_state): State<AppState2>,
         ValidJson(person): ValidJson<NewPerson>,
-    ) -> Result<ValidJson<CreatedUser>> {
+    ) -> Result<ValidJson<(Person, ApiKey)>> {
         tracing::debug!(deserialized_person = person.as_value());
 
         let mut db_conn = app_state.db_conn().await?;

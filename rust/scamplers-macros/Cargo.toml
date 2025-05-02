@@ -9,6 +9,7 @@ proc-macro = true
 [dependencies]
 syn = { workspace = true }
 quote = { workspace = true }
+heck = { workspace = true }
 
 [lints]
 workspace = true

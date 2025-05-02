@@ -1,49 +1,46 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
-use syn::{Attribute, Field, Fields, FieldsNamed, ItemEnum, ItemStruct, parse_macro_input};
+use quote::{ToTokens, format_ident, quote};
+use syn::{
+    AngleBracketedGenericArguments, Attribute, Expr, ExprArray, ExprTuple, Field, Fields,
+    FieldsNamed, GenericArgument, Ident, ItemEnum, ItemStruct, MacroDelimiter, MetaList, Path,
+    PathArguments, Token, Type, TypeGroup, TypePath, parenthesized,
+    parse::Parse,
+    parse_macro_input,
+    punctuated::Punctuated,
+    token::{Group, Paren},
+};
 
 #[proc_macro_attribute]
 pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
+    let ItemStruct {
+        ident: struct_name, ..
+    } = &struct_item;
 
-    let ItemStruct { ident, fields, .. } = &struct_item;
-
-    let mut constructor_params = quote! {};
-    constructor_params.extend(fields.iter().map(|f| {
-        let Field {
-            ident: Some(ident),
-            ty,
-            ..
-        } = f
-        else {
-            panic!("struct fields must be named");
-        };
-        quote! {#ident: #ty,}
-    }));
-
-    let mut constructor_body = quote! {};
-    constructor_body.extend(fields.iter().map(|f| {
-        let field_ident = f.ident.as_ref().unwrap();
-        quote! {#field_ident,}
-    }));
+    let builder_name = format_ident!("{struct_name}Builder");
+    let builder_error_name = format_ident!("{builder_name}Error");
 
     let output = quote! {
-        #[derive(serde::Serialize, Clone)]
+        #[derive(serde::Serialize, Clone, derive_builder::Builder)]
         #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
+        #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen)]
+        #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
+        #[builder(build_fn(error = #builder_error_name))]
         #struct_item
 
         #[wasm_bindgen::prelude::wasm_bindgen]
-        impl #ident {
-            pub fn to_json(&self) -> String {
-                use wasm_bindgen::prelude::*;
-                serde_json::to_string(self).unwrap_throw()
-            }
+        struct #builder_error_name(String);
 
-            #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
-            pub fn new(#constructor_params) -> Self {
-                Self {
-                    #constructor_body
-                }
+        impl From<derive_builder::UninitializedFieldError> for #builder_error_name {
+            fn from(err: derive_builder::UninitializedFieldError) -> Self {
+                Self(err.to_string())
+            }
+        }
+
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl #struct_name {
+            pub fn new() -> #builder_name {
+                #builder_name::default()
             }
         }
     };
@@ -55,20 +52,10 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
 pub fn api_response(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
-    let ItemStruct { ident, .. } = &struct_item;
-
     let output = quote! {
         #[derive(serde::Deserialize, Clone)]
         #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
         #struct_item
-
-        #[wasm_bindgen::prelude::wasm_bindgen]
-        impl #ident {
-            pub fn from_json(json: &str) -> Self {
-                use wasm_bindgen::prelude::*;
-                serde_json::from_str(json).unwrap_throw()
-            }
-        }
     };
 
     output.into()
@@ -212,6 +199,96 @@ pub fn db_json(_attr: TokenStream, input: TokenStream) -> TokenStream {
                 let as_json: serde_json::to_value(self).unwrap();
                 ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
             }
+        }
+    };
+
+    output.into()
+}
+
+// This is massive and ugly and needs to be split for testability
+#[proc_macro_attribute]
+pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let struct_def = parse_macro_input!(input as ItemStruct);
+    let ident = &struct_def.ident;
+
+    let ExprArray { elems, .. } = parse_macro_input!(attr as ExprArray);
+    let mut method_defs = Vec::with_capacity(elems.len());
+    for elem in elems {
+        let Expr::Tuple(ExprTuple {
+            elems: inner_elems, ..
+        }) = elem
+        else {
+            panic!("expected array of tuples");
+        };
+
+        if inner_elems.len() != 2 {
+            panic!(
+                "expected 2 types (a data type and a return type), found {}",
+                inner_elems.len()
+            )
+        }
+
+        if !inner_elems.iter().all(|e| matches!(e, Expr::Path(_))) {
+            panic!("expected paths to types")
+        }
+
+        let inner_elems: Vec<_> = inner_elems
+            .iter()
+            .map(|e| {
+                let Expr::Path(type_path) = e else {
+                    panic!("expected path to type");
+                };
+                type_path.path.get_ident().unwrap()
+            })
+            .collect();
+
+        let param_type = inner_elems[0];
+        let snake_case_param_type = heck::AsSnekCase(param_type.to_string());
+
+        let function_name = format_ident!("send_{snake_case_param_type}");
+
+        let return_type = inner_elems[1];
+
+        let method = quote! {
+            pub async fn #function_name(&self, data: &#param_type, api_key: &str) -> Result<#return_type, wasm_bindgen::JsValue> {
+                use wasm_bindgen::UnwrapThrowExt;
+
+                let Self {
+                    backend_url,
+                    client,
+                } = self;
+
+                let response = client
+                    .post(backend_url)
+                    .header("X-API-Key", api_key)
+                    .json(data)
+                    .send()
+                    .await
+                    .unwrap_throw()
+                    .bytes()
+                    .await
+                    .unwrap_throw();
+
+                let Ok(response) = serde_json::from_slice(&response) else {
+                    let error: serde_json::Value = serde_json::from_slice(&response).unwrap_throw();
+                    let error = serde_wasm_bindgen::to_value(&error).unwrap_throw();
+
+                    return Err(error);
+                };
+
+                Ok(response)
+            }
+        };
+
+        method_defs.push(method);
+    }
+
+    let output = quote! {
+        #struct_def
+
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl #ident {
+            #(#method_defs)*
         }
     };
 
