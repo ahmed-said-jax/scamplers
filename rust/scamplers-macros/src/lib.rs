@@ -18,22 +18,23 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
     } = &struct_item;
 
     let builder_name = format_ident!("{struct_name}Builder");
-    let builder_error_name = format_ident!("{builder_name}Error");
+    let builder_error_name = format_ident!("{struct_name}Error");
 
     let output = quote! {
-        #[derive(serde::Serialize, Clone, derive_builder::Builder)]
-        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
-        #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen)]
+        #[derive(serde::Serialize, Clone, derive_builder::Builder, Default)]
+        #[builder(default, pattern = "owned", setter(strip_option), build_fn(error = #builder_error_name))]
+        #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
-        #[builder(build_fn(error = #builder_error_name))]
+        #[builder_field_attr(wasm_bindgen::prelude::wasm_bindgen(readonly))]
+        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
         #struct_item
 
         #[wasm_bindgen::prelude::wasm_bindgen]
         struct #builder_error_name(String);
 
         impl From<derive_builder::UninitializedFieldError> for #builder_error_name {
-            fn from(err: derive_builder::UninitializedFieldError) -> Self {
-                Self(err.to_string())
+            fn from(err: derive_builder::UninitializedFieldError) -> #builder_error_name {
+                #builder_error_name(err.to_string())
             }
         }
 
