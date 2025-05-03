@@ -61,13 +61,14 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				return null;
 			}
 
-			const newPerson = NewPerson.new();
-			newPerson.name(profile.name);
-			newPerson.email(profile.email);
-			newPerson.ms_user_id(profile.oid);
-			newPerson.
+			const { name, email, oid, tid } = profile;
 
-			const createdUser = await createUser(newPerson);
+			let newPerson = NewPerson.new()
+				.name(name)
+				.email(email)
+				.ms_user_id(oid)
+				.institution_id(tid)
+				.build();
 
 			if (!createdUser) {
 				return null;
