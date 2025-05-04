@@ -14,10 +14,7 @@ use axum::{
 };
 use axum_extra::{
     TypedHeader,
-    headers::{
-        self,
-        authorization::{Basic, Bearer},
-    },
+    headers::{self, authorization::Bearer},
 };
 use diesel::{
     deserialize::{FromSql, FromSqlRow},

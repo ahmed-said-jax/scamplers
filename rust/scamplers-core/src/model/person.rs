@@ -1,5 +1,3 @@
-use std::default;
-
 use super::{AsEndpoint, institution::Institution};
 
 #[cfg(feature = "backend")]

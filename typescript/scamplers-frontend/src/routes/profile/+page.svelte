@@ -13,7 +13,9 @@
 		apiKey = fullSession.user.apiKey;
 	}
 
-	const { name, email } = data.session.user;
+	const { session } = data;
+
+	const { name, email } = session!.user;
 </script>
 
 <div>

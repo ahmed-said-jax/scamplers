@@ -1,14 +1,4 @@
-use std::fmt::Debug;
-use std::str::FromStr;
-
-use diesel::{
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    serialize::ToSql,
-    sql_types,
-};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::Deserialize;
 use valuable::Valuable;
 
 #[derive(Deserialize, Valuable)]

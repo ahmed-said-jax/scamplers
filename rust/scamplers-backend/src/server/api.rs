@@ -43,10 +43,7 @@ mod handlers {
     };
 
     use garde::Validate;
-    use scamplers_core::model::{
-        institution::NewInstitution,
-        person::{CreatedUser, NewPerson, Person},
-    };
+    use scamplers_core::model::person::{CreatedUser, NewPerson};
     use serde::Serialize;
 
     use valuable::Valuable;
@@ -54,11 +51,8 @@ mod handlers {
     use super::error::{Error, Result};
 
     use crate::{
-        db::{Write, model::person::WriteLogin},
-        server::{
-            AppState2,
-            auth::{ApiKey, Frontend},
-        },
+        db::model::person::WriteLogin,
+        server::{AppState2, auth::Frontend},
     };
 
     pub(super) struct ValidJson<T>(T);

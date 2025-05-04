@@ -17,7 +17,6 @@ use diesel::{
     define_sql_function,
     sql_types::{Array, Text},
 };
-use valuable::Valuable;
 
 define_sql_function! {fn grant_roles_to_user(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn revoke_roles_from_user(user_id: Text, roles: Array<Text>)}

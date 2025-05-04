@@ -1,14 +1,6 @@
 use proc_macro::TokenStream;
-use quote::{ToTokens, format_ident, quote};
-use syn::{
-    AngleBracketedGenericArguments, Attribute, Expr, ExprArray, ExprTuple, Field, Fields,
-    FieldsNamed, GenericArgument, Ident, ItemEnum, ItemStruct, MacroDelimiter, MetaList, Path,
-    PathArguments, Token, Type, TypeGroup, TypePath, parenthesized,
-    parse::Parse,
-    parse_macro_input,
-    punctuated::Punctuated,
-    token::{Group, Paren},
-};
+use quote::{format_ident, quote};
+use syn::{Expr, ExprArray, ExprTuple, ItemEnum, ItemStruct, parse_macro_input};
 
 #[proc_macro_attribute]
 pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {

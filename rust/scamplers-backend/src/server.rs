@@ -4,10 +4,7 @@ use std::sync::{Arc, Mutex};
 use anyhow::Context;
 // use auth::{authenticate_api_request, authenticate_browser_request};
 use crate::{config::Config, db};
-use axum::{
-    Router,
-    routing::get,
-};
+use axum::{Router, routing::get};
 use camino::Utf8PathBuf;
 use diesel_async::{
     AsyncConnection, AsyncPgConnection, RunQueryDsl,
@@ -15,10 +12,7 @@ use diesel_async::{
     pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use testcontainers_modules::{
-    postgres::Postgres,
-    testcontainers::ContainerAsync,
-};
+use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::TraceLayer;
 use util::DevContainer;

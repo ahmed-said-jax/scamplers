@@ -1,8 +1,6 @@
-use diesel::prelude::*;
 use diesel_async::AsyncPgConnection;
 use garde::Validate;
 // use scamplers_core::person::{NewPerson, UserRole};
-use scamplers_schema::person;
 use serde::Deserialize;
 
 // use crate::db::model::person::WriteLogin;
