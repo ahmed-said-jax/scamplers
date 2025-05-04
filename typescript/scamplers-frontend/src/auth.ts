@@ -2,7 +2,7 @@ import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
 import { NewPerson, CreatedUser, NewPersonBuilder } from 'scamplers-core';
 import { AUTH_SECRET, MICROSOFT_ENTRA_ID_ID, MICROSOFT_ENTRA_ID_SECRET } from '$lib/server/secrets';
-import { BACKEND_URL } from '$lib/server/backend';
+import { BACKEND_URL, scamplersClient } from '$lib/server/backend';
 import { backendRequest } from '$lib/server/backend';
 import { type JWT } from '@auth/core/jwt';
 
@@ -63,18 +63,20 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 
 			const { name, email, oid, tid } = profile;
 
-			let newPerson = NewPerson.new()
-				.name(name)
-				.email(email)
-				.ms_user_id(oid)
-				.institution_id(tid)
-				.build();
-
-			if (!createdUser) {
-				return null;
+			try {
+				const newPerson = NewPerson.new()
+					.name(name)
+					.email(email)
+					.ms_user_id(oid)
+					// .institution_id(tid)
+					.build();
+			} catch (e) {
+				console.log(e);
 			}
 
-			const { id, api_key } = createdUser;
+			const createdPerson = await scamplersClient.send_new_person(newPerson);
+
+			const { id, api_key } = createdPerson;
 
 			token.userId = id;
 			token.apiKey = api_key;

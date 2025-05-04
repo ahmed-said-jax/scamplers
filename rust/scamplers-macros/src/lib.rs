@@ -251,7 +251,7 @@ pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
         let return_type = inner_elems[1];
 
         let method = quote! {
-            pub async fn #function_name(&self, data: &#param_type, api_key: &str) -> Result<#return_type, wasm_bindgen::JsValue> {
+            pub async fn #function_name(&self, data: &#param_type, api_key: Option<String>) -> Result<#return_type, wasm_bindgen::JsValue> {
                 use wasm_bindgen::UnwrapThrowExt;
 
                 let Self {
@@ -259,10 +259,15 @@ pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
                     client,
                 } = self;
 
-                let response = client
+                let mut request = client
                     .post(backend_url)
-                    .header("X-API-Key", api_key)
-                    .json(data)
+                    .json(data);
+
+                if let Some(api_key) = api_key {
+                    request = request.header("X-API-Key", api_key);
+                }
+
+                let response = request
                     .send()
                     .await
                     .unwrap_throw()
