@@ -14,7 +14,7 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let output = quote! {
         #[derive(serde::Serialize, Clone, derive_builder::Builder, Default)]
-        #[builder(pattern = "owned", setter(strip_option), build_fn(error = #builder_error_name))]
+        #[builder(pattern = "owned", build_fn(error = #builder_error_name))]
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
         #[builder_field_attr(wasm_bindgen::prelude::wasm_bindgen(readonly))]
@@ -34,7 +34,7 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
         impl #builder_error_name {
             pub fn error(&self) -> String {
                 let Self(field) = self;
-                format!("must set field {field}")
+                format!("{field} must be set")
             }
         }
 

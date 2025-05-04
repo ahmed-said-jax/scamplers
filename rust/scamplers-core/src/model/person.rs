@@ -28,10 +28,8 @@ pub struct NewPerson {
     pub name: String,
     #[cfg_attr(feature = "backend", garde(email))]
     pub email: String,
-    #[cfg_attr(feature = "typescript", builder(default))]
     pub orcid: Option<String>,
     pub institution_id: Uuid,
-    #[cfg_attr(feature = "typescript", builder(default))]
     pub ms_user_id: Option<Uuid>,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     #[cfg_attr(feature = "typescript", builder(default))]
