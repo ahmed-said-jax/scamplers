@@ -44,9 +44,9 @@ services:
         uid: "10001"
       - source: db_name
         uid: "10001"
-      - source: auth_secret
-        uid: "10001"
       - source: seed_data
+        uid: "10001"
+      - source: frontend_token
         uid: "10001"
     volumes:
       - logs:/logs
@@ -71,10 +71,10 @@ services:
         NODE_ENV: production
       target: final
     environment:
-        IN_DOCKER: "true"
-        PORT: &frontend_port 8000
-        BACKEND_HOST: &backend_host scamplers-backend
-        BACKEND_PORT: *backend_port
+      IN_DOCKER: "true"
+      PORT: &frontend_port 8000
+      BACKEND_HOST: &backend_host scamplers-backend
+      BACKEND_PORT: *backend_port
     depends_on:
       scamplers-backend:
         condition: service_healthy
@@ -94,6 +94,8 @@ services:
       - source: auth_microsoft_entra_id_id
         uid: "10001"
       - source: auth_microsoft_entra_id_secret
+        uid: "10001"
+      - source: frontend_token
         uid: "10001"
   caddy:
     image: caddy:2.9.1-alpine
@@ -138,5 +140,7 @@ secrets:
     environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_ID
   auth_microsoft_entra_id_secret:
     environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_SECRET
+  frontend_token:
+    environment: SCAMPLERS_FRONTEND_TOKEN
   seed_data:
     file: ${SCAMPLERS_SEED_DATA}
