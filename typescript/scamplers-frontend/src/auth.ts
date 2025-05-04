@@ -1,9 +1,8 @@
 import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
-import { NewPerson, CreatedUser, NewPersonBuilder } from 'scamplers-core';
+import { Institution, NewPerson } from 'scamplers-core';
 import { AUTH_SECRET, MICROSOFT_ENTRA_ID_ID, MICROSOFT_ENTRA_ID_SECRET } from '$lib/server/secrets';
-import { BACKEND_URL, scamplersClient } from '$lib/server/backend';
-import { backendRequest } from '$lib/server/backend';
+import { scamplersClient } from '$lib/server/backend';
 import { type JWT } from '@auth/core/jwt';
 
 declare module '@auth/sveltekit' {
@@ -11,23 +10,15 @@ declare module '@auth/sveltekit' {
 		user: {
 			id: string;
 			apiKey: string | undefined;
+			institution: Institution;
 		} & DefaultSession['user'];
 	}
 }
 declare module '@auth/core/jwt' {
 	interface JWT {
 		userId: string;
-		apiKey: string;
+		userApiKey: string;
 	}
-}
-
-async function createUser(person: NewPerson): Promise<CreatedUser | null> {
-	let request = new Request(`${BACKEND_URL}/user`, { method: 'POST', body: person.to_json() });
-	request = await backendRequest({ request });
-
-	const response = await fetch(request);
-
-	return CreatedUser.from_json(await response.text());
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
@@ -63,32 +54,26 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 
 			const { name, email, oid, tid } = profile;
 
-			try {
-				const newPerson = NewPerson.new()
-					.name(name)
-					.email(email)
-					.ms_user_id(oid)
-					// .institution_id(tid)
-					.build();
-			} catch (e) {
-				console.log(e);
-			}
+			const newPerson = NewPerson.new()
+				.name(name)
+				.email(email)
+				.ms_user_id(oid)
+				.institution_id(tid)
+				.build();
 
-			const createdPerson = await scamplersClient.send_new_person(newPerson);
+			const createdUser = await scamplersClient.send_new_ms_login(newPerson);
 
-			const { id, api_key } = createdPerson;
-
-			token.userId = id;
-			token.apiKey = api_key;
+			token.userId = createdUser.person.id;
+			token.userApiKey = createdUser.api_key;
 
 			return token;
 		},
 
 		async session({ session, token }) {
-			const { userId, apiKey } = token;
+			const { userId, userApiKey } = token;
 
 			session.user.id = userId;
-			session.user.apiKey = apiKey;
+			session.user.apiKey = userApiKey;
 
 			return session;
 		}

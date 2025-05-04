@@ -4,6 +4,7 @@ use axum::{
     Router,
     routing::{get, post},
 };
+use scamplers_core::{model::AsEndpoint, model::person::CreatedUser};
 
 use super::AppState2;
 
@@ -18,7 +19,7 @@ pub(super) fn router() -> Router<AppState2> {
     let router = Router::new()
         .route("/", get(|| async { axum::Json(endpoints) }))
         // .route("/me", get(me))
-        .route("/user", post(new_user));
+        .route(CreatedUser::as_endpoint(), post(new_session));
     // .route(
     //     "/institutions",
     //     get(by_filter::<Institution>).post(new::<Vec<NewInstitution>>),
@@ -44,7 +45,7 @@ mod handlers {
     use garde::Validate;
     use scamplers_core::model::{
         institution::NewInstitution,
-        person::{NewPerson, Person},
+        person::{CreatedUser, NewPerson, Person},
     };
     use serde::Serialize;
 
@@ -216,18 +217,18 @@ mod handlers {
     //     Ok(ValidJson(updated))
     // }
 
-    pub(super) async fn new_user(
+    pub(super) async fn new_session(
         _frontend_service: Frontend,
         State(app_state): State<AppState2>,
         ValidJson(person): ValidJson<NewPerson>,
-    ) -> Result<ValidJson<(Person, ApiKey)>> {
+    ) -> Result<ValidJson<CreatedUser>> {
         tracing::debug!(deserialized_person = person.as_value());
 
         let mut db_conn = app_state.db_conn().await?;
 
-        let created_user = person.write_ms_login(&mut db_conn).await?;
+        let session = person.write_ms_login(&mut db_conn).await?;
 
-        Ok(ValidJson(created_user))
+        Ok(ValidJson(session))
     }
 
     // // This is kind of repetetive but it's fine for now

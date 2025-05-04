@@ -7,7 +7,7 @@
 
 <div>
 	{#if session}
-		<div>Hello, {session.user.name}</div>
+		<div>Signed in as {session.user.name}</div>
 	{/if}
 	<nav>
 		<ul>

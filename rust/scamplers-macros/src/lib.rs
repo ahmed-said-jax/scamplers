@@ -22,7 +22,7 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let output = quote! {
         #[derive(serde::Serialize, Clone, derive_builder::Builder, Default)]
-        #[builder(default, pattern = "owned", setter(strip_option), build_fn(error = #builder_error_name))]
+        #[builder(pattern = "owned", setter(strip_option), build_fn(error = #builder_error_name))]
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
         #[builder_field_attr(wasm_bindgen::prelude::wasm_bindgen(readonly))]
@@ -34,7 +34,15 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
         impl From<derive_builder::UninitializedFieldError> for #builder_error_name {
             fn from(err: derive_builder::UninitializedFieldError) -> #builder_error_name {
-                #builder_error_name(err.to_string())
+                #builder_error_name(err.field_name().to_string())
+            }
+        }
+
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl #builder_error_name {
+            pub fn error(&self) -> String {
+                let Self(field) = self;
+                format!("must set field {field}")
             }
         }
 
@@ -252,37 +260,7 @@ pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
 
         let method = quote! {
             pub async fn #function_name(&self, data: &#param_type, api_key: Option<String>) -> Result<#return_type, wasm_bindgen::JsValue> {
-                use wasm_bindgen::UnwrapThrowExt;
-
-                let Self {
-                    backend_url,
-                    client,
-                } = self;
-
-                let mut request = client
-                    .post(backend_url)
-                    .json(data);
-
-                if let Some(api_key) = api_key {
-                    request = request.header("X-API-Key", api_key);
-                }
-
-                let response = request
-                    .send()
-                    .await
-                    .unwrap_throw()
-                    .bytes()
-                    .await
-                    .unwrap_throw();
-
-                let Ok(response) = serde_json::from_slice(&response) else {
-                    let error: serde_json::Value = serde_json::from_slice(&response).unwrap_throw();
-                    let error = serde_wasm_bindgen::to_value(&error).unwrap_throw();
-
-                    return Err(error);
-                };
-
-                Ok(response)
+                self.send_request(data, api_key).await
             }
         };
 

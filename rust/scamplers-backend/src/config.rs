@@ -24,8 +24,8 @@ pub struct Config {
     db_port: u16,
     #[arg(long, env = "SCAMPLERS_DB_NAME", default_value_t)]
     db_name: String,
-    #[arg(long, env = "SCAMPLERS_AUTH_SECRET", default_value_t)]
-    auth_secret: String,
+    #[arg(long, env = "SCAMPLERS_FRONTEND_TOKEN", default_value_t)]
+    frontend_token: String,
     #[arg(long, env = "SCAMPLERS_BACKEND_HOST", default_value_t = String::from("localhost"))]
     host: String,
     #[arg(long, env = "SCAMPLERS_BACKEND_PORT", default_value_t = 8000)]
@@ -47,7 +47,7 @@ impl Config {
             db_root_password,
             db_login_user_password,
             db_name,
-            auth_secret,
+            frontend_token,
             seed_data,
             seed_data_path,
             ..
@@ -66,7 +66,7 @@ impl Config {
         *db_root_user = read_secret("db_root_user")?;
         *db_root_password = read_secret("db_root_password")?;
         *db_login_user_password = read_secret("db_login_user_password")?;
-        *auth_secret = read_secret("auth_secret")?;
+        *frontend_token = read_secret("frontend_token")?;
         *db_name = read_secret("db_name")?;
         *seed_data = serde_json::from_str(&read_secret("seed_data")?)?;
         *seed_data_path = None;
@@ -118,8 +118,8 @@ impl Config {
         self.db_url(false)
     }
 
-    pub fn auth_secret(&self) -> &str {
-        &self.auth_secret
+    pub fn frontend_token(&self) -> &str {
+        &self.frontend_token
     }
 
     pub fn seed_data(&mut self) -> anyhow::Result<Option<SeedData>> {

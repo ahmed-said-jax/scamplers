@@ -1,6 +1,6 @@
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, methods::ExecuteDsl};
-use scamplers_core::model::person::{NewPerson, Person, PersonQuery};
+use scamplers_core::model::person::{CreatedUser, NewPerson, Person, PersonQuery};
 use scamplers_schema::{
     institution,
     person::{
@@ -17,6 +17,7 @@ use diesel::{
     define_sql_function,
     sql_types::{Array, Text},
 };
+use valuable::Valuable;
 
 define_sql_function! {fn grant_roles_to_user(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn revoke_roles_from_user(user_id: Text, roles: Array<Text>)}
@@ -105,7 +106,7 @@ pub trait WriteLogin {
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<(Person, ApiKey)>;
+    ) -> crate::db::error::Result<CreatedUser>;
 }
 
 impl WriteLogin for NewPerson {
@@ -113,7 +114,7 @@ impl WriteLogin for NewPerson {
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<(Person, ApiKey)> {
+    ) -> crate::db::error::Result<CreatedUser> {
         #[derive(Insertable)]
         #[diesel(table_name = person)]
         struct NewUser {
@@ -173,12 +174,15 @@ impl WriteLogin for NewPerson {
             }
         };
 
-        let created_user = fetch_by_id(id, db_conn).await?;
+        let person = fetch_by_id(id, db_conn).await?;
 
         diesel::select(create_user_if_not_exists(id.to_string(), &roles))
             .execute(db_conn)
             .await?;
 
-        Ok((created_user, api_key))
+        Ok(CreatedUser {
+            person,
+            api_key: api_key.into(),
+        })
     }
 }

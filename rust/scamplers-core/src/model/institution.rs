@@ -1,5 +1,7 @@
 use uuid::Uuid;
 
+use super::AsEndpoint;
+
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{insert_struct, select_struct},
@@ -23,4 +25,9 @@ pub struct Institution {
     pub id: Uuid,
     pub name: String,
     pub link: String,
+}
+impl AsEndpoint for Institution {
+    fn as_endpoint() -> &'static str {
+        "/institutions"
+    }
 }
