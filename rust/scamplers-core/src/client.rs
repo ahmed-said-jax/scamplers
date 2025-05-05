@@ -35,7 +35,6 @@ impl Client {
 
         let client = ClientBuilder::new()
             .default_headers(headers)
-            // .http2_prior_knowledge()
             .build()
             .unwrap();
 
@@ -57,8 +56,6 @@ impl Client {
         Req: Serialize,
         Resp: AsEndpoint + DeserializeOwned,
     {
-        use wasm_bindgen::UnwrapThrowExt;
-
         let Self {
             backend_url,
             client,

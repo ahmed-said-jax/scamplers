@@ -138,23 +138,26 @@ impl WriteLogin for NewPerson {
                     name,
                     email,
                     institution_id,
-                    roles,
                     ms_user_id,
                     ..
                 },
             hashed_api_key,
         } = &new_user;
 
-        // This should probably be a separte function
-        let result = diesel::update(person::table)
-            .filter(ms_user_id_col.eq(ms_user_id))
-            .set((
+        let update = || {
+            (
                 name_col.eq(name),
                 email_col.eq(email),
                 ms_user_id_col.eq(ms_user_id),
                 institution_col.eq(institution_id),
                 hashed_api_key_col.eq(hashed_api_key),
-            ))
+            )
+        };
+
+        // This should probably be a separte function
+        let result = diesel::update(person::table)
+            .filter(ms_user_id_col.eq(ms_user_id))
+            .set(update())
             .returning(id_col)
             .get_result(db_conn)
             .await;
@@ -164,6 +167,9 @@ impl WriteLogin for NewPerson {
             Ok(None) => {
                 diesel::insert_into(person::table)
                     .values(&new_user)
+                    .on_conflict(email_col)
+                    .do_update()
+                    .set(update())
                     .returning(id_col)
                     .get_result(db_conn)
                     .await?
@@ -174,10 +180,6 @@ impl WriteLogin for NewPerson {
         };
 
         let person = fetch_by_id(id, db_conn).await?;
-
-        diesel::select(create_user_if_not_exists(id.to_string(), &roles))
-            .execute(db_conn)
-            .await?;
 
         Ok(CreatedUser {
             person,
