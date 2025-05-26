@@ -16,7 +16,7 @@ axum = { version = "0.8.3", default-features = false, features = [
     "query",
     "tokio",
 ] }
-tokio = { version = "1.44.2", features = [
+tokio = { version = "1.45.1", features = [
     "macros",
     "rt-multi-thread",
     "signal",
