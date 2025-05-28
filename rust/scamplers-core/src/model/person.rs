@@ -30,7 +30,7 @@ pub struct NewPerson {
     pub email: String,
     pub orcid: Option<String>,
     pub institution_id: Uuid,
-    pub ms_user_id: Option<Uuid>,
+    pub ms_user_id: Uuid,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     #[cfg_attr(feature = "typescript", builder(default))]
     pub roles: Vec<UserRole>,

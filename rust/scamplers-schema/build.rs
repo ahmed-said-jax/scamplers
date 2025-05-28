@@ -1,11 +1,5 @@
-use std::{
-    env::{self, current_dir},
-    fs,
-    process::Command,
-    str::FromStr,
-};
+use std::{process::Command, str::FromStr};
 
-use camino::Utf8PathBuf;
 use testcontainers_modules::{
     postgres::Postgres,
     testcontainers::{Container, ImageExt, runners::SyncRunner},
