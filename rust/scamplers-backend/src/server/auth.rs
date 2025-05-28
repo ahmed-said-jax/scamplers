@@ -14,10 +14,7 @@ use axum::{
 };
 use axum_extra::{
     TypedHeader,
-    headers::{
-        self,
-        authorization::Basic,
-    },
+    headers::{self, authorization::Bearer},
 };
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
@@ -33,6 +30,7 @@ use rand::{
     distr::Alphanumeric,
     rngs::{OsRng, StdRng},
 };
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valuable::Valuable;
@@ -47,6 +45,7 @@ const KEY_LENGTH: usize = 32;
 #[derive(Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct ApiKey(String);
+
 impl ApiKey {
     pub fn new() -> Self {
         Self::default()
@@ -57,7 +56,7 @@ impl ApiKey {
         &key[..KEY_PREFIX_LENGTH]
     }
 
-    pub fn hash(&self) -> HashedKey {
+    pub fn hash(&self) -> HashedApiKey {
         let Self(key) = self;
 
         let mut salt = [0u8; 16];
@@ -71,13 +70,13 @@ impl ApiKey {
             .unwrap()
             .to_string();
 
-        HashedKey {
+        HashedApiKey {
             prefix: self.prefix().to_string(),
             hash,
         }
     }
 
-    fn is_same_hash(&self, other: &HashedKey) -> bool {
+    fn is_same_hash(&self, other: &HashedApiKey) -> bool {
         let argon2 = Argon2::default();
 
         let Ok(parsed_hash) = PasswordHash::new(&other.hash) else {
@@ -123,21 +122,20 @@ impl Debug for ApiKey {
     }
 }
 
-impl Display for ApiKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(inner) = self;
-        <String as Display>::fmt(inner, f)
+impl From<ApiKey> for String {
+    fn from(value: ApiKey) -> Self {
+        value.0
     }
 }
 
 #[derive(AsExpression, Debug, FromSqlRow, Deserialize, Valuable)]
 #[diesel(sql_type = scamplers_schema::sql_types::HashedKey)]
-pub struct HashedKey {
+pub struct HashedApiKey {
     prefix: String,
     hash: String,
 }
 
-impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
+impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedApiKey {
     fn to_sql<'b>(
         &'b self,
         out: &mut diesel::serialize::Output<'b, '_, Pg>,
@@ -151,7 +149,7 @@ impl ToSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
     }
 }
 
-impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedKey {
+impl FromSql<scamplers_schema::sql_types::HashedKey, Pg> for HashedApiKey {
     fn from_sql(
         bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
     ) -> diesel::deserialize::Result<Self> {
@@ -242,20 +240,16 @@ impl FromRequestParts<AppState2> for Frontend {
             return Ok(Self);
         };
 
-        let err = Error::InvalidFrontendCredentials;
+        let err = Error::InvalidFrontendToken;
 
-        let Ok(frontend_service_credentials) = parts
-            .extract::<TypedHeader<headers::Authorization<Basic>>>()
+        let Ok(frontend_auth) = parts
+            .extract::<TypedHeader<headers::Authorization<Bearer>>>()
             .await
         else {
             return Err(err);
         };
 
-        if (
-            frontend_service_credentials.username(),
-            frontend_service_credentials.password(),
-        ) != ("scamplers-frontend", config.lock().unwrap().auth_secret())
-        {
+        if frontend_auth.token() != config.lock().unwrap().frontend_token() {
             return Err(err);
         }
 
@@ -268,8 +262,8 @@ impl FromRequestParts<AppState2> for Frontend {
 pub(super) enum Error {
     #[error("invalid API key")]
     InvalidApiKey,
-    #[error("invalid auth user password")]
-    InvalidFrontendCredentials,
+    #[error("invalid frontend token")]
+    InvalidFrontendToken,
     #[error(transparent)]
     Other(db::error::Error),
 }
@@ -296,7 +290,7 @@ impl IntoResponse for Error {
         }
 
         match self {
-            Self::InvalidApiKey | Self::InvalidFrontendCredentials => (
+            Self::InvalidApiKey | Self::InvalidFrontendToken => (
                 StatusCode::UNAUTHORIZED,
                 axum::Json(ErrorResponse {
                     status: StatusCode::UNAUTHORIZED.as_u16(),

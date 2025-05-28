@@ -1,26 +1,24 @@
 import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
-import { NewPerson } from 'scamplers-core';
+import { Institution, NewPerson } from 'scamplers-core';
 import { AUTH_SECRET, MICROSOFT_ENTRA_ID_ID, MICROSOFT_ENTRA_ID_SECRET } from '$lib/server/secrets';
-import { BACKEND_URL } from '$lib/server/backend';
-import { backendRequest } from '$lib/server/backend';
+import { scamplersClient } from '$lib/server/backend';
+import { type JWT } from '@auth/core/jwt';
 
 declare module '@auth/sveltekit' {
 	interface Session {
 		user: {
 			id: string;
 			apiKey: string | undefined;
+			institution: Institution;
 		} & DefaultSession['user'];
 	}
 }
-
-async function createUser(person: NewPerson): Promise<object> {
-	let request = new Request(`${BACKEND_URL}/user`, { method: 'POST', body: person.toString() });
-	request = await backendRequest({ request });
-
-	const response = await fetch(request);
-
-	return await response.json();
+declare module '@auth/core/jwt' {
+	interface JWT {
+		userId: string;
+		userApiKey: string;
+	}
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
@@ -38,27 +36,44 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			}
 			return false;
 		},
-		async jwt({ token, profile }) {
+		async jwt({ token, profile }): Promise<JWT | null> {
 			if (!profile) {
 				return token;
 			}
 
-			const newPerson = new NewPerson();
-			newPerson.name = profile.name;
-			newPerson.email = profile.email;
-			newPerson.ms_user_id = profile.oid;
-			newPerson.institution_id = profile.tid;
+			if (
+				!(
+					profile.name &&
+					profile.email &&
+					typeof profile.oid === 'string' &&
+					typeof profile.tid === 'string'
+				)
+			) {
+				return null;
+			}
 
-			const { id, api_key } = await createUser(newPerson);
+			const { name, email, oid, tid } = profile;
 
-			token.userId = id;
-			token.apiKey = api_key;
+			const newPerson = NewPerson.new()
+				.name(name)
+				.email(email)
+				.ms_user_id(oid)
+				.institution_id(tid)
+				.build();
+
+			const createdUser = await scamplersClient.send_new_ms_login(newPerson);
+
+			token.userId = createdUser.person.id;
+			token.userApiKey = createdUser.api_key;
 
 			return token;
 		},
+
 		async session({ session, token }) {
-			session.user.id = token.userId;
-			session.user.apiKey = token.apiKey;
+			const { userId, userApiKey } = token;
+
+			session.user.id = userId;
+			session.user.apiKey = userApiKey;
 
 			return session;
 		}

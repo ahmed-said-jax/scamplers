@@ -5,11 +5,7 @@ use {
 };
 
 #[cfg(feature = "backend")]
-use diesel::{
-    deserialize::{FromSql, FromSqlRow},
-    expression::AsExpression,
-    sql_types,
-};
+use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 
 #[cfg_attr(feature = "backend", derive(FromSqlRow, AsExpression))]
 #[cfg_attr(feature = "backend", diesel(sql_type = sql_types::Uuid))]
@@ -45,8 +41,8 @@ impl Uuid {
     }
 }
 
-#[cfg(feature = "web")]
-mod web {
+#[cfg(feature = "typescript")]
+mod typescript {
     use std::str::FromStr;
     use wasm_bindgen::{
         JsValue,
@@ -74,9 +70,7 @@ mod web {
         type Error = _uuid::Error;
 
         fn try_from_js_value(value: JsValue) -> Result<Self, Self::Error> {
-            Ok(Self::from_str(
-                &String::try_from_js_value(value).unwrap_or_default(),
-            )?)
+            Ok(Self::from_str(&String::try_from_js_value(value).unwrap())?)
         }
     }
 
@@ -92,7 +86,7 @@ mod web {
         type Abi = <Self as IntoWasmAbi>::Abi;
 
         unsafe fn from_abi(js: Self::Abi) -> Self {
-            Self(unsafe { String::from_abi(js).parse().unwrap_or_default() })
+            Self(unsafe { String::from_abi(js).parse().unwrap() })
         }
     }
 

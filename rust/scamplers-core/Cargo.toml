@@ -1,7 +1,7 @@
 [package]
 name = "scamplers-core"
 version = "0.1.0"
-edition = {workspace = true}
+edition = { workspace = true }
 publish = false
 
 [lib]
@@ -9,22 +9,43 @@ name = "scamplers_core"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-thiserror = {workspace = true, optional = true}
-serde = {workspace = true }
-serde_json = {workspace = true, optional = true}
-diesel = {workspace = true, optional = true}
-chrono = {workspace = true}
-valuable = {workspace = true, optional = true}
-strum = {workspace = true, optional = true}
-scraper = {workspace = true, optional = true}
+thiserror = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true, optional = true }
+diesel = { workspace = true, optional = true }
+chrono = { workspace = true }
+valuable = { workspace = true, optional = true }
+strum = { workspace = true, optional = true }
+scraper = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 garde = { workspace = true, optional = true }
-scamplers-schema = {path = "../scamplers-schema", optional = true}
-uuid = {path = "../uuid"}
+scamplers-schema = { path = "../scamplers-schema", optional = true }
+uuid = { path = "../uuid" }
+scamplers-macros = { path = "../scamplers-macros" }
+reqwest = { workspace = true, optional = true }
+serde-wasm-bindgen = { workspace = true, optional = true }
+wasm-bindgen-futures = { workspace = true, optional = true }
+derive_builder = { workspace = true, optional = true }
 
 [features]
-backend = ["diesel", "valuable", "strum", "scraper", "garde", "uuid/backend", "scamplers-schema"]
-web = ["wasm-bindgen", "uuid/web", "serde_json"]
+backend = [
+    "diesel",
+    "valuable",
+    "strum",
+    "scraper",
+    "garde",
+    "uuid/backend",
+    "scamplers-schema",
+]
+typescript = [
+    "wasm-bindgen",
+    "uuid/typescript",
+    "serde_json",
+    "serde-wasm-bindgen",
+    "reqwest",
+    "wasm-bindgen-futures",
+    "derive_builder",
+]
 
 [lints]
 workspace = true

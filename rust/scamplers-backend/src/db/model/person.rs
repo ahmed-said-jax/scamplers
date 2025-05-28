@@ -1,6 +1,6 @@
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, methods::ExecuteDsl};
-use scamplers_core::person::{CreatedUser, NewPerson, Person, PersonQuery};
+use scamplers_core::model::person::{CreatedUser, NewPerson, Person, PersonQuery};
 use scamplers_schema::{
     institution,
     person::{
@@ -24,11 +24,8 @@ define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<T
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
-    db::{
-        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression,
-        util::{AsIlike, DbEnum},
-    },
-    server::auth::{ApiKey, HashedKey},
+    db::{AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, util::AsIlike},
+    server::auth::{ApiKey, HashedApiKey},
 };
 
 impl<Table> AsDieselFilter<Table> for PersonQuery
@@ -112,24 +109,23 @@ pub trait WriteLogin {
 }
 
 impl WriteLogin for NewPerson {
+    // TODO: this function is big and ugly. Split it up
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<CreatedUser> {
-        use crate::db::error::Error;
-
         #[derive(Insertable)]
         #[diesel(table_name = person)]
         struct NewUser {
             #[diesel(embed)]
             person: NewPerson,
-            hashed_api_key: HashedKey,
+            hashed_api_key: HashedApiKey,
         }
 
         let api_key = ApiKey::new();
         let hashed_api_key = api_key.hash();
 
-        // Instantiate a `NewUser` so we can use it as a wholesale insert
+        // Instantiate a `NewUser` so we can use it as a wholesale insert in case this user doesn't exist
         let new_user = NewUser {
             person: self,
             hashed_api_key,
@@ -142,14 +138,12 @@ impl WriteLogin for NewPerson {
                     name,
                     email,
                     institution_id,
-                    roles,
                     ms_user_id,
                     ..
                 },
             hashed_api_key,
         } = &new_user;
 
-        // This is a closure because this tuple doesn't implement `Clone`, and passing it by reference doesn't work
         let update = || {
             (
                 name_col.eq(name),
@@ -160,48 +154,36 @@ impl WriteLogin for NewPerson {
             )
         };
 
-        let result = diesel::insert_into(person::table)
-            .values(&new_user)
-            .on_conflict(ms_user_id_col)
-            .do_update()
+        // This should probably be a separte function
+        let result = diesel::update(person::table)
+            .filter(ms_user_id_col.eq(ms_user_id))
             .set(update())
             .returning(id_col)
             .get_result(db_conn)
             .await;
 
-        let result = result.map_err(Error::from);
-
-        let id: Uuid = match &result {
-            Ok(id) => *id,
-            Err(Error::DuplicateRecord { field, .. }) => {
-                let Some(field) = field else {
-                    return Err(result.unwrap_err());
-                };
-                if field != "email" {
-                    return Err(result.unwrap_err());
-                }
-
-                diesel::update(person::table)
-                    .filter(email_col.eq(email))
+        let id = match result.optional() {
+            Ok(Some(id)) => id,
+            Ok(None) => {
+                diesel::insert_into(person::table)
+                    .values(&new_user)
+                    .on_conflict(email_col)
+                    .do_update()
                     .set(update())
                     .returning(id_col)
                     .get_result(db_conn)
                     .await?
             }
-            _ => {
-                return Err(result.unwrap_err());
+            Err(e) => {
+                return Err(e.into());
             }
         };
 
-        let roles: Vec<_> = roles.clone().into_iter().map(|r| DbEnum(r)).collect();
-
-        diesel::select(create_user_if_not_exists(id.to_string(), &roles))
-            .execute(db_conn)
-            .await?;
+        let person = fetch_by_id(id, db_conn).await?;
 
         Ok(CreatedUser {
-            id,
-            api_key: api_key.to_string(),
+            person,
+            api_key: api_key.into(),
         })
     }
 }

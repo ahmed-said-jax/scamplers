@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"build-scamplers-core": "wasm-pack build --release --out-dir ../../typescript/scamplers-core ../../rust/scamplers-core -- --features web",
+		"build-scamplers-core": "wasm-pack build --release --out-dir ../../typescript/scamplers-core ../../rust/scamplers-core -- --features typescript",
 		"dev": "npm run build-scamplers-core && vite dev",
 		"build": "npm run build-scamplers-core && vite build",
 		"preview": "vite preview",
@@ -46,6 +46,7 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
+		"@auth/core": "^0.39.0",
 		"@auth/sveltekit": "^1.9.1",
 		"@types/node": "^22.14.1",
 		"scamplers-core": "file:../scamplers-core"

@@ -3,9 +3,7 @@ name = "scamplers-core"
 dynamic = ["version"]
 description = ""
 readme = "README.md"
-authors = [
-    { name = "Ahmed Said", email = "ahmed.said@jax.org" }
-]
+authors = [{ name = "Ahmed Said", email = "ahmed.said@jax.org" }]
 requires-python = ">=3.13"
 dependencies = []
 
@@ -14,4 +12,4 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
-features = ["pyo3/extension-module", "python"]
+features = ["python"]

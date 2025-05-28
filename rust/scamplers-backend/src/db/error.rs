@@ -4,7 +4,6 @@ use regex::Regex;
 use serde::Serialize;
 use valuable::Valuable;
 
-
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {

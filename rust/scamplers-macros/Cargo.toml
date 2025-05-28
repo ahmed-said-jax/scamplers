@@ -1,0 +1,15 @@
+[package]
+name = "scamplers-macros"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { workspace = true }
+quote = { workspace = true }
+heck = { workspace = true }
+
+[lints]
+workspace = true

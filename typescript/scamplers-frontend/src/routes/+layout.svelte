@@ -2,10 +2,13 @@
 	import '../app.css';
 
 	let { data, children } = $props();
+	const { session } = data;
 </script>
 
 <div>
-	<div>Hello, {data.session.user.name}</div>
+	{#if session}
+		<div>Signed in as {session.user.name}</div>
+	{/if}
 	<nav>
 		<ul>
 			<li>
