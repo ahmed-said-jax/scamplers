@@ -15,7 +15,7 @@ edition = "2024"
 [workspace.dependencies]
 clap = { version = "4.5.39", features = ["derive", "env"] }
 anyhow = "1.0.98"
-axum = { version = "0.8.3", default-features = false, features = [
+axum = { version = "0.8.4", default-features = false, features = [
     "http2",
     "json",
     "macros",
