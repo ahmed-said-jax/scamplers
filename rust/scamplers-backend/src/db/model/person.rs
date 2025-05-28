@@ -144,20 +144,19 @@ impl WriteLogin for NewPerson {
             hashed_api_key,
         } = &new_user;
 
-        let update = || {
+        let changes = || {
             (
                 name_col.eq(name),
                 email_col.eq(email),
                 ms_user_id_col.eq(ms_user_id),
                 institution_col.eq(institution_id),
-                hashed_api_key_col.eq(hashed_api_key),
             )
         };
 
-        // This should probably be a separte function
+        // This should probably be a separate function
         let result = diesel::update(person::table)
             .filter(ms_user_id_col.eq(ms_user_id))
-            .set(update())
+            .set(changes())
             .returning(id_col)
             .get_result(db_conn)
             .await;
@@ -169,7 +168,7 @@ impl WriteLogin for NewPerson {
                     .values(&new_user)
                     .on_conflict(email_col)
                     .do_update()
-                    .set(update())
+                    .set(changes())
                     .returning(id_col)
                     .get_result(db_conn)
                     .await?

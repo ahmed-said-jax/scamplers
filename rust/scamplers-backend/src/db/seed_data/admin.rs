@@ -1,13 +1,15 @@
+use diesel::prelude::*;
 use diesel_async::AsyncPgConnection;
 use garde::Validate;
-use scamplers_core::person::{NewPerson, UserRole};
+use scamplers_core::model::person::{NewPerson, UserRole};
+use scamplers_schema::person;
 use serde::Deserialize;
 
 use crate::db::model::person::WriteLogin;
 
 use super::Write;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, Insertable)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 #[serde(transparent)]
