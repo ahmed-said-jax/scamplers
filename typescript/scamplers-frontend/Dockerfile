@@ -27,7 +27,7 @@ RUN --mount=type=bind,source=rust/Cargo.toml,target=rust/Cargo.toml \
     --mount=type=bind,source=typescript/scamplers-frontend/package.json,target=typescript/scamplers-frontend/package.json \
     --mount=type=bind,source=typescript/scamplers-frontend/package-lock.json,target=typescript/scamplers-frontend/package-lock.json \
     . "$HOME/.cargo/env" && \
-    wasm-pack build rust/scamplers-core --release --out-dir ../../typescript/scamplers-core -- --features web && \
+    wasm-pack build rust/scamplers-core --release --out-dir ../../typescript/scamplers-core -- --features typescript && \
     cd typescript/scamplers-frontend && \
     npm ci --omit=dev
 
