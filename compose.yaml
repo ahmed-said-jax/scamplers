@@ -1,7 +1,7 @@
 # TODO: the same alpine version is used twice - we can fix this somehow
 services:
   postgres:
-    image: postgres:17-alpine3.21
+    image: postgres:17-alpine
     restart: always
     user: root
     secrets:
@@ -24,8 +24,6 @@ services:
       retries: 10
   scamplers-backend:
     build:
-      args:
-        RUST_VERSION: 1.86
       context: .
       dockerfile: rust/Dockerfile
       target: final
@@ -67,7 +65,6 @@ services:
       context: .
       dockerfile: typescript/scamplers-frontend/Dockerfile
       args:
-        NODE_VERSION: 23.11.0
         NODE_ENV: production
       target: final
     environment:
@@ -98,7 +95,7 @@ services:
       - source: frontend_token
         uid: "10001"
   caddy:
-    image: caddy:2.9.1-alpine
+    image: caddy:2-alpine
     environment:
       FRONTEND_HOST: scamplers-frontend
       FRONTEND_PORT: *frontend_port
