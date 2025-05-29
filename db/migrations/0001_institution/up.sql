@@ -4,3 +4,5 @@ create table institution (
     link text generated always as ('/institutions/' || id) stored not null,
     name text unique not null
 );
+
+-- a comment to test CI
