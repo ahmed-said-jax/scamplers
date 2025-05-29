@@ -1,0 +1,24 @@
+name: check SQL code
+on:
+  push:
+    paths:
+      - db
+
+jobs:
+  lint_sql:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: Lint code
+        run: sqlfluff lint .

@@ -1,0 +1,41 @@
+name: check Rust code
+on:
+  push:
+    paths:
+      - rust
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Cache cargo-generated files
+        uses: Swatinem/rust-cache@v2
+        id: cache-cargo
+
+      - name: Run tests
+        run: cd rust && cargo test --workspace --all-features
+
+  lint_code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Lint code
+        run: cd rust && cargo clippy --all-targets --workspace --all-features
+
+  format_code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install nightly rust
+        run: rustup toolchain install nightly && rustup component add --toolchain nightly rustfmt
+
+      - name: Format code
+        run: cd rust && cargo +nightly fmt -- --check
