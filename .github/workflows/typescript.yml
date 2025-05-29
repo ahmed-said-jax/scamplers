@@ -3,7 +3,7 @@ name: check TypeScript code
 on:
   push:
     paths:
-      - /typescript/*
+      - /typescript
 
 jobs:
   run_tests:
