@@ -13,6 +13,7 @@ RUN --mount=type=bind,source=rust/Cargo.toml,target=rust/Cargo.toml \
     --mount=type=bind,source=rust/Cargo.lock,target=rust/Cargo.lock \
     --mount=type=bind,source=rust/.cargo,target=rust/.cargo \
     --mount=type=bind,source=rust/scamplers-schema,target=rust/scamplers-schema \
+    --mount=type=bind,source=rust/scamplers-macros,target=rust/scamplers-macros \
     --mount=type=bind,source=rust/uuid,target=rust/uuid \
     --mount=type=bind,source=rust/scamplers-core,target=rust/scamplers-core \
     --mount=type=bind,source=rust/scamplers-backend,target=rust/scamplers-backend \
