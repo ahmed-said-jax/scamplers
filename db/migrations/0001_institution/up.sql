@@ -6,4 +6,4 @@ create table institution (
 );
 
 -- a comment to test CI
--- another comment this time testing for commit verification again
+-- another comment this time testing for commit verification
