@@ -2,7 +2,7 @@ name: check Rust code
 on:
   push:
     paths:
-      - /rust
+      - /rust/*
 
 jobs:
   run_tests:
