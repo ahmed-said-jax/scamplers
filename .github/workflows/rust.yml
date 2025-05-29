@@ -1,8 +1,5 @@
 name: check Rust code
-on:
-  push:
-    paths:
-      - /rust/*
+on: push
 
 jobs:
   run_tests:
