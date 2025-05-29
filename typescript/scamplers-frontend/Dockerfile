@@ -45,7 +45,7 @@ RUN --mount=type=bind,source=typescript/scamplers-frontend/package.json,target=t
     npm ci
 
 COPY typescript/scamplers-frontend typescript/scamplers-frontend
-COPY --from=deps ~/.cargo/bin/wasm-pack /bin/
+COPY --from=deps "$HOME/.cargo/bin/wasm-pack" /bin/
 
 RUN cd typescript/scamplers-frontend && npm run build
 
