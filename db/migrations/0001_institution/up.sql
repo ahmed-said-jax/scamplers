@@ -6,4 +6,3 @@ create table institution (
 );
 
 -- a comment to test CI
--- foo
