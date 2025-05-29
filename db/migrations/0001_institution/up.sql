@@ -5,4 +5,4 @@ create table institution (
     name text unique not null
 );
 
--- a comment to test CI again
+-- a comment to test CI again and again

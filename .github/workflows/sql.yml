@@ -2,7 +2,7 @@ name: check SQL code
 on:
   push:
     paths:
-      - /db
+      - /db/*
 
 jobs:
   lint_sql:
