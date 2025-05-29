@@ -46,6 +46,7 @@ RUN --mount=type=bind,source=typescript/scamplers-frontend/package.json,target=t
 
 COPY typescript/scamplers-frontend typescript/scamplers-frontend
 COPY --from=deps /root/.cargo/bin/wasm-pack /bin/
+COPY --from=deps /usr/src/app/rust rust
 
 RUN cd typescript/scamplers-frontend && npm run build
 
