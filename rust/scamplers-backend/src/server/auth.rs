@@ -1,14 +1,11 @@
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use std::{fmt::Debug, str::FromStr};
 
 use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
     password_hash::{PasswordHasher, SaltString},
 };
 use axum::{
-    RequestExt, RequestPartsExt,
+    RequestPartsExt,
     extract::{FromRequestParts, OptionalFromRequestParts},
     response::IntoResponse,
 };

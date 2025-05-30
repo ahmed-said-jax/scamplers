@@ -1,8 +1,7 @@
 use diesel::{
     dsl::InnerJoin,
-    helper_types::{Filter, Update, insert_into},
+    helper_types::{Filter, Update},
     prelude::*,
-    query_builder::{self, InsertStatement, ValuesClause},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::person::{CreatedUser, NewPerson, Person, PersonQuery, PersonUpdate};
@@ -11,8 +10,7 @@ use scamplers_schema::{
     person::{
         self,
         dsl::{
-            email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
-            institution_id as institution_col, ms_user_id as ms_user_id_col, name as name_col,
+            email as email_col, id as id_col, ms_user_id as ms_user_id_col, name as name_col,
         },
     },
 };
