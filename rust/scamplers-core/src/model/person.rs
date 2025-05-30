@@ -53,22 +53,11 @@ impl AsEndpoint for Person {
     }
 }
 
-// We use references here because this struct is never received directly, as we build it from logins. We also don't use the `api_request` macro for that reason
-#[cfg_attr(feature = "backend", update_struct(person))]
-#[diesel(primary_key(ms_user_id))]
-pub struct PersonUpdate<'a> {
-    pub ms_user_id: Option<&'a Uuid>,
-    pub name: Option<&'a str>,
-    pub email: Option<&'a str>,
-    pub institution_id: Option<&'a Uuid>,
-    pub orcid: Option<&'a str>,
-}
-
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
 #[cfg_attr(feature = "typescript", api_response)]
 pub struct CreatedUser {
     pub person: Person,
-    pub api_key: String,
+    pub api_key: Option<String>,
 }
 impl AsEndpoint for CreatedUser {
     fn as_endpoint() -> &'static str {

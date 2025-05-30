@@ -30,12 +30,14 @@ impl FromStr for Uuid {
 }
 
 impl Uuid {
+    #[must_use]
     pub fn as_bytes(&self) -> &Bytes {
         let Self(inner) = self;
         inner.as_bytes()
     }
 
     #[cfg(feature = "backend")]
+    #[must_use]
     pub fn now_v7() -> Self {
         Self(_uuid::Uuid::now_v7())
     }
@@ -56,13 +58,13 @@ mod typescript {
 
     impl WasmDescribe for super::Uuid {
         fn describe() {
-            String::describe()
+            String::describe();
         }
     }
 
-    impl Into<JsValue> for super::Uuid {
-        fn into(self) -> JsValue {
-            self.to_string().into()
+    impl From<super::Uuid> for JsValue {
+        fn from(val: super::Uuid) -> Self {
+            val.to_string().into()
         }
     }
 
@@ -70,7 +72,7 @@ mod typescript {
         type Error = _uuid::Error;
 
         fn try_from_js_value(value: JsValue) -> Result<Self, Self::Error> {
-            Ok(Self::from_str(&String::try_from_js_value(value).unwrap())?)
+            Self::from_str(&String::try_from_js_value(value).unwrap())
         }
     }
 
@@ -104,7 +106,7 @@ mod typescript {
 
     impl WasmDescribeVector for super::Uuid {
         fn describe_vector() {
-            Vec::<String>::describe()
+            Vec::<String>::describe();
         }
     }
 
@@ -120,7 +122,7 @@ mod typescript {
         type Abi = <String as VectorFromWasmAbi>::Abi;
 
         unsafe fn vector_from_abi(js: Self::Abi) -> Box<[Self]> {
-            js_value_vector_from_abi(js)
+            unsafe { js_value_vector_from_abi(js) }
         }
     }
 }
@@ -145,7 +147,7 @@ mod backend {
         }
 
         fn visit(&self, visit: &mut dyn valuable::Visit) {
-            self.as_bytes().visit(visit)
+            self.as_bytes().visit(visit);
         }
     }
 

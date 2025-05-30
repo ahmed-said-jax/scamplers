@@ -4,13 +4,10 @@ version = "0.1.0"
 edition.workspace = true
 
 [dependencies]
-diesel = {workspace = true}
-diesel-async = {workspace = true}
-
-[lints]
-workspace = true
+diesel = { workspace = true }
+diesel-async = { workspace = true }
 
 [build-dependencies]
-camino = {workspace = true}
-dotenvy = {workspace = true}
-testcontainers-modules = {workspace = true}
+camino = { workspace = true }
+dotenvy = { workspace = true }
+testcontainers-modules = { workspace = true }

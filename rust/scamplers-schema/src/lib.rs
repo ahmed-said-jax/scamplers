@@ -253,6 +253,7 @@ diesel::table! {
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         hashed_api_key -> Nullable<HashedKey>,
+        verified -> Bool,
     }
 }
 
