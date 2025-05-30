@@ -2,7 +2,7 @@ use super::{AsEndpoint, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct},
+    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct, update_struct},
     scamplers_schema::person,
 };
 
@@ -30,7 +30,7 @@ pub struct NewPerson {
     pub email: String,
     pub orcid: Option<String>,
     pub institution_id: Uuid,
-    pub ms_user_id: Uuid,
+    pub ms_user_id: Option<Uuid>,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     #[cfg_attr(feature = "typescript", builder(default))]
     pub roles: Vec<UserRole>,
@@ -51,6 +51,17 @@ impl AsEndpoint for Person {
     fn as_endpoint() -> &'static str {
         "people"
     }
+}
+
+// We use references here because this struct is never received directly, as we build it from logins. We also don't use the `api_request` macro for that reason
+#[cfg_attr(feature = "backend", update_struct(person))]
+#[diesel(primary_key(ms_user_id))]
+pub struct PersonUpdate<'a> {
+    pub ms_user_id: Option<&'a Uuid>,
+    pub name: Option<&'a str>,
+    pub email: Option<&'a str>,
+    pub institution_id: Option<&'a Uuid>,
+    pub orcid: Option<&'a str>,
 }
 
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]

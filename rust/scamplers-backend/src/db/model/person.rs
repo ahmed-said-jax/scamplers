@@ -1,12 +1,17 @@
-use diesel::{dsl::InnerJoin, prelude::*};
+use diesel::{
+    dsl::InnerJoin,
+    helper_types::{Filter, Update, insert_into},
+    prelude::*,
+    query_builder::{self, InsertStatement, ValuesClause},
+};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use scamplers_core::model::person::{CreatedUser, NewPerson, Person, PersonQuery};
+use scamplers_core::model::person::{CreatedUser, NewPerson, Person, PersonQuery, PersonUpdate};
 use scamplers_schema::{
     institution,
     person::{
         self,
         dsl::{
-            email as email_col, id as id_col,
+            email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
             institution_id as institution_col, ms_user_id as ms_user_id_col, name as name_col,
         },
     },
@@ -108,20 +113,72 @@ pub trait WriteLogin {
     ) -> crate::db::error::Result<CreatedUser>;
 }
 
+// We define this small helper struct here because it shouldn't be used elsewhere
+#[derive(Insertable)]
+#[diesel(table_name = person)]
+struct NewUser {
+    #[diesel(embed)]
+    person: NewPerson,
+    hashed_api_key: HashedApiKey,
+}
+
+impl NewUser {
+    fn new(person: NewPerson) -> (Self, ApiKey) {
+        let api_key = ApiKey::new();
+        let hashed_api_key = api_key.hash();
+
+        (
+            Self {
+                person,
+                hashed_api_key,
+            },
+            api_key,
+        )
+    }
+
+    fn as_update(&self) -> PersonUpdate {
+        let Self {
+            person:
+                NewPerson {
+                    name,
+                    email,
+                    institution_id,
+                    ms_user_id,
+                    ..
+                },
+            ..
+        } = self;
+
+        PersonUpdate {
+            ms_user_id: ms_user_id.as_ref(),
+            name: Some(name),
+            email: Some(email),
+            institution_id: Some(institution_id),
+            orcid: None,
+        }
+    }
+
+    fn to_update_stmt(
+        &self,
+    ) -> Update<Filter<person::table, diesel::dsl::Eq<ms_user_id_col, Option<&Uuid>>>, PersonUpdate>
+    {
+        let Self {
+            person: NewPerson { ms_user_id, .. },
+            ..
+        } = self;
+
+        diesel::update(person::table)
+            .filter(ms_user_id_col.eq(ms_user_id.as_ref()))
+            .set(self.as_update())
+    }
+}
+
 impl WriteLogin for NewPerson {
     // TODO: this function is big and ugly. Split it up
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<CreatedUser> {
-        #[derive(Insertable)]
-        #[diesel(table_name = person)]
-        struct NewUser {
-            #[diesel(embed)]
-            person: NewPerson,
-            hashed_api_key: HashedApiKey,
-        }
-
         let api_key = ApiKey::new();
         let hashed_api_key = api_key.hash();
 
@@ -131,32 +188,8 @@ impl WriteLogin for NewPerson {
             hashed_api_key,
         };
 
-        // Also destructure the `NewUser` so we have granular control over which columns to set
-        let NewUser {
-            person:
-                NewPerson {
-                    name,
-                    email,
-                    institution_id,
-                    ms_user_id,
-                    ..
-                },
-            hashed_api_key,
-        } = &new_user;
-
-        let changes = || {
-            (
-                name_col.eq(name),
-                email_col.eq(email),
-                ms_user_id_col.eq(ms_user_id),
-                institution_col.eq(institution_id),
-            )
-        };
-
-        // This should probably be a separate function
-        let result = diesel::update(person::table)
-            .filter(ms_user_id_col.eq(ms_user_id))
-            .set(changes())
+        let result = new_user
+            .to_update_stmt()
             .returning(id_col)
             .get_result(db_conn)
             .await;
@@ -164,11 +197,12 @@ impl WriteLogin for NewPerson {
         let id = match result.optional() {
             Ok(Some(id)) => id,
             Ok(None) => {
+                // Factoring this out into a separate function is a pain because of diesel's type system
                 diesel::insert_into(person::table)
                     .values(&new_user)
                     .on_conflict(email_col)
                     .do_update()
-                    .set(changes())
+                    .set(new_user.as_update())
                     .returning(id_col)
                     .get_result(db_conn)
                     .await?
