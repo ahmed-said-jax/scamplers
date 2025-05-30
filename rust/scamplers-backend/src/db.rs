@@ -17,7 +17,7 @@ trait AsDieselFilter<Table = ()> {
     where
         Table: 'a;
 
-    fn limit(&self) -> QueryLimit {
+    fn _limit(&self) -> QueryLimit {
         Default::default()
     }
 }

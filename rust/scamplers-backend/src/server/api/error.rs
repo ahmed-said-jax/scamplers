@@ -25,7 +25,7 @@ pub enum Error {
         message: String,
     },
     #[error("operation not permitted")]
-    Permission { message: String },
+    _Permission { message: String },
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
@@ -34,7 +34,7 @@ impl Error {
 
         match self {
             SimpleData { .. } => StatusCode::UNPROCESSABLE_ENTITY,
-            Permission { .. } => StatusCode::FORBIDDEN,
+            _Permission { .. } => StatusCode::FORBIDDEN,
             Database(inner) => match inner {
                 // Data(_) => StatusCode::UNPROCESSABLE_ENTITY,
                 Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,

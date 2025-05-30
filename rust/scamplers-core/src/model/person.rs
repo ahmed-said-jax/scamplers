@@ -2,7 +2,7 @@ use super::{AsEndpoint, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct, update_struct},
+    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct},
     scamplers_schema::person,
 };
 
