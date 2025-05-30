@@ -240,7 +240,7 @@ pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         assert!(
-            inner_elems.len() != 2,
+            inner_elems.len() == 2,
             "expected 2 types (a data type and a return type), found {}",
             inner_elems.len()
         );

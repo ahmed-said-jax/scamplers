@@ -8,3 +8,5 @@ updates:
     directory: "/typescript/scamplers-frontend"
     schedule:
       interval: "daily"
+      ignore:
+        - scamplers-core
