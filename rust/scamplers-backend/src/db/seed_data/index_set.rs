@@ -14,6 +14,7 @@ use scamplers_schema::{dual_index_set, index_kit, single_index_set};
 #[serde(transparent)]
 pub(super) struct IndexSetFileUrl(#[garde(custom(is_10x_genomics_url))] Url);
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_10x_genomics_url(url: &Url, _: &()) -> garde::Result {
     let Some(domain) = url.domain() else {
         return Err(garde::Error::new("malformed URL"));
@@ -58,7 +59,7 @@ impl Write for IndexSets {
         match self {
             Self::Single(sets) => sets.write(db_conn).await?,
             Self::Dual(sets) => sets.write(db_conn).await?,
-        };
+        }
 
         Ok(())
     }
@@ -82,15 +83,15 @@ const INDEX_SET_NAME_ERROR_MESSAGE: &str = "malformed index set name";
 
 impl IndexSetName {
     fn kit_name(&self) -> crate::db::error::Result<&str> {
-        Ok(self.0.get(3..5).ok_or(crate::db::error::Error::Other {
+        self.0.get(3..5).ok_or(crate::db::error::Error::Other {
             message: INDEX_SET_NAME_ERROR_MESSAGE.to_string(),
-        })?)
+        })
     }
 
     fn well_name(&self) -> super::super::error::Result<&str> {
-        Ok(self.0.get(6..8).ok_or(super::super::error::Error::Other {
+        self.0.get(6..8).ok_or(super::super::error::Error::Other {
             message: INDEX_SET_NAME_ERROR_MESSAGE.to_string(),
-        })?)
+        })
     }
 }
 
@@ -133,7 +134,8 @@ impl Write for Vec<NewSingleIndexSet> {
         self,
         conn: &mut diesel_async::AsyncPgConnection,
     ) -> super::super::error::Result<Self::Returns> {
-        // This one clone is necessary
+        // This one clone is necessary :/
+        #[allow(clippy::get_first)]
         let Some(NewSingleIndexSet(index_set_name, ..)) = self.get(0).cloned() else {
             return Ok(());
         };
@@ -218,7 +220,7 @@ where
     index2_workflow_b_i5: Str,
 }
 
-impl Write for HashMap<IndexSetName, NewDualIndexSet> {
+impl<S: std::hash::BuildHasher> Write for HashMap<IndexSetName, NewDualIndexSet, S> {
     type Returns = ();
 
     async fn write(

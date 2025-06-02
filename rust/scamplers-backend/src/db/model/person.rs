@@ -73,6 +73,7 @@ impl AsDieselQueryBase for Person {
     }
 }
 
+/// # Errors
 pub async fn fetch_by_filter(
     filter: Option<PersonQuery>,
     db_conn: &mut AsyncPgConnection,
@@ -90,6 +91,7 @@ pub async fn fetch_by_filter(
     Ok(people)
 }
 
+/// # Errors
 pub async fn fetch_by_id(
     id: Uuid,
     db_conn: &mut AsyncPgConnection,
@@ -148,43 +150,40 @@ impl WriteLogin for NewPerson {
             verified: true,
         };
 
-        let (id, api_key) = match maybe_has_api_key {
-            Some(true) => {
-                let id = diesel::update(person::table)
-                    .filter(ms_user_id_col.eq(ms_user_id))
-                    .set(upsert)
-                    .returning(id_col)
-                    .get_result(db_conn)
-                    .await?;
+        let (id, api_key) = if let Some(true) = maybe_has_api_key {
+            let id = diesel::update(person::table)
+                .filter(ms_user_id_col.eq(ms_user_id))
+                .set(upsert)
+                .returning(id_col)
+                .get_result(db_conn)
+                .await?;
 
-                (id, None)
-            }
-            Some(false) | None => {
-                diesel::update(person::table)
-                    .filter(email_col.eq(email))
-                    .set(verified_col.eq(false))
-                    .execute(db_conn)
-                    .await?;
+            (id, None)
+        } else {
+            diesel::update(person::table)
+                .filter(email_col.eq(email))
+                .set(verified_col.eq(false))
+                .execute(db_conn)
+                .await?;
 
-                let api_key = ApiKey::new();
-                let hash = api_key.hash();
-                upsert.hashed_api_key = Some(&hash);
+            let api_key = ApiKey::new();
+            let hash = api_key.hash();
+            upsert.hashed_api_key = Some(&hash);
 
-                let id = diesel::insert_into(person::table)
-                    .values(upsert)
-                    .returning(id_col)
-                    .get_result(db_conn)
-                    .await?;
+            let id = diesel::insert_into(person::table)
+                .values(upsert)
+                .returning(id_col)
+                .get_result(db_conn)
+                .await?;
 
-                (id, Some(api_key))
-            }
+            (id, Some(api_key))
         };
 
         let person = fetch_by_id(id, db_conn).await?;
 
         Ok(CreatedUser {
             person,
-            api_key: api_key.map(|k| k.into()),
+            api_key: api_key.map(std::convert::Into::into),
         })
     }
 }

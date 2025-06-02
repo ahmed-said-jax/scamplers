@@ -1,6 +1,6 @@
 use std::fs;
 
-use anyhow::{Context, anyhow};
+use anyhow::{Context, bail};
 use camino::Utf8PathBuf;
 use clap::{Args, Parser};
 
@@ -36,10 +36,12 @@ pub struct Config {
     seed_data_path: Option<Utf8PathBuf>,
 }
 impl Config {
+    #[must_use]
     pub fn is_dev(&self) -> bool {
         self.dev
     }
 
+    /// # Errors
     pub fn read_secrets(&mut self) -> anyhow::Result<()> {
         let Self {
             secrets_dir,
@@ -74,6 +76,7 @@ impl Config {
         Ok(())
     }
 
+    #[must_use]
     pub fn app_address(&self) -> String {
         let Self {
             host: app_host,
@@ -84,6 +87,7 @@ impl Config {
         format!("{app_host}:{app_port}")
     }
 
+    #[must_use]
     pub fn db_login_user_password(&self) -> &str {
         &self.db_login_user_password
     }
@@ -110,19 +114,23 @@ impl Config {
         }
     }
 
+    #[must_use]
     pub fn db_root_url(&self) -> String {
         self.db_url(true)
     }
 
+    #[must_use]
     pub fn db_login_url(&self) -> String {
         self.db_url(false)
     }
 
+    #[must_use]
     pub fn frontend_token(&self) -> &str {
         &self.frontend_token
     }
 
-    pub fn seed_data(&mut self) -> anyhow::Result<Option<SeedData>> {
+    /// # Errors
+    pub fn seed_data(&self) -> anyhow::Result<SeedData> {
         let Self {
             seed_data,
             seed_data_path,
@@ -130,13 +138,12 @@ impl Config {
         } = self;
 
         match (seed_data, seed_data_path) {
-            (seed_data, None) => Ok(seed_data.take()),
-            (None, Some(seed_data_path)) => Ok(Some(serde_json::from_str(&fs::read_to_string(
-                seed_data_path,
-            )?)?)),
-            (Some(_), Some(_)) => Err(anyhow!(
-                "`seed_data` and `seed_data_path` are mutually exclusive"
-            )),
+            (Some(seed_data), None) => Ok(seed_data.clone()),
+            (None, Some(seed_data_path)) => {
+                Ok(serde_json::from_str(&fs::read_to_string(seed_data_path)?)?)
+            }
+            (Some(_), Some(_)) => bail!("`seed_data` and `seed_data_path` are mutually exclusive"),
+            (None, None) => bail!("neither `seed_data` nor `seed_data_path` was supplied"),
         }
     }
 }

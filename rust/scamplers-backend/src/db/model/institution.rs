@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use scamplers_core::model::institution::{Institution, NewInstitution};
-use scamplers_schema::institution::dsl::*;
+use scamplers_schema::institution::dsl::institution;
 
 use crate::db::Write;
 

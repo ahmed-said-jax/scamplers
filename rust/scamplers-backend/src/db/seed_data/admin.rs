@@ -9,7 +9,7 @@ use crate::db::model::person::WriteLogin;
 
 use super::Write;
 
-#[derive(Deserialize, Validate, Insertable)]
+#[derive(Deserialize, Validate, Insertable, Clone)]
 #[diesel(table_name = person, check_for_backend(Pg))]
 #[garde(allow_unvalidated)]
 #[serde(transparent)]

@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use anyhow::Context;
 // use auth::{authenticate_api_request, authenticate_browser_request};
@@ -13,7 +13,7 @@ use diesel_async::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
-use tokio::{net::TcpListener, signal};
+use tokio::{net::TcpListener, signal, sync::Mutex};
 use tower_http::trace::TraceLayer;
 use util::DevContainer;
 use uuid::Uuid;
@@ -21,6 +21,7 @@ mod api;
 pub mod auth;
 mod util;
 
+/// # Errors
 pub async fn serve(mut config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
     initialize_logging(log_dir);
 
@@ -29,7 +30,7 @@ pub async fn serve(mut config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::
         .context("failed to read secrets directory")?;
     let app_addr = config.app_address();
 
-    let mut app_state = AppState2::new(config)
+    let mut app_state = AppState::new(config)
         .await
         .context("failed to initialize app state")?;
     tracing::info!("initialized app state");
@@ -101,7 +102,7 @@ fn initialize_logging(log_dir: Option<Utf8PathBuf>) {
 }
 
 #[derive(Clone)]
-enum AppState2 {
+enum AppState {
     Dev {
         db_pool: Pool<AsyncPgConnection>,
         _pg_container: Arc<ContainerAsync<Postgres>>,
@@ -116,7 +117,7 @@ enum AppState2 {
         config: Arc<Mutex<Config>>,
     },
 }
-impl AppState2 {
+impl AppState {
     async fn new(config: Config) -> anyhow::Result<Self> {
         let container_err = "failed to start postgres container instance";
 
@@ -144,11 +145,11 @@ impl AppState2 {
             }
         } else {
             let db_config =
-                AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_login_url());
+                AsyncDieselConnectionManager::<AsyncPgConnection>::new(config.db_login_url());
             let db_pool = Pool::builder(db_config).build()?;
 
             let db_root_config =
-                AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.db_root_url());
+                AsyncDieselConnectionManager::<AsyncPgConnection>::new(config.db_root_url());
             let db_root_pool = Some(Pool::builder(db_root_config).max_size(1).build()?);
 
             Self::Prod {
@@ -166,7 +167,7 @@ impl AppState2 {
         &self,
     ) -> db::error::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>>
     {
-        use AppState2::*;
+        use AppState::{Dev, Prod};
 
         match self {
             Dev { db_pool, .. } | Prod { db_pool, .. } => Ok(db_pool.get().await?),
@@ -177,7 +178,7 @@ impl AppState2 {
         &self,
     ) -> db::error::Result<diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>>
     {
-        use AppState2::*;
+        use AppState::Prod;
 
         let Prod { db_root_pool, .. } = self else {
             return self.db_conn().await;
@@ -197,15 +198,15 @@ impl AppState2 {
     // constructs the arguments. This is the only time this sequence of events happens, so we can keep it as is.
     // Also, this shouldn't be a method of `AppState`
     async fn set_login_user_password(&self) -> anyhow::Result<()> {
+        const LOGIN_USER: &str = "login_user";
+
         let password = match self {
-            AppState2::Dev { .. } => Uuid::now_v7().to_string(),
-            AppState2::Prod { config, .. } => {
-                let config = config.lock().unwrap();
+            AppState::Dev { .. } => Uuid::now_v7().to_string(),
+            AppState::Prod { config, .. } => {
+                let config = config.lock().await;
                 config.db_login_user_password().to_string()
             }
         };
-
-        const LOGIN_USER: &str = "login_user";
 
         let mut db_conn = self.db_root_conn().await?;
         diesel::sql_query(format!(
@@ -219,7 +220,7 @@ impl AppState2 {
 
     // TODO: This also shouldn't be a method of `AppState`
     async fn write_seed_data(&self) -> anyhow::Result<()> {
-        use AppState2::*;
+        use AppState::{Dev, Prod};
 
         let mut db_conn = self.db_root_conn().await?;
 
@@ -234,19 +235,16 @@ impl AppState2 {
                 config,
                 ..
             } => {
-                let mut config = config.lock().unwrap();
+                let config = config.lock().await;
 
                 let seed_data = config.seed_data()?;
-                match seed_data {
-                    Some(seed_data) => seed_data.write(&mut db_conn, http_client.clone()).await,
-                    None => Ok(()),
-                }
+                seed_data.write(&mut db_conn, http_client.clone()).await
             }
         }
     }
 
     fn drop_db_root_pool(&mut self) {
-        use AppState2::*;
+        use AppState::{Dev, Prod};
 
         match self {
             Dev { .. } => (),
@@ -274,7 +272,7 @@ async fn run_migrations(
     Ok(())
 }
 
-fn app(app_state: AppState2) -> Router {
+fn app(app_state: AppState) -> Router {
     api::router()
         .layer(TraceLayer::new_for_http())
         .route("/health", get(async || ()))
@@ -282,7 +280,7 @@ fn app(app_state: AppState2) -> Router {
 }
 
 // I don't entirely understand why I need to manually call `drop` here
-async fn shutdown_signal(app_state: AppState2) {
+async fn shutdown_signal(app_state: AppState) {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -297,7 +295,7 @@ async fn shutdown_signal(app_state: AppState2) {
     };
 
     tokio::select! {
-        _ = ctrl_c => {drop(app_state);},
-        _ = terminate => {drop(app_state)},
+        () = ctrl_c => {drop(app_state);},
+        () = terminate => {drop(app_state)},
     }
 }

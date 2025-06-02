@@ -6,19 +6,18 @@ use axum::{
 };
 use scamplers_core::{model::AsEndpoint, model::person::CreatedUser};
 
-use super::AppState2;
+use super::AppState;
 
 mod error;
 mod handler;
 
-pub(super) fn router() -> Router<AppState2> {
+pub(super) fn router() -> Router<AppState> {
     use handler::new_user;
 
     let endpoints: HashMap<&str, [&str; 1], RandomState> =
         HashMap::from_iter([("available_endpoints", [""])]);
 
-    let router = Router::new()
+    Router::new()
         .route("/", get(|| async { axum::Json(endpoints) }))
-        .route(CreatedUser::as_endpoint(), post(new_user));
-    router
+        .route(CreatedUser::as_endpoint(), post(new_user))
 }

@@ -21,6 +21,10 @@ jobs:
 
   lint_code:
     runs-on: ubuntu-latest
+
+    env:
+      RUSTFLAGS: "-Dwarnings"
+
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4

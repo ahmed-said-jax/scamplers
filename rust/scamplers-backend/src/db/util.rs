@@ -27,12 +27,13 @@ impl From<i64> for QueryLimit {
 }
 impl From<i32> for QueryLimit {
     fn from(value: i32) -> Self {
-        Self(value as i64)
+        Self(i64::from(value))
     }
 }
 impl From<usize> for QueryLimit {
+    /// # Panics
     fn from(value: usize) -> Self {
-        Self(value as i64)
+        Self(i64::try_from(value).unwrap())
     }
 }
 

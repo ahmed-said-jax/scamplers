@@ -21,7 +21,7 @@ pub enum UserRole {
     Unknown,
 }
 
-#[cfg_attr(feature = "backend", insert_struct(person))]
+#[cfg_attr(feature = "backend", insert_struct(person), derive(Clone))]
 #[cfg_attr(feature = "typescript", api_request)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]

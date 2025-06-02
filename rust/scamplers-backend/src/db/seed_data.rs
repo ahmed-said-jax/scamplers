@@ -10,7 +10,7 @@ mod index_set;
 
 use super::Write;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct SeedData {
     institution: NewInstitution,
     app_admin: NewAdmin,
@@ -18,6 +18,7 @@ pub struct SeedData {
 }
 
 impl SeedData {
+    /// # Errors
     pub async fn write(
         self,
         db_conn: &mut AsyncPgConnection,
@@ -54,7 +55,7 @@ async fn download_and_insert_index_sets(
     file_urls: &[IndexSetFileUrl],
 ) -> anyhow::Result<()> {
     let downloads = file_urls
-        .into_iter()
+        .iter()
         .map(|url| url.clone().download(http_client.clone()));
     let index_sets = futures::future::try_join_all(downloads)
         .await

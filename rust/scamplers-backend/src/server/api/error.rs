@@ -29,7 +29,7 @@ pub enum Error {
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
-        use Error::*;
+        use Error::{_Permission, Database, MalformedRequest, SimpleData};
         use db::error::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
@@ -92,13 +92,13 @@ impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         use axum::http::StatusCode;
 
-        tracing::error!(error = self.as_value());
-
         #[derive(Serialize)]
         struct ErrorResponse {
             status: u16,
             error: Option<Error>,
         }
+
+        tracing::error!(error = self.as_value());
 
         let status = self.staus_code();
 
