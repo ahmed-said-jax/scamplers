@@ -29,5 +29,5 @@ jobs:
           cd rust
           cargo +nightly fmt -- --check
           RUSTFLAGS="--cfg tracing_unstable" cargo build --workspace
-          cargo clippy --workspace --exclude scamplers-schema
+          RUSTFLAGS="--cfg tracing_unstable" cargo clippy --workspace --exclude scamplers-schema
           RUSTFLAGS="--cfg tracing_unstable" cargo test --workspace

@@ -1,0 +1,12 @@
+services:
+  scamplers-backend:
+    build:
+      context: .
+      dockerfile: rust/Dockerfile
+      target: final
+  scamplers-frontend:
+    build:
+      context: typescript
+      args:
+        NODE_ENV: production
+      target: final
