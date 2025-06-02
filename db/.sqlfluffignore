@@ -1,0 +1,5 @@
+# sqlfluff doesn't like `drop role` statements -_-
+migrations/00000000000000_diesel_initial_setup/down.sql
+
+# sqlfluff also doesn't like 'µ' :/
+migrations/0009_library-type-specification/up.sql

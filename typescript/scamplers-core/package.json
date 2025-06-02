@@ -1,0 +1,17 @@
+{
+  "name": "scamplers-core",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "scamplers_core_bg.wasm",
+    "scamplers_core.js",
+    "scamplers_core_bg.js",
+    "scamplers_core.d.ts"
+  ],
+  "main": "scamplers_core.js",
+  "types": "scamplers_core.d.ts",
+  "sideEffects": [
+    "./scamplers_core.js",
+    "./snippets/*"
+  ]
+}

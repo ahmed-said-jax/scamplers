@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table person (
-    id uuid primary key default gen_random_uuid (),
+    id uuid primary key default gen_random_uuid(),
     link text generated always as ('/people/' || id) stored not null,
     name text not null,
     email text not null,
@@ -10,5 +10,5 @@ create table person (
     hashed_api_key hashed_key unique,
     verified bool not null default false,
 
-    unique(email, verified)
+    unique (email, verified)
 );

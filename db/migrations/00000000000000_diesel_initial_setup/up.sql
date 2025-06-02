@@ -3,8 +3,6 @@
 -- changes will be added to existing projects as new migrations.
 
 
-
-
 -- Sets up a trigger for the given table to automatically set a column called
 -- `updated_at` whenever the row is modified (unless `updated_at` was included
 -- in the modified columns)
@@ -108,7 +106,6 @@ select create_role_if_not_exists('app_admin');
 select create_role_if_not_exists('biology_staff');
 select create_role_if_not_exists('computational_staff');
 
--- We don't use `create_user_if_not_exists` for `login_user` and `auth_user` because that function is for app users. TODO: e should rename the function and correct the corresponding
 select create_role_if_not_exists('login_user');
 alter role login_user with login createrole;
 
