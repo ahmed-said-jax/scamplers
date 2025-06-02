@@ -1,9 +1,9 @@
 repos:
   - repo: local
     hooks:
-      - id: check-rust
-        name: Check Rust Code
-        entry: ./scripts/check-rust.sh
+      - id: fix-rust
+        name: Fix Rust Code
+        entry: ./scripts/fix-rust.sh
         language: script
         pass_filenames: false
       - id: build-scamplers-core
@@ -11,13 +11,13 @@ repos:
         entry: ./scripts/build-scamplers-core.sh
         language: script
         pass_filenames: false
-      - id: check-typescript
-        name: Check TypeScript Code
-        entry: ./scripts/check-typescript.sh
+      - id: fix-typescript
+        name: Fix TypeScript Code
+        entry: ./scripts/fix-typescript.sh
         language: script
         pass_filenames: false
-      - id: check-sql
-        name: Check SQL Code
-        entry: ./scripts/check-sql.sh
+      - id: fix-sql
+        name: Fix SQL Code
+        entry: ./scripts/fix-sql.sh
         language: script
         pass_filenames: false
