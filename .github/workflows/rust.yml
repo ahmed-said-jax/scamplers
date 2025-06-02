@@ -5,8 +5,10 @@ on:
       - rust/**
 
 jobs:
-  run_tests:
+  check_rust:
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-Dwarnings"
 
     steps:
       - name: Check out repository code
@@ -16,30 +18,15 @@ jobs:
         uses: Swatinem/rust-cache@v2
         id: cache-cargo
 
-      - name: Run tests
-        run: cd rust && cargo test --workspace --all-features
+      - name: Install diesel
+        run: cargo install diesel_cli --no-default-features --features postgres
 
-  lint_code:
-    runs-on: ubuntu-latest
-
-    env:
-      RUSTFLAGS: "-Dwarnings"
-
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-
-      - name: Lint code
-        run: cd rust && cargo clippy --all-targets --workspace --all-features
-
-  format_code:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-
-      - name: Install nightly rust
+      - name: Install nightly toolchain
         run: rustup toolchain install nightly && rustup component add --toolchain nightly rustfmt
 
-      - name: Format code
-        run: cd rust && cargo +nightly fmt -- --check
+      - name: Check code
+        run: |
+          cd rust
+          cargo +nightly fmt -- --check
+          cargo clippy --all-targets --workspace --all-features --exclude scamplers-schema
+          cargo test --workspace --all-features

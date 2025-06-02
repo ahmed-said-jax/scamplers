@@ -113,3 +113,4 @@ create type hashed_key as (
     prefix text,
     hash text
 );
+-- CI comment
