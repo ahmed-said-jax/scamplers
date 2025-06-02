@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"build-scamplers-core": "../../scripts/build-scamplers-core.sh",
+		"build-scamplers-core": "cd ../.. && ./scripts/build-scamplers-core.sh",
 		"dev": "npm run build-scamplers-core && vite dev",
 		"build": "npm run build-scamplers-core && vite build",
 		"preview": "vite preview",
