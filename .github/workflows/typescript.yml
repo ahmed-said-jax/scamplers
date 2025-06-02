@@ -21,4 +21,4 @@ jobs:
           cd typescript/scamplers-frontend
           npm run lint
           npm run check
-          npm run test
+          npm run test:unit -- --run

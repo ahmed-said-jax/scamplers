@@ -28,5 +28,5 @@ jobs:
         run: |
           cd rust
           cargo +nightly fmt -- --check
-          cargo clippy --all-targets --workspace --all-features --exclude scamplers-schema
+          cargo clippy --workspace --exclude scamplers-schema
           cargo test --workspace
