@@ -6,30 +6,19 @@ on:
       - typescript/**
 
 jobs:
-  run_tests:
+  check-typescript:
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Run tests
-        run: cd typescript/scamplers-frontend && npm run test
+      - name: Install dependencies
+        run: cd typescript/scamplers-frontend && npm install
 
-  lint_code:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-
-      - name: Lint code
-        run: cd typescript/scamplers-frontend && npm run lint
-
-  check_typing:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-
-      - name: Check typing
-        run: cd typescript/scamplers-frontend && npm run check
+      - name: Check code
+        run: |
+          cd typescript/scamplers-frontend
+          npm run lint
+          npm run check
+          npm run test
