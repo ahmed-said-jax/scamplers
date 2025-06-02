@@ -3,5 +3,5 @@
 set -euo pipefail
 
 cd rust
-cargo clippy --workspace --exclude scamplers-schema
+cargo clippy --workspace --all-targets --exclude scamplers-schema
 cargo +nightly fmt

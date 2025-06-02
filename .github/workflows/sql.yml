@@ -21,4 +21,4 @@ jobs:
         run: pip install sqlfluff
 
       - name: Lint code
-        run: sqlfluff lint .
+        run: cd db && sqlfluff lint .
