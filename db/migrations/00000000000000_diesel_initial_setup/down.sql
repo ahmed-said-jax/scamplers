@@ -2,6 +2,8 @@
 -- and other internal bookkeeping. This file is safe to edit, any future
 -- changes will be added to existing projects as new migrations.
 
+--
+
 drop type hashed_key;
 
 drop role auth_user, login_user, computational_staff, biology_staff, app_admin;
