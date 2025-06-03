@@ -1,7 +1,9 @@
 {$PUBLIC_URL} {
+    tls internal
 	reverse_proxy {$FRONTEND_HOST}:{$FRONTEND_PORT}
 }
 
 api.{$PUBLIC_URL} {
+    tls internal
 	reverse_proxy {$BACKEND_HOST}:{$BACKEND_PORT}
 }
