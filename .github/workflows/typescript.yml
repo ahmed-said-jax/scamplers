@@ -1,5 +1,4 @@
-name: check TypeScript code
-
+name: Check TypeScript code
 on:
   push:
     paths:
@@ -14,11 +13,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: cd typescript/scamplers-frontend && npm install
+        working-directory: &package_dir typescript/scamplers-frontend
+        run: npm install
 
-      - name: Check code
-        run: |
-          cd typescript/scamplers-frontend
-          npm run lint
-          npm run check
-          npm run test:unit -- --run
+      - name: Lint
+        working-directory: *package_dir
+        run: npm run lint
+
+      - name: Svelte check
+        working-directory: *package_dir
+        run: npm run check
+
+      - name: Unit test
+        working-directory: *package_dir
+        run: npm run test:unit -- --run

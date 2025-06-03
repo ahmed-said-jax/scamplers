@@ -1,4 +1,5 @@
-name: check SQL code
+name: Check SQL code
+
 on:
   push:
     paths:

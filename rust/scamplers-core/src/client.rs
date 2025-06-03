@@ -1,3 +1,4 @@
+// A comment to trigger CI
 #[cfg(feature = "typescript")]
 use {
     crate::model::AsEndpoint,

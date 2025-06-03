@@ -1,4 +1,4 @@
-name: check Rust code
+name: Check Rust code
 on:
   push:
     paths:
@@ -8,7 +8,7 @@ jobs:
   check-rust:
     runs-on: ubuntu-latest
     env:
-      RUSTFLAGS: "-Dwarnings"
+      RUSTFLAGS: -Dwarnings --cfg tracing_unstable
 
     steps:
       - name: Check out repository code
@@ -16,7 +16,6 @@ jobs:
 
       - name: Cache cargo-generated files
         uses: Swatinem/rust-cache@v2
-        id: cache-cargo
 
       - name: Install diesel
         run: cargo install diesel_cli --no-default-features --features postgres
@@ -24,10 +23,18 @@ jobs:
       - name: Install nightly toolchain
         run: rustup toolchain install nightly && rustup component add --toolchain nightly rustfmt
 
-      - name: Check code
-        run: |
-          cd rust
-          cargo +nightly fmt -- --check
-          RUSTFLAGS="--cfg tracing_unstable" cargo build --workspace
-          RUSTFLAGS="--cfg tracing_unstable" cargo clippy --workspace --exclude scamplers-schema
-          RUSTFLAGS="--cfg tracing_unstable" cargo test --workspace
+      - name: Format
+        working-directory: &workspace_dir rust
+        run: cargo +nightly fmt -- --check
+
+      - name: Build
+        working-directory: *workspace_dir
+        run: cargo build --workspace
+
+      - name: Lint
+        working-directory: *workspace_dir
+        run: cargo clippy --workspace --exclude scamplers-schema
+
+      - name: Test
+        working-directory: *workspace_dir
+        run: cargo test --workspace
