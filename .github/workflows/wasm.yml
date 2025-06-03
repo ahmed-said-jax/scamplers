@@ -24,7 +24,7 @@ jobs:
         run: mv typescript/scamplers-core typescript/scamplers-core_tmp
 
       - name: Regenerate Wasm module
-        run: ./scripts/build-scamplers-core
+        run: ./scripts/build-scamplers-core.sh
 
       - name: Compare Wasm modules
         working-directory: typescript

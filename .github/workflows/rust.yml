@@ -24,17 +24,17 @@ jobs:
         run: rustup toolchain install nightly && rustup component add --toolchain nightly rustfmt
 
       - name: Format
-        working-directory: &workspace_dir rust
+        working-directory: rust
         run: cargo +nightly fmt -- --check
 
       - name: Build
-        working-directory: *workspace_dir
+        working-directory: rust
         run: cargo build --workspace
 
       - name: Lint
-        working-directory: *workspace_dir
+        working-directory: rust
         run: cargo clippy --workspace --exclude scamplers-schema
 
       - name: Test
-        working-directory: *workspace_dir
+        working-directory: rust
         run: cargo test --workspace
