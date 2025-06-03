@@ -1,4 +1,5 @@
-/target
+target/*
+!target/wasm32-unknown-unknown/debug/scamplers_core.wasm
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
