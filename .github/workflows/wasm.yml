@@ -13,9 +13,8 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Cache cargo-generated files
+      - name: Cache cargo files
         uses: Swatinem/rust-cache@v2
-        id: cache-cargo
 
       - name: Install wasm-pack
         run: cargo install wasm-pack
@@ -29,4 +28,4 @@ jobs:
 
       - name: Compare Wasm modules
         working-directory: typescript
-        run: diff scamplers-core_committed scamplers-core
+        run: diff --brief scamplers-core_committed scamplers-core
