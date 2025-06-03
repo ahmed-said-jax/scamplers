@@ -48,7 +48,7 @@
 	"dependencies": {
 		"@auth/core": "^0.39.0",
 		"@auth/sveltekit": "^1.9.1",
-		"@types/node": "^22.14.1",
+		"@types/node": "^22.15.29",
 		"scamplers-core": "file:../scamplers-core"
 	}
 }
