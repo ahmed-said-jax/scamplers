@@ -5,6 +5,6 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "npm"
-    directory: "/typescript/scamplers-frontend"
+    directory: "/.github/npm-dependencies"
     schedule:
       interval: "daily"
