@@ -1,4 +1,4 @@
-name: Check Rust code
+name: Check Rust Code
 on:
   push:
     paths:

@@ -1,4 +1,4 @@
-name: Check SQL code
+name: Check SQL Code
 
 on:
   push:

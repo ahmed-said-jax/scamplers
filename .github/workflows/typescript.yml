@@ -1,4 +1,4 @@
-name: Check TypeScript code
+name: Check TypeScript Code
 on:
   push:
     paths:

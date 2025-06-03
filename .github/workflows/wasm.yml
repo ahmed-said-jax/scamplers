@@ -21,11 +21,12 @@ jobs:
         run: cargo install wasm-pack
 
       - name: Move Wasm module
-        run: mv typescript/scamplers-core typescript/scamplers-core_tmp
+        working-directory: typescript
+        run: mv scamplers-core scamplers-core_committed
 
       - name: Regenerate Wasm module
         run: ./scripts/build-scamplers-core.sh
 
       - name: Compare Wasm modules
         working-directory: typescript
-        run: diff --brief scamplers-core scamplers-core_tmp
+        run: diff scamplers-core_committed scamplers-core
