@@ -1,3 +1,4 @@
+// sneky comment
 #[cfg(feature = "typescript")]
 use {
     crate::model::AsEndpoint,
