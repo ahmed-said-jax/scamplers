@@ -1,4 +1,3 @@
--- The string patterns of index kits, names, wells, and sequences will all be validated on Rust side
 -- We allow for text primary keys here because the names of these things will not change
 create table index_kit (
     name text primary key

@@ -19,8 +19,10 @@ repos:
         language: script
         pass_filenames: false
 
-      - id: fix-sql
-        name: Fix SQL Code
-        entry: ./scripts/fix-sql.sh
-        language: script
-        pass_filenames: false
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.4.0
+    hooks:
+      - id: sqlfluff-lint
+        exclude: ^db/migrations/00000000000000_diesel_initial_setup/down\.sql|migrations/0009_library-type-specification/up\.sql$
+      - id: sqlfluff-fix
+        exclude: ^db/migrations/00000000000000_diesel_initial_setup/down\.sql|migrations/0009_library-type-specification/up\.sql$

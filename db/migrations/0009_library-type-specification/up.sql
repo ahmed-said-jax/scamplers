@@ -1,4 +1,4 @@
--- Your SQL goes here
+
 create table library_type_specification (
     chemistry text references chemistry on delete restrict on update restrict not null,
     library_type text not null,

@@ -1,5 +1,3 @@
--- Your SQL goes here
-
 -- This file contains index creations for a variety of tables. They are currently commented out so that we can perform
 -- analysis on what actually requires indexing before we create the indexes.
 

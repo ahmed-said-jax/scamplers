@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table chromium_library (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/libraries/' || id) stored not null,

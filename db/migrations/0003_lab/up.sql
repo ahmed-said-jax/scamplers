@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table lab (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/labs/' || id) stored not null,

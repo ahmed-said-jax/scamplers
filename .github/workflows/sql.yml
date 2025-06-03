@@ -1,4 +1,5 @@
-name: check SQL code
+name: Check SQL Code
+
 on:
   push:
     paths:
@@ -21,4 +22,5 @@ jobs:
         run: pip install sqlfluff
 
       - name: Lint code
-        run: cd db && sqlfluff lint .
+        working-directory: db
+        run: sqlfluff lint .

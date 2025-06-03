@@ -1,4 +1,3 @@
--- Your SQL goes here
 -- `type`, `embedding_matrix`, and `preservation_method` are constrained by Rust enums and will be validated to make
 -- sense together
 create table specimen (
