@@ -63,7 +63,7 @@ tracing = { version = "0.1.41", features = ["valuable"] }
 tower = { version = "0.5.2", default-features = false }
 tracing-subscriber = { version = "0.3.19", features = ["json"] }
 argon2 = "0.5.3"
-tower-http = { version = "0.6.4", features = ["trace", "fs"] }
+tower-http = { version = "0.6.6", features = ["trace", "fs"] }
 rand = "0.9.1"
 reqwest = { version = "0.12.19", default-features = false, features = [
     "rustls-tls",
