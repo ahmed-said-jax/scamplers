@@ -91,7 +91,7 @@ export const __wbindgen_export_5: WebAssembly.Table;
 export const __externref_table_dealloc: (a: number) => void;
 export const __wbindgen_free: (a: number, b: number, c: number) => void;
 export const __externref_drop_slice: (a: number, b: number) => void;
-export const _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h8b2947bb08b81b0f: (a: number, b: number) => void;
+export const _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h87e0d60c43616be4: (a: number, b: number) => void;
 export const closure115_externref_shim: (a: number, b: number, c: any) => void;
 export const closure150_externref_shim: (a: number, b: number, c: any, d: any) => void;
 export const __wbindgen_start: () => void;
