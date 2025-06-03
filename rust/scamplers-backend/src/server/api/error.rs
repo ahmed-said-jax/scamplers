@@ -25,16 +25,16 @@ pub enum Error {
         message: String,
     },
     #[error("operation not permitted")]
-    Permission { message: String },
+    _Permission { message: String },
 }
 impl Error {
     fn staus_code(&self) -> axum::http::StatusCode {
-        use Error::*;
+        use Error::{_Permission, Database, MalformedRequest, SimpleData};
         use db::error::Error::{DuplicateRecord, Other, RecordNotFound, ReferenceNotFound};
 
         match self {
             SimpleData { .. } => StatusCode::UNPROCESSABLE_ENTITY,
-            Permission { .. } => StatusCode::FORBIDDEN,
+            _Permission { .. } => StatusCode::FORBIDDEN,
             Database(inner) => match inner {
                 // Data(_) => StatusCode::UNPROCESSABLE_ENTITY,
                 Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,
@@ -92,13 +92,13 @@ impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         use axum::http::StatusCode;
 
-        tracing::error!(error = self.as_value());
-
         #[derive(Serialize)]
         struct ErrorResponse {
             status: u16,
             error: Option<Error>,
         }
+
+        tracing::error!(error = self.as_value());
 
         let status = self.staus_code();
 

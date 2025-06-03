@@ -8,3 +8,6 @@ seed_data.*.json
 
 # Generated TypesScript code
 pkg
+
+# Python virtual environment (used for pre-commit during development)
+venv

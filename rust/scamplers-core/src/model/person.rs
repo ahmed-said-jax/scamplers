@@ -21,7 +21,7 @@ pub enum UserRole {
     Unknown,
 }
 
-#[cfg_attr(feature = "backend", insert_struct(person))]
+#[cfg_attr(feature = "backend", insert_struct(person), derive(Clone))]
 #[cfg_attr(feature = "typescript", api_request)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
@@ -30,7 +30,7 @@ pub struct NewPerson {
     pub email: String,
     pub orcid: Option<String>,
     pub institution_id: Uuid,
-    pub ms_user_id: Uuid,
+    pub ms_user_id: Option<Uuid>,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     #[cfg_attr(feature = "typescript", builder(default))]
     pub roles: Vec<UserRole>,
@@ -57,7 +57,7 @@ impl AsEndpoint for Person {
 #[cfg_attr(feature = "typescript", api_response)]
 pub struct CreatedUser {
     pub person: Person,
-    pub api_key: String,
+    pub api_key: Option<String>,
 }
 impl AsEndpoint for CreatedUser {
     fn as_endpoint() -> &'static str {

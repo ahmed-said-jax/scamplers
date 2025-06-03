@@ -17,8 +17,8 @@ trait AsDieselFilter<Table = ()> {
     where
         Table: 'a;
 
-    fn limit(&self) -> QueryLimit {
-        Default::default()
+    fn _limit(&self) -> QueryLimit {
+        QueryLimit::default()
     }
 }
 
@@ -39,7 +39,7 @@ where
     where
         Table: 'a,
     {
-        self.as_ref().map(|q| q.as_diesel_filter()).flatten()
+        self.as_ref().and_then(AsDieselFilter::as_diesel_filter)
     }
 }
 

@@ -1,14 +1,11 @@
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use std::{fmt::Debug, str::FromStr};
 
 use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
     password_hash::{PasswordHasher, SaltString},
 };
 use axum::{
-    RequestExt, RequestPartsExt,
+    RequestPartsExt,
     extract::{FromRequestParts, OptionalFromRequestParts},
     response::IntoResponse,
 };
@@ -37,7 +34,7 @@ use valuable::Valuable;
 
 use crate::db;
 
-use super::AppState2;
+use super::AppState;
 
 const KEY_PREFIX_LENGTH: usize = 8;
 const KEY_LENGTH: usize = 32;
@@ -47,6 +44,7 @@ const KEY_LENGTH: usize = 32;
 pub struct ApiKey(String);
 
 impl ApiKey {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -56,6 +54,8 @@ impl ApiKey {
         &key[..KEY_PREFIX_LENGTH]
     }
 
+    /// # Panics
+    #[must_use]
     pub fn hash(&self) -> HashedApiKey {
         let Self(key) = self;
 
@@ -83,20 +83,16 @@ impl ApiKey {
             return false;
         };
 
-        if argon2
+        argon2
             .verify_password(self.as_str().as_bytes(), &parsed_hash)
             .is_ok()
-        {
-            true
-        } else {
-            false
-        }
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         let Self(inner) = self;
 
-        &inner
+        inner
     }
 }
 impl FromStr for ApiKey {
@@ -186,14 +182,14 @@ impl User {
     }
 }
 
-impl FromRequestParts<AppState2> for User {
+impl FromRequestParts<AppState> for User {
     type Rejection = Error;
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        app_state: &AppState2,
+        app_state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        if let AppState2::Dev { user_id, .. } = app_state {
+        if let AppState::Dev { user_id, .. } = app_state {
             return Ok(Self(*user_id));
         }
 
@@ -213,12 +209,12 @@ impl FromRequestParts<AppState2> for User {
     }
 }
 
-impl OptionalFromRequestParts<AppState2> for User {
+impl OptionalFromRequestParts<AppState> for User {
     type Rejection = ();
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        state: &AppState2,
+        state: &AppState,
     ) -> Result<Option<Self>, Self::Rejection> {
         Ok(
             <User as FromRequestParts<_>>::from_request_parts(parts, state)
@@ -229,14 +225,14 @@ impl OptionalFromRequestParts<AppState2> for User {
 }
 
 pub struct Frontend;
-impl FromRequestParts<AppState2> for Frontend {
+impl FromRequestParts<AppState> for Frontend {
     type Rejection = Error;
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        state: &AppState2,
+        state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let AppState2::Prod { config, .. } = state else {
+        let AppState::Prod { config, .. } = state else {
             return Ok(Self);
         };
 
@@ -249,7 +245,7 @@ impl FromRequestParts<AppState2> for Frontend {
             return Err(err);
         };
 
-        if frontend_auth.token() != config.lock().unwrap().frontend_token() {
+        if frontend_auth.token() != config.lock().await.frontend_token() {
             return Err(err);
         }
 
@@ -269,7 +265,7 @@ pub(super) enum Error {
 }
 impl From<db::error::Error> for Error {
     fn from(err: db::error::Error) -> Self {
-        use db::error::Error::*;
+        use db::error::Error::RecordNotFound;
 
         match err {
             RecordNotFound => Self::InvalidApiKey,
@@ -281,13 +277,13 @@ impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         use axum::http::StatusCode;
 
-        tracing::error!(auth_error = self.as_value());
-
         #[derive(Serialize)]
         struct ErrorResponse {
             status: u16,
             error: Option<Error>,
         }
+
+        tracing::error!(auth_error = self.as_value());
 
         match self {
             Self::InvalidApiKey | Self::InvalidFrontendToken => (

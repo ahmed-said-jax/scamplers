@@ -1,4 +1,3 @@
-# TODO: the same alpine version is used twice - we can fix this somehow
 services:
   postgres:
     image: postgres:17-alpine
@@ -62,8 +61,7 @@ services:
       retries: 10
   scamplers-frontend:
     build:
-      context: .
-      dockerfile: typescript/scamplers-frontend/Dockerfile
+      context: typescript
       args:
         NODE_ENV: production
       target: final

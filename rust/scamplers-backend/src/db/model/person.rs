@@ -6,8 +6,8 @@ use scamplers_schema::{
     person::{
         self,
         dsl::{
-            email as email_col, id as id_col,
-            institution_id as institution_col, ms_user_id as ms_user_id_col, name as name_col,
+            email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
+            ms_user_id as ms_user_id_col, name as name_col, verified as verified_col,
         },
     },
 };
@@ -73,6 +73,7 @@ impl AsDieselQueryBase for Person {
     }
 }
 
+/// # Errors
 pub async fn fetch_by_filter(
     filter: Option<PersonQuery>,
     db_conn: &mut AsyncPgConnection,
@@ -90,6 +91,7 @@ pub async fn fetch_by_filter(
     Ok(people)
 }
 
+/// # Errors
 pub async fn fetch_by_id(
     id: Uuid,
     db_conn: &mut AsyncPgConnection,
@@ -109,80 +111,79 @@ pub trait WriteLogin {
 }
 
 impl WriteLogin for NewPerson {
-    // TODO: this function is big and ugly. Split it up
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<CreatedUser> {
-        #[derive(Insertable)]
-        #[diesel(table_name = person)]
-        struct NewUser {
-            #[diesel(embed)]
-            person: NewPerson,
-            hashed_api_key: HashedApiKey,
+        #[derive(Insertable, AsChangeset)]
+        #[diesel(table_name = person, primary_key(ms_user_id))]
+        struct Upsert<'a> {
+            ms_user_id: Option<&'a Uuid>,
+            name: &'a str,
+            email: &'a str,
+            hashed_api_key: Option<&'a HashedApiKey>,
+            institution_id: &'a Uuid,
+            verified: bool,
         }
 
-        let api_key = ApiKey::new();
-        let hashed_api_key = api_key.hash();
+        let Self {
+            name,
+            email,
+            institution_id,
+            ms_user_id,
+            ..
+        } = &self;
 
-        // Instantiate a `NewUser` so we can use it as a wholesale insert in case this user doesn't exist
-        let new_user = NewUser {
-            person: self,
-            hashed_api_key,
-        };
-
-        // Also destructure the `NewUser` so we have granular control over which columns to set
-        let NewUser {
-            person:
-                NewPerson {
-                    name,
-                    email,
-                    institution_id,
-                    ms_user_id,
-                    ..
-                },
-            hashed_api_key,
-        } = &new_user;
-
-        let changes = || {
-            (
-                name_col.eq(name),
-                email_col.eq(email),
-                ms_user_id_col.eq(ms_user_id),
-                institution_col.eq(institution_id),
-            )
-        };
-
-        // This should probably be a separate function
-        let result = diesel::update(person::table)
+        let maybe_has_api_key = person::table
             .filter(ms_user_id_col.eq(ms_user_id))
-            .set(changes())
-            .returning(id_col)
+            .select(hashed_api_key_col.is_not_null())
             .get_result(db_conn)
-            .await;
+            .await
+            .optional()?;
 
-        let id = match result.optional() {
-            Ok(Some(id)) => id,
-            Ok(None) => {
-                diesel::insert_into(person::table)
-                    .values(&new_user)
-                    .on_conflict(email_col)
-                    .do_update()
-                    .set(changes())
-                    .returning(id_col)
-                    .get_result(db_conn)
-                    .await?
-            }
-            Err(e) => {
-                return Err(e.into());
-            }
+        let mut upsert = Upsert {
+            ms_user_id: ms_user_id.as_ref(),
+            name,
+            email,
+            hashed_api_key: None,
+            institution_id,
+            verified: true,
+        };
+
+        let (id, api_key) = if let Some(true) = maybe_has_api_key {
+            let id = diesel::update(person::table)
+                .filter(ms_user_id_col.eq(ms_user_id))
+                .set(upsert)
+                .returning(id_col)
+                .get_result(db_conn)
+                .await?;
+
+            (id, None)
+        } else {
+            diesel::update(person::table)
+                .filter(email_col.eq(email))
+                .set(verified_col.eq(false))
+                .execute(db_conn)
+                .await?;
+
+            let api_key = ApiKey::new();
+            let hash = api_key.hash();
+            upsert.hashed_api_key = Some(&hash);
+
+            let id = diesel::insert_into(person::table)
+                .values(upsert)
+                .returning(id_col)
+                .get_result(db_conn)
+                .await?;
+
+            (id, Some(api_key))
         };
 
         let person = fetch_by_id(id, db_conn).await?;
 
         Ok(CreatedUser {
             person,
-            api_key: api_key.into(),
+            api_key: api_key.map(std::convert::Into::into),
         })
     }
 }

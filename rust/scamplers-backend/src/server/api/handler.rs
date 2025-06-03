@@ -9,7 +9,7 @@ use valuable::Valuable;
 
 use crate::{
     db::model::person::WriteLogin,
-    server::{AppState2, auth::Frontend},
+    server::{AppState, auth::Frontend},
 };
 
 use super::error::{Error, Result};
@@ -44,7 +44,7 @@ impl<T: Serialize> IntoResponse for ValidJson<T> {
 
 pub(super) async fn new_user(
     _auth: Frontend,
-    State(app_state): State<AppState2>,
+    State(app_state): State<AppState>,
     ValidJson(person): ValidJson<NewPerson>,
 ) -> Result<ValidJson<CreatedUser>> {
     tracing::debug!(deserialized_person = person.as_value());

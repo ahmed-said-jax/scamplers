@@ -120,6 +120,21 @@ pub fn select_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn update_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let struct_item = parse_macro_input!(input as ItemStruct);
+
+    let table_name = parse_macro_input!(attr as syn::Path);
+
+    let output = quote! {
+        #[derive(serde::Serialize, diesel::prelude::AsChangeset, valuable::Valuable, Debug)]
+        #[diesel(table_name = #table_name, check_for_backend(diesel::pg::Pg))]
+        #struct_item
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
 pub fn filter_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
@@ -207,6 +222,8 @@ pub fn db_json(_attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 // This is massive and ugly and needs to be split for testability
+/// Docs
+/// # Panics
 #[proc_macro_attribute]
 pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_def = parse_macro_input!(input as ItemStruct);
@@ -222,16 +239,16 @@ pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
             panic!("expected array of tuples");
         };
 
-        if inner_elems.len() != 2 {
-            panic!(
-                "expected 2 types (a data type and a return type), found {}",
-                inner_elems.len()
-            )
-        }
+        assert!(
+            inner_elems.len() == 2,
+            "expected 2 types (a data type and a return type), found {}",
+            inner_elems.len()
+        );
 
-        if !inner_elems.iter().all(|e| matches!(e, Expr::Path(_))) {
-            panic!("expected paths to types")
-        }
+        assert!(
+            inner_elems.iter().all(|e| matches!(e, Expr::Path(_))),
+            "expected paths to types"
+        );
 
         let inner_elems: Vec<_> = inner_elems
             .iter()

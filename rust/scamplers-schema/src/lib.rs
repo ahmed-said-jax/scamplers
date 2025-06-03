@@ -251,8 +251,9 @@ diesel::table! {
         email -> Text,
         institution_id -> Uuid,
         orcid -> Nullable<Text>,
-        ms_user_id -> Uuid,
+        ms_user_id -> Nullable<Uuid>,
         hashed_api_key -> Nullable<HashedKey>,
+        verified -> Bool,
     }
 }
 

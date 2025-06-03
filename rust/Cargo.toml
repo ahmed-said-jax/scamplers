@@ -82,4 +82,5 @@ derive_builder = { version = "0.20.2" }
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 
-# a comment to test CI
+[workspace.lints.rust]
+async_fn_in_trait = "allow"

@@ -1,0 +1,32 @@
+repos:
+  - repo: local
+    hooks:
+      - id: fix-rust
+        name: Fix Rust Code
+        entry: ./scripts/fix-rust.sh
+        language: script
+        pass_filenames: false
+
+      - id: build-scamplers-core
+        name: Build scamplers-core
+        entry: ./scripts/build-scamplers-core.sh
+        language: script
+        pass_filenames: false
+
+      - id: fix-typescript
+        name: Fix TypeScript Code
+        entry: ./scripts/fix-typescript.sh
+        language: script
+        pass_filenames: false
+
+      - id: fix-sql
+        name: Fix SQL Code
+        entry: ./scripts/fix-sql.sh
+        language: script
+        pass_filenames: false
+
+      - id: prepare-dependabot-package-json
+        name: Prepare dependabot package.json
+        entry: ./scripts/prepare-dependabot-package-json.sh
+        language: script
+        pass_filenames: false
