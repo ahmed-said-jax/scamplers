@@ -24,9 +24,3 @@ repos:
         entry: ./scripts/fix-sql.sh
         language: script
         pass_filenames: false
-
-      - id: prepare-dependabot-package-json
-        name: Prepare dependabot package.json
-        entry: ./scripts/prepare-dependabot-package-json.sh
-        language: script
-        pass_filenames: false
