@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table multiplexed_suspension (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/samples/' || id) stored not null,

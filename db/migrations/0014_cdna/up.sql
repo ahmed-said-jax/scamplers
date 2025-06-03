@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table cdna (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/cdna/' || id) stored not null,

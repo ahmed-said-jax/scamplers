@@ -1,4 +1,3 @@
--- Your SQL goes here
 grant select on all tables in schema public to public;
 grant all on all tables in schema public to app_admin;
 

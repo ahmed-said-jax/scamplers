@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table multiplexing_tag (
     id uuid primary key default gen_random_uuid(),
     tag_id text not null,

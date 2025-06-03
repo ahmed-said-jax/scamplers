@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table chemistry (
 -- we use name as primary key because that will not change
     name text primary key,

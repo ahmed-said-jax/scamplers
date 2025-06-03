@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table dataset_metadata (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/datasets/' || id) stored not null,

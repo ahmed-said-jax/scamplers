@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table chromium_run (
     id uuid primary key default gen_random_uuid(),
     link text generated always as ('/chromium_runs/' || id) stored not null,

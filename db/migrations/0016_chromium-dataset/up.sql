@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table chromium_dataset (
 -- use the metadata_id as the primary key for simplicity
     id uuid primary key references dataset_metadata on delete restrict on update restrict,

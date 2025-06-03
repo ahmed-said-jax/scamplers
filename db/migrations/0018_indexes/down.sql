@@ -1,5 +1,3 @@
--- This file should undo anything in `up.sql`
-
 -- drop index sample_lab_idx,
 -- sample_submitter_idx,
 -- sample_name_idx,
