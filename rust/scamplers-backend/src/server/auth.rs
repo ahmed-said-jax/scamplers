@@ -245,7 +245,7 @@ impl FromRequestParts<AppState> for Frontend {
             return Err(err);
         };
 
-        if frontend_auth.token() != config.lock().await.frontend_token() {
+        if frontend_auth.token() != config.frontend_token() {
             return Err(err);
         }
 

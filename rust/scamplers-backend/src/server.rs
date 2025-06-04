@@ -1,9 +1,8 @@
 #![allow(async_fn_in_trait)]
 use std::sync::Arc;
 
-use anyhow::Context;
-// use auth::{authenticate_api_request, authenticate_browser_request};
 use crate::{config::Config, db};
+use anyhow::Context;
 use axum::{Router, routing::get};
 use camino::Utf8PathBuf;
 use diesel_async::{
@@ -13,7 +12,7 @@ use diesel_async::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
-use tokio::{net::TcpListener, signal, sync::Mutex};
+use tokio::{net::TcpListener, signal};
 use tower_http::trace::TraceLayer;
 use util::DevContainer;
 use uuid::Uuid;
@@ -108,13 +107,13 @@ enum AppState {
         _pg_container: Arc<ContainerAsync<Postgres>>,
         user_id: Uuid,
         http_client: reqwest::Client,
-        config: Arc<Mutex<Config>>,
+        config: Arc<Config>,
     },
     Prod {
         db_pool: Pool<AsyncPgConnection>,
         db_root_pool: Option<Pool<AsyncPgConnection>>,
         http_client: reqwest::Client,
-        config: Arc<Mutex<Config>>,
+        config: Arc<Config>,
     },
 }
 impl AppState {
@@ -141,7 +140,7 @@ impl AppState {
                 _pg_container: Arc::new(pg_container),
                 user_id,
                 http_client: reqwest::Client::new(),
-                config: Arc::new(Mutex::new(config)),
+                config: Arc::new(config),
             }
         } else {
             let db_config =
@@ -156,7 +155,7 @@ impl AppState {
                 db_pool,
                 db_root_pool,
                 http_client: reqwest::Client::new(),
-                config: Arc::new(Mutex::new(config)),
+                config: Arc::new(config),
             }
         };
 
@@ -202,10 +201,7 @@ impl AppState {
 
         let password = match self {
             AppState::Dev { .. } => Uuid::now_v7().to_string(),
-            AppState::Prod { config, .. } => {
-                let config = config.lock().await;
-                config.db_login_user_password().to_string()
-            }
+            AppState::Prod { config, .. } => config.db_login_user_password().to_string(),
         };
 
         let mut db_conn = self.db_root_conn().await?;
@@ -235,8 +231,6 @@ impl AppState {
                 config,
                 ..
             } => {
-                let config = config.lock().await;
-
                 let seed_data = config.seed_data()?;
                 seed_data.write(&mut db_conn, http_client.clone()).await
             }
@@ -279,7 +273,6 @@ fn app(app_state: AppState) -> Router {
         .with_state(app_state)
 }
 
-// I don't entirely understand why I need to manually call `drop` here
 async fn shutdown_signal(app_state: AppState) {
     let ctrl_c = async {
         signal::ctrl_c()
