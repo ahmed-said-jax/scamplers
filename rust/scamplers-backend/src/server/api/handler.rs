@@ -51,7 +51,7 @@ pub(super) async fn new_user(
 
     let mut db_conn = app_state.db_conn().await?;
 
-    let session = person.write_ms_login(&mut db_conn).await?;
+    let created_user = person.write_ms_login(&mut db_conn).await?;
 
-    Ok(ValidJson(session))
+    Ok(ValidJson(created_user))
 }

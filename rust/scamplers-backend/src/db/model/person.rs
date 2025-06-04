@@ -1,6 +1,9 @@
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use scamplers_core::model::person::{CreatedUser, NewPerson, Person, PersonQuery};
+use scamplers_core::model::{
+    Pagination,
+    person::{CreatedUser, NewPerson, Person, PersonOrdering, PersonQuery, PersonSummary},
+};
 use scamplers_schema::{
     institution,
     person::{
@@ -25,7 +28,7 @@ define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
     db::{
-        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression,
+        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, FetchByFilter, FetchById,
         util::{AsIlike, DieselExpressionBuilder},
     },
     server::auth::{ApiKey, HashedApiKey},
@@ -63,11 +66,77 @@ where
     }
 }
 
+impl AsDieselQueryBase for PersonSummary {
+    type QueryBase = person::table;
+
+    fn as_diesel_query_base() -> Self::QueryBase {
+        person::table
+    }
+}
+
+impl FetchByFilter for PersonSummary {
+    type QueryParams = PersonQuery;
+
+    async fn fetch_by_filter(
+        query: Self::QueryParams,
+        db_conn: &mut AsyncPgConnection,
+    ) -> crate::db::error::Result<Vec<Self>> {
+        use scamplers_core::model::person::PersonOrdinalColumn::{Email, Id, Name};
+
+        let PersonQuery {
+            order_by,
+            pagination: Pagination { limit, offset },
+            ..
+        } = &query;
+
+        let mut query_base = Self::as_diesel_query_base()
+            .select(Self::as_select())
+            .limit(*limit)
+            .offset(*offset)
+            .into_boxed();
+        let filter = query.as_diesel_filter();
+
+        if let Some(filter) = filter {
+            query_base = query_base.filter(filter);
+        }
+
+        for PersonOrdering { column, descending } in order_by {
+            query_base = match (column, descending) {
+                (Id, false) => query_base.then_order_by(id_col.asc()),
+                (Id, true) => query_base.then_order_by(id_col.desc()),
+                (Name, false) => query_base.then_order_by(name_col.asc()),
+                (Name, true) => query_base.then_order_by(name_col.desc()),
+                (Email, false) => query_base.then_order_by(email_col.asc()),
+                (Email, true) => query_base.then_order_by(email_col.desc()),
+            };
+        }
+
+        let people = query_base.load(db_conn).await?;
+
+        Ok(people)
+    }
+}
+
 impl AsDieselQueryBase for Person {
     type QueryBase = InnerJoin<person::table, institution::table>;
 
     fn as_diesel_query_base() -> Self::QueryBase {
-        person::table.inner_join(institution::table)
+        PersonSummary::as_diesel_query_base().inner_join(institution::table)
+    }
+}
+
+impl FetchById for Person {
+    type Id = Uuid;
+
+    async fn fetch_by_id(
+        id: Self::Id,
+        db_conn: &mut AsyncPgConnection,
+    ) -> crate::db::error::Result<Self> {
+        Ok(Self::as_diesel_query_base()
+            .select(Self::as_select())
+            .filter(id_col.eq(id))
+            .get_result(db_conn)
+            .await?)
     }
 }
 

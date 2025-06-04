@@ -1,6 +1,4 @@
 use diesel::{pg::Pg, prelude::*, sql_types};
-use serde::Deserialize;
-use valuable::Valuable;
 
 pub(super) type BoxedDieselExpression<'a, Table> =
     Box<dyn BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a>;
@@ -32,42 +30,6 @@ impl<'a, Table: 'a> DieselExpressionBuilder<'a, Table> {
         let Self(query) = self;
 
         query
-    }
-}
-
-#[derive(Deserialize, Valuable)]
-#[valuable(transparent)]
-pub(super) struct QueryLimit(i64);
-impl Default for QueryLimit {
-    fn default() -> Self {
-        const DEFAULT_QUERY_LIMIT: i64 = 500;
-        Self(DEFAULT_QUERY_LIMIT)
-    }
-}
-impl From<QueryLimit> for i64 {
-    fn from(value: QueryLimit) -> Self {
-        value.0
-    }
-}
-impl From<&QueryLimit> for i64 {
-    fn from(value: &QueryLimit) -> Self {
-        value.0
-    }
-}
-impl From<i64> for QueryLimit {
-    fn from(value: i64) -> Self {
-        Self(value)
-    }
-}
-impl From<i32> for QueryLimit {
-    fn from(value: i32) -> Self {
-        Self(i64::from(value))
-    }
-}
-impl From<usize> for QueryLimit {
-    /// # Panics
-    fn from(value: usize) -> Self {
-        Self(i64::try_from(value).unwrap())
     }
 }
 

@@ -1,8 +1,10 @@
+use crate::model::Pagination;
+
 use super::{AsEndpoint, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct},
+    scamplers_macros::{db_enum, insert_struct, ordinal_columns, query_struct, select_struct},
     scamplers_schema::person,
 };
 
@@ -49,8 +51,30 @@ pub struct Person {
 }
 impl AsEndpoint for Person {
     fn as_endpoint() -> &'static str {
-        "people"
+        "/people/{id}"
     }
+}
+
+#[cfg_attr(feature = "backend", select_struct(person))]
+#[cfg_attr(feature = "typescript", api_response)]
+pub struct PersonSummary {
+    pub id: Uuid,
+    pub name: String,
+    pub link: String,
+    pub email: String,
+    pub orcid: Option<String>,
+}
+impl AsEndpoint for PersonSummary {
+    fn as_endpoint() -> &'static str {
+        "/people"
+    }
+}
+
+#[cfg_attr(feature = "backend", select_struct(person))]
+#[cfg_attr(feature = "typescript", api_response)]
+pub struct PersonReference {
+    pub id: Uuid,
+    pub link: String,
 }
 
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
@@ -65,7 +89,23 @@ impl AsEndpoint for CreatedUser {
     }
 }
 
-#[cfg_attr(feature = "backend", filter_struct(person))]
+#[cfg_attr(feature = "backend", ordinal_columns)]
+#[cfg_attr(feature = "typescript", api_enum)]
+pub enum PersonOrdinalColumn {
+    Id,
+    #[default]
+    Name,
+    Email,
+}
+
+#[cfg_attr(feature = "backend", query_struct)]
+#[cfg_attr(feature = "typescript", api_request)]
+pub struct PersonOrdering {
+    pub column: PersonOrdinalColumn,
+    pub descending: bool,
+}
+
+#[cfg_attr(feature = "backend", query_struct)]
 #[cfg_attr(feature = "typescript", api_request)]
 pub struct PersonQuery {
     #[cfg_attr(feature = "backend", serde(default))]
@@ -75,4 +115,8 @@ pub struct PersonQuery {
     pub name: Option<String>,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub email: Option<String>,
+    #[cfg_attr(feature = "backend", serde(default))]
+    pub order_by: Vec<PersonOrdering>,
+    #[cfg_attr(feature = "backend", serde(default))]
+    pub pagination: Pagination,
 }

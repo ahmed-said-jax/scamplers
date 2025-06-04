@@ -13,7 +13,7 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let builder_error_name = format_ident!("{struct_name}Error");
 
     let output = quote! {
-        #[derive(serde::Serialize, Clone, derive_builder::Builder, Default)]
+        #[derive(serde::Serialize, Clone, derive_builder::Builder)]
         #[builder(pattern = "owned", build_fn(error = #builder_error_name))]
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
@@ -135,7 +135,7 @@ pub fn update_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn filter_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn query_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
     let output = quote! {
@@ -216,6 +216,20 @@ pub fn db_json(_attr: TokenStream, input: TokenStream) -> TokenStream {
                 ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
             }
         }
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn ordinal_columns(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let enum_with_derives = derive_enum(input);
+
+    let item = parse_macro_input!(enum_with_derives as ItemEnum);
+
+    let output = quote! {
+        #[derive(Debug, valuable::Valuable)]
+        #item
     };
 
     output.into()
