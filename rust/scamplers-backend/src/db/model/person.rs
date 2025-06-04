@@ -24,7 +24,10 @@ define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<T
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
-    db::{AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, util::AsIlike},
+    db::{
+        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression,
+        util::{AsIlike, DieselExpressionBuilder},
+    },
     server::auth::{ApiKey, HashedApiKey},
 };
 
@@ -42,26 +45,21 @@ where
             ids, name, email, ..
         } = self;
 
-        if matches!((ids.is_empty(), name, email), (true, None, None)) {
-            return None;
+        let mut query = DieselExpressionBuilder::default();
+
+        if !ids.is_empty() {
+            query = query.and(id_col.eq_any(ids));
         }
 
-        // In theory, we could initialize this with `let mut query = None;`, but that results in a lot of boilerplate
-        let mut query: BoxedDieselExpression<Table> = if ids.is_empty() {
-            Box::new(id_col.is_not_null())
-        } else {
-            Box::new(id_col.eq_any(ids))
-        };
-
         if let Some(name) = name {
-            query = Box::new(query.and(name_col.ilike(name.as_ilike())));
+            query = query.and(name_col.ilike(name.as_ilike()));
         }
 
         if let Some(email) = email {
-            query = Box::new(query.and(email_col.ilike(email.as_ilike())));
+            query = query.and(email_col.ilike(email.as_ilike()));
         }
 
-        Some(query)
+        query.build()
     }
 }
 

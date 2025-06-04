@@ -3,14 +3,8 @@ pub mod model;
 pub mod seed_data;
 mod util;
 
-use diesel::BoxableExpression;
-use diesel::pg::Pg;
-use diesel::sql_types;
 use diesel_async::AsyncPgConnection;
-use util::QueryLimit;
-
-type BoxedDieselExpression<'a, Table> =
-    Box<dyn BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a>;
+use util::{BoxedDieselExpression, QueryLimit};
 
 trait AsDieselFilter<Table = ()> {
     fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
