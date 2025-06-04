@@ -188,8 +188,6 @@ impl WriteLogin for NewPerson {
                 .get_result(db_conn)
                 .await?;
 
-            // let (_, id) = tokio::try_join!(unverification, insertion)?;
-
             (id, Some(api_key))
         };
 
