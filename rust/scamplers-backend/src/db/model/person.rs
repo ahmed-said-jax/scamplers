@@ -7,7 +7,7 @@ use scamplers_schema::{
         self,
         dsl::{
             email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
-            ms_user_id as ms_user_id_col, name as name_col, verified as verified_col,
+            ms_user_id as ms_user_id_col, name as name_col, verified_email as verified_email_col,
         },
     },
 };
@@ -121,9 +121,9 @@ impl WriteLogin for NewPerson {
             ms_user_id: Option<&'a Uuid>,
             name: &'a str,
             email: &'a str,
+            verified_email: bool,
             hashed_api_key: Option<&'a HashedApiKey>,
             institution_id: &'a Uuid,
-            verified: bool,
         }
 
         let Self {
@@ -134,6 +134,7 @@ impl WriteLogin for NewPerson {
             ..
         } = &self;
 
+        // If the user exists, do they have an API key (this indicates they've logged in before)?
         let maybe_has_api_key = person::table
             .filter(ms_user_id_col.eq(ms_user_id))
             .select(hashed_api_key_col.is_not_null())
@@ -145,11 +146,12 @@ impl WriteLogin for NewPerson {
             ms_user_id: ms_user_id.as_ref(),
             name,
             email,
+            verified_email: true,
             hashed_api_key: None,
             institution_id,
-            verified: true,
         };
 
+        // If a user exists with that `ms_user_id` and has an API key, we just need to update their name and email with the information we get from Microsoft Entra ID. This is a non-operation almost every single time because people rarely change their names, emails, and institutions
         let (id, api_key) = if let Some(true) = maybe_has_api_key {
             let id = diesel::update(person::table)
                 .filter(ms_user_id_col.eq(ms_user_id))
@@ -158,23 +160,35 @@ impl WriteLogin for NewPerson {
                 .get_result(db_conn)
                 .await?;
 
+            // We know this is someone who has logged in before and generated an API key. We shouldn't change their API key, so setting it to `None` informs the frontend not to change the API key value in the session
             (id, None)
+
+        // If not, then either:
+        // 1. A user with that `ms_user_id` exists but has no API key (so they haven't logged in before)
+        // 2. No user with that `ms_user_id` exists
         } else {
+            // We know that whoever just logged in is the actual owner of this email address. Anyone else that has this email should be unverified. This is a rare case, but we emit this command nonetheless just to be sure
             diesel::update(person::table)
                 .filter(email_col.eq(email))
-                .set(verified_col.eq(false))
+                .set(verified_email_col.eq(false))
                 .execute(db_conn)
                 .await?;
 
+            // Since this is a new login, the new user needs an API key
             let api_key = ApiKey::new();
             let hash = api_key.hash();
+
+            // Add it to the `upsert` to be emitted to the db
             upsert.hashed_api_key = Some(&hash);
 
+            // Insert the new user, specifying their email is verified (see the definition of `upsert` variable above)
             let id = diesel::insert_into(person::table)
                 .values(upsert)
                 .returning(id_col)
                 .get_result(db_conn)
                 .await?;
+
+            // let (_, id) = tokio::try_join!(unverification, insertion)?;
 
             (id, Some(api_key))
         };

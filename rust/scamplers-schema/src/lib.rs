@@ -249,11 +249,11 @@ diesel::table! {
         link -> Text,
         name -> Text,
         email -> Text,
+        verified_email -> Bool,
         institution_id -> Uuid,
         orcid -> Nullable<Text>,
         ms_user_id -> Nullable<Uuid>,
         hashed_api_key -> Nullable<HashedKey>,
-        verified -> Bool,
     }
 }
 
