@@ -92,7 +92,6 @@ impl Endpoint for CreatedUser {
 #[cfg_attr(feature = "backend", ordinal_columns)]
 #[cfg_attr(feature = "typescript", api_enum)]
 pub enum PersonOrdinalColumn {
-    Id,
     #[default]
     Name,
     Email,

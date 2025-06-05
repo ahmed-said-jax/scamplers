@@ -1,9 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 export enum PersonOrdinalColumn {
-  Id = 0,
-  Name = 1,
-  Email = 2,
+  Name = 0,
+  Email = 1,
 }
 export enum UserRole {
   AppAdmin = 0,

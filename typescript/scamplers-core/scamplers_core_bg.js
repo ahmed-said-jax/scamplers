@@ -261,12 +261,11 @@ function __wbg_adapter_246(arg0, arg1, arg2, arg3) {
 }
 
 /**
- * @enum {0 | 1 | 2}
+ * @enum {0 | 1}
  */
 export const PersonOrdinalColumn = Object.freeze({
-    Id: 0, "0": "Id",
-    Name: 1, "1": "Name",
-    Email: 2, "2": "Email",
+    Name: 0, "0": "Name",
+    Email: 1, "1": "Email",
 });
 /**
  * @enum {0 | 1 | 2 | 3}

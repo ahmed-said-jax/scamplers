@@ -79,7 +79,7 @@ impl FetchByQuery for PersonSummary {
         query: &Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<Vec<Self>> {
-        use scamplers_core::model::person::PersonOrdinalColumn::{Email, Id, Name};
+        use scamplers_core::model::person::PersonOrdinalColumn::{Email, Name};
 
         let PersonQuery {
             order_by,
@@ -102,8 +102,6 @@ impl FetchByQuery for PersonSummary {
         // This is horrendous and not scalable
         for PersonOrdering { column, descending } in order_by {
             statement = match (column, descending) {
-                (Id, false) => statement.then_order_by(id_col.asc()),
-                (Id, true) => statement.then_order_by(id_col.desc()),
                 (Name, false) => statement.then_order_by(name_col.asc()),
                 (Name, true) => statement.then_order_by(name_col.desc()),
                 (Email, false) => statement.then_order_by(email_col.asc()),
