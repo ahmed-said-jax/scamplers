@@ -1,5 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
+export enum InstitutionOrdinalColumn {
+  Name = 0,
+}
 export enum PersonOrdinalColumn {
   Name = 0,
   Email = 1,
@@ -25,6 +28,82 @@ export class CreatedUser {
   set api_key(value: string | null | undefined);
 }
 export class Institution {
+  private constructor();
+  free(): void;
+  id: string;
+  name: string;
+  link: string;
+}
+export class InstitutionOrdering {
+  private constructor();
+  free(): void;
+  static new(): InstitutionOrderingBuilder;
+  column: InstitutionOrdinalColumn;
+  descending: boolean;
+}
+/**
+ * Builder for [`InstitutionOrdering`](struct.InstitutionOrdering.html).
+ */
+export class InstitutionOrderingBuilder {
+  private constructor();
+  free(): void;
+  column(value: InstitutionOrdinalColumn): InstitutionOrderingBuilder;
+  descending(value: boolean): InstitutionOrderingBuilder;
+  /**
+   * Builds a new `InstitutionOrdering`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): InstitutionOrdering;
+}
+export class InstitutionOrderingError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class InstitutionQuery {
+  private constructor();
+  free(): void;
+  static new(): InstitutionQueryBuilder;
+  ids: string[];
+  get name(): string;
+  set name(value: string | null | undefined);
+  order_by: InstitutionOrdering[];
+  pagination: Pagination;
+}
+/**
+ * Builder for [`InstitutionQuery`](struct.InstitutionQuery.html).
+ */
+export class InstitutionQueryBuilder {
+  private constructor();
+  free(): void;
+  ids(value: string[]): InstitutionQueryBuilder;
+  name(value?: string | null): InstitutionQueryBuilder;
+  order_by(value: InstitutionOrdering[]): InstitutionQueryBuilder;
+  pagination(value: Pagination): InstitutionQueryBuilder;
+  /**
+   * Builds a new `InstitutionQuery`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): InstitutionQuery;
+}
+export class InstitutionQueryError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class InstitutionReference {
+  private constructor();
+  free(): void;
+  id: string;
+  link: string;
+}
+export class InstitutionSummary {
   private constructor();
   free(): void;
   id: string;

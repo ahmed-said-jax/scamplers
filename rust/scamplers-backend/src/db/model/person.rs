@@ -1,4 +1,4 @@
-use crate::db::{NewBoxedDieselExpression, util::BoxedDieselExpression};
+use crate::db::{NewBoxedDieselExpression, Write, util::BoxedDieselExpression};
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
@@ -10,8 +10,9 @@ use scamplers_schema::{
     person::{
         self,
         dsl::{
-            email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
-            ms_user_id as ms_user_id_col, name as name_col, verified_email as verified_email_col,
+            email as email_col, email_verified as email_verified_col,
+            hashed_api_key as hashed_api_key_col, id as id_col, ms_user_id as ms_user_id_col,
+            name as name_col,
         },
     },
 };
@@ -32,15 +33,15 @@ use crate::{
     server::auth::{ApiKey, HashedApiKey},
 };
 
-impl<Table> AsDieselFilter<Table> for PersonQuery
+impl<QuerySource> AsDieselFilter<QuerySource> for PersonQuery
 where
-    id_col: SelectableExpression<Table>,
-    name_col: SelectableExpression<Table>,
-    email_col: SelectableExpression<Table>,
+    id_col: SelectableExpression<QuerySource>,
+    name_col: SelectableExpression<QuerySource>,
+    email_col: SelectableExpression<QuerySource>,
 {
-    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
-        Table: 'a,
+        QuerySource: 'a,
     {
         let Self {
             ids, name, email, ..
@@ -138,6 +139,22 @@ impl FetchById for Person {
     }
 }
 
+impl Write for NewPerson {
+    type Returns = Person;
+    async fn write(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> crate::db::error::Result<Self::Returns> {
+        let id = diesel::insert_into(person::table)
+            .values(self)
+            .returning(id_col)
+            .get_result(db_conn)
+            .await?;
+
+        Person::fetch_by_id(&id, db_conn).await
+    }
+}
+
 pub trait WriteLogin {
     async fn write_ms_login(
         self,
@@ -156,7 +173,7 @@ impl WriteLogin for NewPerson {
             ms_user_id: Option<&'a Uuid>,
             name: &'a str,
             email: &'a str,
-            verified_email: bool,
+            email_verified: bool,
             hashed_api_key: Option<&'a HashedApiKey>,
             institution_id: &'a Uuid,
         }
@@ -181,7 +198,7 @@ impl WriteLogin for NewPerson {
             ms_user_id: ms_user_id.as_ref(),
             name,
             email,
-            verified_email: true,
+            email_verified: true,
             hashed_api_key: None,
             institution_id,
         };
@@ -205,7 +222,7 @@ impl WriteLogin for NewPerson {
             // We know that whoever just logged in is the actual owner of this email address. Anyone else that has this email should be unverified. This is a rare case, but we emit this command nonetheless just to be sure
             diesel::update(person::table)
                 .filter(email_col.eq(email))
-                .set(verified_email_col.eq(false))
+                .set(email_verified_col.eq(false))
                 .execute(db_conn)
                 .await?;
 

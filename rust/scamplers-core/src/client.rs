@@ -53,15 +53,15 @@ impl Client {
         api_key: Option<String>,
     ) -> Result<Resp, JsValue>
     where
-        Req: Serialize,
-        Resp: Endpoint + DeserializeOwned,
+        Req: Serialize + Endpoint,
+        Resp: DeserializeOwned,
     {
         let Self {
             backend_url,
             client,
         } = self;
 
-        let endpoint = Resp::endpoint();
+        let endpoint = Req::endpoint();
 
         let mut request = client.post(&format!("{backend_url}{endpoint}")).json(data);
 

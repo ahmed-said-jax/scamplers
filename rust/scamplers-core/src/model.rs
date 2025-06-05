@@ -11,8 +11,9 @@ pub mod sequencing_run;
 use scamplers_macros::api_request;
 
 pub trait Endpoint {
-    fn endpoint() -> &'static str;
+    fn endpoint() -> String;
 }
+const SEARCH_SUFFIX: &str = "search";
 
 #[cfg_attr(feature = "typescript", api_request)]
 #[cfg_attr(
@@ -31,4 +32,8 @@ impl Default for Pagination {
             offset: 0,
         }
     }
+}
+
+fn default_ordering<T: Default>() -> Vec<T> {
+    vec![T::default()]
 }

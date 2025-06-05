@@ -1,10 +1,12 @@
 use axum::{
     Json,
     extract::{FromRequest, Path, State, rejection::JsonRejection},
+    response::{IntoResponse, Response},
 };
 use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
 use garde::Validate;
 use scamplers_core::model::person::{CreatedUser, NewPerson};
+use serde::Serialize;
 use valuable::Valuable;
 
 use crate::{
@@ -39,6 +41,14 @@ where
     }
 }
 
+impl<T: Serialize> IntoResponse for ValidJson<T> {
+    fn into_response(self) -> Response {
+        let Self(inner) = self;
+
+        axum::Json(inner).into_response()
+    }
+}
+
 pub(super) async fn new_user(
     _auth: Frontend,
     State(app_state): State<AppState>,
@@ -59,9 +69,11 @@ pub async fn write<Data>(
     ValidJson(data): ValidJson<Data>,
 ) -> super::error::Result<Json<Data::Returns>>
 where
-    Data: crate::db::Write + Send,
+    Data: crate::db::Write + Send + valuable::Valuable,
     Data::Returns: Send,
 {
+    tracing::info!(deserialized_data = data.as_value());
+
     let mut db_conn = app_state.db_conn().await?;
 
     let item = db_conn
@@ -85,8 +97,10 @@ pub async fn by_id<Resource>(
 ) -> super::error::Result<Json<Resource>>
 where
     Resource: crate::db::FetchById + Send,
-    Resource::Id: Send + Sync,
+    Resource::Id: Send + Sync + valuable::Valuable,
 {
+    tracing::info!(deserialized_id = resource_id.as_value());
+
     let mut db_conn = app_state.db_conn().await?;
 
     let item = db_conn
@@ -106,12 +120,14 @@ where
 pub async fn by_query<Resource>(
     User(user_id): User,
     State(app_state): State<AppState>,
-    Json(query): Json<Resource::QueryParams>,
+    ValidJson(query): ValidJson<Resource::QueryParams>,
 ) -> super::error::Result<Json<Vec<Resource>>>
 where
     Resource: crate::db::FetchByQuery + Send,
-    Resource::QueryParams: Send,
+    Resource::QueryParams: Send + valuable::Valuable,
 {
+    tracing::info!(deserialized_query = query.as_value());
+
     let mut db_conn = app_state.db_conn().await?;
 
     let item = db_conn

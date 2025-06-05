@@ -11,7 +11,10 @@ use {
 #[cfg(feature = "typescript")]
 use scamplers_macros::{api_enum, api_request, api_response};
 
+use super::SEARCH_SUFFIX;
 use uuid::Uuid;
+
+const ENDPOINT: &str = "/people";
 
 #[cfg_attr(feature = "backend", db_enum)]
 #[cfg_attr(feature = "typescript", api_enum)]
@@ -37,6 +40,17 @@ pub struct NewPerson {
     #[cfg_attr(feature = "typescript", builder(default))]
     pub roles: Vec<UserRole>,
 }
+impl Endpoint for NewPerson {
+    fn endpoint() -> String {
+        ENDPOINT.to_string()
+    }
+}
+impl NewPerson {
+    #[must_use]
+    pub fn new_user_endpoint() -> String {
+        "/users".to_string()
+    }
+}
 
 #[cfg_attr(feature = "backend", select_struct(person))]
 #[cfg_attr(feature = "typescript", api_response)]
@@ -50,8 +64,8 @@ pub struct Person {
     pub institution: Institution,
 }
 impl Endpoint for Person {
-    fn endpoint() -> &'static str {
-        "/people/{id}"
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{{person_id}}")
     }
 }
 
@@ -65,8 +79,8 @@ pub struct PersonSummary {
     pub orcid: Option<String>,
 }
 impl Endpoint for PersonSummary {
-    fn endpoint() -> &'static str {
-        "/people"
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
     }
 }
 
@@ -82,11 +96,6 @@ pub struct PersonReference {
 pub struct CreatedUser {
     pub person: Person,
     pub api_key: Option<String>,
-}
-impl Endpoint for CreatedUser {
-    fn endpoint() -> &'static str {
-        "/users"
-    }
 }
 
 #[cfg_attr(feature = "backend", ordinal_columns)]
@@ -114,7 +123,7 @@ pub struct PersonQuery {
     pub name: Option<String>,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub email: Option<String>,
-    #[cfg_attr(feature = "backend", serde(default))]
+    #[cfg_attr(feature = "backend", serde(default = "super::default_ordering"))]
     pub order_by: Vec<PersonOrdering>,
     #[cfg_attr(feature = "backend", serde(default))]
     pub pagination: Pagination,

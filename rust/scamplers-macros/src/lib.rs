@@ -139,7 +139,8 @@ pub fn query_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
     let output = quote! {
-        #[derive(serde::Deserialize, valuable::Valuable, Debug, Default)]
+        #[derive(serde::Deserialize, valuable::Valuable, Debug, Default, garde::Validate)]
+        #[garde(allow_unvalidated)]
         #struct_item
     };
 
