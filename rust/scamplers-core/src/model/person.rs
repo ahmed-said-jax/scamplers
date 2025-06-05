@@ -1,6 +1,6 @@
 use crate::model::Pagination;
 
-use super::{AsEndpoint, institution::Institution};
+use super::{Endpoint, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
@@ -49,8 +49,8 @@ pub struct Person {
     #[cfg_attr(feature = "backend", diesel(embed))]
     pub institution: Institution,
 }
-impl AsEndpoint for Person {
-    fn as_endpoint() -> &'static str {
+impl Endpoint for Person {
+    fn endpoint() -> &'static str {
         "/people/{id}"
     }
 }
@@ -64,8 +64,8 @@ pub struct PersonSummary {
     pub email: String,
     pub orcid: Option<String>,
 }
-impl AsEndpoint for PersonSummary {
-    fn as_endpoint() -> &'static str {
+impl Endpoint for PersonSummary {
+    fn endpoint() -> &'static str {
         "/people"
     }
 }
@@ -83,8 +83,8 @@ pub struct CreatedUser {
     pub person: Person,
     pub api_key: Option<String>,
 }
-impl AsEndpoint for CreatedUser {
-    fn as_endpoint() -> &'static str {
+impl Endpoint for CreatedUser {
+    fn endpoint() -> &'static str {
         "/users"
     }
 }

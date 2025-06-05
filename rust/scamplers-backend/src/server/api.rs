@@ -5,11 +5,12 @@ use axum::{
     routing::{get, post},
 };
 use scamplers_core::model::{
-    AsEndpoint,
+    Endpoint,
+    institution::{Institution, NewInstitution},
     person::{CreatedUser, Person, PersonSummary},
 };
 
-use crate::server::api::handler::{by_id, by_query};
+use crate::server::api::handler::{by_id, by_query, write};
 
 use super::AppState;
 
@@ -19,15 +20,15 @@ mod handler;
 pub(super) fn router() -> Router<AppState> {
     use handler::new_user;
 
-    let endpoints: HashMap<&str, [&str; 1], RandomState> =
-        HashMap::from_iter([("available_endpoints", [""])]);
+    let endpoints: HashMap<&str, [&str; 2], RandomState> = HashMap::from_iter([(
+        "available_endpoints",
+        [Institution::endpoint(), Person::endpoint()],
+    )]);
 
     Router::new()
         .route("/", get(|| async { axum::Json(endpoints) }))
-        .route(CreatedUser::as_endpoint(), post(new_user))
-        .route(Person::as_endpoint(), post(by_id::<Person>))
-        .route(
-            PersonSummary::as_endpoint(),
-            post(by_query::<PersonSummary>),
-        )
+        .route(Institution::endpoint(), post(write::<NewInstitution>))
+        .route(CreatedUser::endpoint(), post(new_user))
+        .route(Person::endpoint(), post(by_id::<Person>))
+        .route(PersonSummary::endpoint(), post(by_query::<PersonSummary>))
 }

@@ -53,6 +53,31 @@ pub(super) async fn new_user(
     Ok(Json(created_user))
 }
 
+pub async fn write<Data>(
+    User(user_id): User,
+    State(app_state): State<AppState>,
+    ValidJson(data): ValidJson<Data>,
+) -> super::error::Result<Json<Data::Returns>>
+where
+    Data: crate::db::Write + Send,
+    Data::Returns: Send,
+{
+    let mut db_conn = app_state.db_conn().await?;
+
+    let item = db_conn
+        .transaction(|conn| {
+            async move {
+                set_transaction_user(&user_id, conn).await?;
+
+                data.write(conn).await
+            }
+            .scope_boxed()
+        })
+        .await?;
+
+    Ok(Json(item))
+}
+
 pub async fn by_id<Resource>(
     User(user_id): User,
     State(app_state): State<AppState>,

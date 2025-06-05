@@ -1,6 +1,6 @@
 #[cfg(feature = "typescript")]
 use {
-    crate::model::AsEndpoint,
+    crate::model::Endpoint,
     crate::model::{
         institution::{Institution, NewInstitution},
         person::{CreatedUser, NewPerson, NewPerson as NewMsLogin, Person},
@@ -54,14 +54,14 @@ impl Client {
     ) -> Result<Resp, JsValue>
     where
         Req: Serialize,
-        Resp: AsEndpoint + DeserializeOwned,
+        Resp: Endpoint + DeserializeOwned,
     {
         let Self {
             backend_url,
             client,
         } = self;
 
-        let endpoint = Resp::as_endpoint();
+        let endpoint = Resp::endpoint();
 
         let mut request = client.post(&format!("{backend_url}{endpoint}")).json(data);
 

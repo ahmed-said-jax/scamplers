@@ -10,8 +10,8 @@ pub mod sequencing_run;
 #[cfg(feature = "typescript")]
 use scamplers_macros::api_request;
 
-pub trait AsEndpoint {
-    fn as_endpoint() -> &'static str;
+pub trait Endpoint {
+    fn endpoint() -> &'static str;
 }
 
 #[cfg_attr(feature = "typescript", api_request)]

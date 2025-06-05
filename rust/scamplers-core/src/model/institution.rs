@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use super::AsEndpoint;
+use super::Endpoint;
 
 #[cfg(feature = "backend")]
 use {
@@ -26,8 +26,8 @@ pub struct Institution {
     pub name: String,
     pub link: String,
 }
-impl AsEndpoint for Institution {
-    fn as_endpoint() -> &'static str {
+impl Endpoint for Institution {
+    fn endpoint() -> &'static str {
         "/institutions"
     }
 }

@@ -48,7 +48,10 @@ trait AsDieselQueryBase {
 pub trait Write {
     type Returns;
 
-    async fn write(self, db_conn: &mut AsyncPgConnection) -> error::Result<Self::Returns>;
+    fn write(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = error::Result<Self::Returns>> + Send;
 }
 
 pub trait FetchById: Sized {
