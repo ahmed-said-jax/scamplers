@@ -220,6 +220,7 @@ where
     index2_workflow_b_i5: Str,
 }
 
+#[allow(clippy::implicit_hasher)]
 impl Write for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = ();
 
