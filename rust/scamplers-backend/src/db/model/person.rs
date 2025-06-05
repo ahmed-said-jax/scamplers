@@ -28,7 +28,7 @@ define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<T
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
-    db::{AsDieselFilter, AsDieselQueryBase, FetchByFilter, FetchById, util::AsIlike},
+    db::{AsDieselFilter, AsDieselQueryBase, FetchById, FetchByQuery, util::AsIlike},
     server::auth::{ApiKey, HashedApiKey},
 };
 
@@ -72,11 +72,11 @@ impl AsDieselQueryBase for PersonSummary {
     }
 }
 
-impl FetchByFilter for PersonSummary {
+impl FetchByQuery for PersonSummary {
     type QueryParams = PersonQuery;
 
     async fn fetch_by_query(
-        query: Self::QueryParams,
+        query: &Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<Vec<Self>> {
         use scamplers_core::model::person::PersonOrdinalColumn::{Email, Id, Name};
@@ -129,7 +129,7 @@ impl FetchById for Person {
     type Id = Uuid;
 
     async fn fetch_by_id(
-        id: Self::Id,
+        id: &Self::Id,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<Self> {
         Ok(Self::as_diesel_query_base()
@@ -228,7 +228,7 @@ impl WriteLogin for NewPerson {
             (id, Some(api_key))
         };
 
-        let person = Person::fetch_by_id(id, db_conn).await?;
+        let person = Person::fetch_by_id(&id, db_conn).await?;
 
         Ok(CreatedUser {
             person,

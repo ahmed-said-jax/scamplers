@@ -6,7 +6,8 @@ mod util;
 use diesel_async::AsyncPgConnection;
 use util::BoxedDieselExpression;
 
-use crate::db::util::NewBoxedDieselExpression;
+use util::NewBoxedDieselExpression;
+pub use util::set_transaction_user;
 
 trait AsDieselFilter<QuerySource = ()> {
     fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
@@ -54,16 +55,16 @@ pub trait FetchById: Sized {
     type Id;
 
     fn fetch_by_id(
-        id: Self::Id,
+        id: &Self::Id,
         db_conn: &mut AsyncPgConnection,
-    ) -> impl Future<Output = error::Result<Self>>;
+    ) -> impl Future<Output = error::Result<Self>> + Send;
 }
 
-pub trait FetchByFilter: Sized {
+pub trait FetchByQuery: Sized {
     type QueryParams;
 
     fn fetch_by_query(
-        query: Self::QueryParams,
+        query: &Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
-    ) -> impl Future<Output = error::Result<Vec<Self>>>;
+    ) -> impl Future<Output = error::Result<Vec<Self>>> + Send;
 }

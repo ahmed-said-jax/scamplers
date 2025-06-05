@@ -1,4 +1,6 @@
 use diesel::{pg::Pg, prelude::*, sql_types};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use uuid::Uuid;
 
 pub(super) type BoxedDieselExpression<'a, QuerySource> =
     Box<dyn BoxableExpression<QuerySource, Pg, SqlType = sql_types::Bool> + 'a>;
@@ -65,4 +67,16 @@ impl AsIlike for String {
     fn as_ilike(&self) -> String {
         self.as_str().as_ilike()
     }
+}
+
+/// # Errors
+pub async fn set_transaction_user(
+    user_id: &Uuid,
+    db_conn: &mut AsyncPgConnection,
+) -> super::error::Result<()> {
+    diesel::sql_query(format!(r#"set local role "{user_id}""#))
+        .execute(db_conn)
+        .await?;
+
+    Ok(())
 }

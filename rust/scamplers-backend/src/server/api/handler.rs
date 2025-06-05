@@ -1,15 +1,18 @@
 use axum::{
-    extract::{FromRequest, State, rejection::JsonRejection},
-    response::{IntoResponse, Response},
+    Json,
+    extract::{FromRequest, Path, State, rejection::JsonRejection},
 };
+use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
 use garde::Validate;
 use scamplers_core::model::person::{CreatedUser, NewPerson};
-use serde::Serialize;
 use valuable::Valuable;
 
 use crate::{
-    db::model::person::WriteLogin,
-    server::{AppState, auth::Frontend},
+    db::{model::person::WriteLogin, set_transaction_user},
+    server::{
+        AppState,
+        auth::{Frontend, User},
+    },
 };
 
 use super::error::{Error, Result};
@@ -36,22 +39,66 @@ where
     }
 }
 
-impl<T: Serialize> IntoResponse for ValidJson<T> {
-    fn into_response(self) -> Response {
-        axum::Json(self.0).into_response()
-    }
-}
-
 pub(super) async fn new_user(
     _auth: Frontend,
     State(app_state): State<AppState>,
     ValidJson(person): ValidJson<NewPerson>,
-) -> Result<ValidJson<CreatedUser>> {
+) -> Result<Json<CreatedUser>> {
     tracing::debug!(deserialized_person = person.as_value());
 
     let mut db_conn = app_state.db_conn().await?;
 
     let created_user = person.write_ms_login(&mut db_conn).await?;
 
-    Ok(ValidJson(created_user))
+    Ok(Json(created_user))
+}
+
+pub async fn by_id<Resource>(
+    User(user_id): User,
+    State(app_state): State<AppState>,
+    Path(resource_id): Path<Resource::Id>,
+) -> super::error::Result<Json<Resource>>
+where
+    Resource: crate::db::FetchById + Send,
+    Resource::Id: Send + Sync,
+{
+    let mut db_conn = app_state.db_conn().await?;
+
+    let item = db_conn
+        .transaction(|conn| {
+            async move {
+                set_transaction_user(&user_id, conn).await?;
+
+                Resource::fetch_by_id(&resource_id, conn).await
+            }
+            .scope_boxed()
+        })
+        .await?;
+
+    Ok(Json(item))
+}
+
+pub async fn by_query<Resource>(
+    User(user_id): User,
+    State(app_state): State<AppState>,
+    Json(query): Json<Resource::QueryParams>,
+) -> super::error::Result<Json<Vec<Resource>>>
+where
+    Resource: crate::db::FetchByQuery + Send,
+    Resource::QueryParams: Send,
+{
+    let mut db_conn = app_state.db_conn().await?;
+
+    let item = db_conn
+        .transaction(|conn| {
+            async move {
+                set_transaction_user(&user_id, conn).await?;
+
+                Resource::fetch_by_query(&query, conn).await
+            }
+            .scope_boxed()
+        })
+        .await?;
+
+    Ok(Json(item))
 }
