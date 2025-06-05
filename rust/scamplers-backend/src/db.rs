@@ -6,10 +6,12 @@ mod util;
 use diesel_async::AsyncPgConnection;
 use util::BoxedDieselExpression;
 
-trait AsDieselFilter<Table = ()> {
-    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+use crate::db::util::NewBoxedDieselExpression;
+
+trait AsDieselFilter<QuerySource = ()> {
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
-        Table: 'a;
+        QuerySource: 'a;
 }
 
 impl AsDieselFilter for () {
@@ -17,19 +19,22 @@ impl AsDieselFilter for () {
     where
         (): 'a,
     {
-        None
+        BoxedDieselExpression::new_expression().build()
     }
 }
 
-impl<FilterStruct, Table> AsDieselFilter<Table> for Option<FilterStruct>
+impl<Query, QuerySource> AsDieselFilter<QuerySource> for Option<Query>
 where
-    FilterStruct: AsDieselFilter<Table>,
+    Query: AsDieselFilter<QuerySource>,
 {
-    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
-        Table: 'a,
+        QuerySource: 'a,
     {
-        self.as_ref().and_then(AsDieselFilter::as_diesel_filter)
+        match self {
+            Some(query) => query.as_diesel_filter(),
+            None => BoxedDieselExpression::new_expression().build(),
+        }
     }
 }
 
@@ -57,7 +62,7 @@ pub trait FetchById: Sized {
 pub trait FetchByFilter: Sized {
     type QueryParams;
 
-    fn fetch_by_filter(
+    fn fetch_by_query(
         query: Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
     ) -> impl Future<Output = error::Result<Vec<Self>>>;

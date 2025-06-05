@@ -1,3 +1,4 @@
+use crate::db::{NewBoxedDieselExpression, util::BoxedDieselExpression};
 use diesel::{dsl::InnerJoin, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
@@ -27,10 +28,7 @@ define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<T
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
 use crate::{
-    db::{
-        AsDieselFilter, AsDieselQueryBase, BoxedDieselExpression, FetchByFilter, FetchById,
-        util::{AsIlike, DieselExpressionBuilder},
-    },
+    db::{AsDieselFilter, AsDieselQueryBase, FetchByFilter, FetchById, util::AsIlike},
     server::auth::{ApiKey, HashedApiKey},
 };
 
@@ -48,18 +46,18 @@ where
             ids, name, email, ..
         } = self;
 
-        let mut query = DieselExpressionBuilder::default();
+        let mut query = BoxedDieselExpression::new_expression();
 
         if !ids.is_empty() {
-            query = query.and(id_col.eq_any(ids));
+            query = query.with_condition(id_col.eq_any(ids));
         }
 
         if let Some(name) = name {
-            query = query.and(name_col.ilike(name.as_ilike()));
+            query = query.with_condition(name_col.ilike(name.as_ilike()));
         }
 
         if let Some(email) = email {
-            query = query.and(email_col.ilike(email.as_ilike()));
+            query = query.with_condition(email_col.ilike(email.as_ilike()));
         }
 
         query.build()
@@ -77,7 +75,7 @@ impl AsDieselQueryBase for PersonSummary {
 impl FetchByFilter for PersonSummary {
     type QueryParams = PersonQuery;
 
-    async fn fetch_by_filter(
+    async fn fetch_by_query(
         query: Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<Vec<Self>> {
@@ -89,29 +87,31 @@ impl FetchByFilter for PersonSummary {
             ..
         } = &query;
 
-        let mut query_base = Self::as_diesel_query_base()
+        let mut statement = Self::as_diesel_query_base()
             .select(Self::as_select())
             .limit(*limit)
             .offset(*offset)
             .into_boxed();
-        let filter = query.as_diesel_filter();
 
-        if let Some(filter) = filter {
-            query_base = query_base.filter(filter);
+        let query = query.as_diesel_filter();
+
+        if let Some(query) = query {
+            statement = statement.filter(query);
         }
 
+        // This is horrendous and not scalable
         for PersonOrdering { column, descending } in order_by {
-            query_base = match (column, descending) {
-                (Id, false) => query_base.then_order_by(id_col.asc()),
-                (Id, true) => query_base.then_order_by(id_col.desc()),
-                (Name, false) => query_base.then_order_by(name_col.asc()),
-                (Name, true) => query_base.then_order_by(name_col.desc()),
-                (Email, false) => query_base.then_order_by(email_col.asc()),
-                (Email, true) => query_base.then_order_by(email_col.desc()),
+            statement = match (column, descending) {
+                (Id, false) => statement.then_order_by(id_col.asc()),
+                (Id, true) => statement.then_order_by(id_col.desc()),
+                (Name, false) => statement.then_order_by(name_col.asc()),
+                (Name, true) => statement.then_order_by(name_col.desc()),
+                (Email, false) => statement.then_order_by(email_col.asc()),
+                (Email, true) => statement.then_order_by(email_col.desc()),
             };
         }
 
-        let people = query_base.load(db_conn).await?;
+        let people = statement.load(db_conn).await?;
 
         Ok(people)
     }
@@ -138,36 +138,6 @@ impl FetchById for Person {
             .get_result(db_conn)
             .await?)
     }
-}
-
-/// # Errors
-pub async fn fetch_by_filter(
-    filter: Option<PersonQuery>,
-    db_conn: &mut AsyncPgConnection,
-) -> crate::db::error::Result<Vec<Person>> {
-    let query = Person::as_diesel_query_base()
-        .order_by(name_col)
-        .select(Person::as_select());
-    let filter = filter.as_diesel_filter();
-
-    let people = match filter {
-        Some(f) => query.filter(f).load(db_conn).await?,
-        None => query.load(db_conn).await?,
-    };
-
-    Ok(people)
-}
-
-/// # Errors
-pub async fn fetch_by_id(
-    id: Uuid,
-    db_conn: &mut AsyncPgConnection,
-) -> crate::db::error::Result<Person> {
-    Ok(Person::as_diesel_query_base()
-        .filter(id_col.eq(id))
-        .select(Person::as_select())
-        .first(db_conn)
-        .await?)
 }
 
 pub trait WriteLogin {
@@ -258,7 +228,7 @@ impl WriteLogin for NewPerson {
             (id, Some(api_key))
         };
 
-        let person = fetch_by_id(id, db_conn).await?;
+        let person = Person::fetch_by_id(id, db_conn).await?;
 
         Ok(CreatedUser {
             person,

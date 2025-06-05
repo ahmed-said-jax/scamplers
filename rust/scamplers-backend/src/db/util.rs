@@ -1,35 +1,53 @@
 use diesel::{pg::Pg, prelude::*, sql_types};
 
-pub(super) type BoxedDieselExpression<'a, Table> =
-    Box<dyn BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a>;
+pub(super) type BoxedDieselExpression<'a, QuerySource> =
+    Box<dyn BoxableExpression<QuerySource, Pg, SqlType = sql_types::Bool> + 'a>;
 
-pub(super) struct DieselExpressionBuilder<'a, Table>(Option<BoxedDieselExpression<'a, Table>>);
-impl<Table> Default for DieselExpressionBuilder<'_, Table> {
-    fn default() -> Self {
-        Self(None)
+pub(super) trait NewBoxedDieselExpression<'a, QuerySource> {
+    fn new_expression() -> DieselExpressionBuilder<'a, QuerySource>;
+}
+
+pub(super) struct DieselExpressionBuilder<'a, QuerySource>(
+    Option<BoxedDieselExpression<'a, QuerySource>>,
+);
+
+impl<'a, QuerySource: 'a> NewBoxedDieselExpression<'a, QuerySource>
+    for BoxedDieselExpression<'_, QuerySource>
+{
+    fn new_expression() -> DieselExpressionBuilder<'a, QuerySource> {
+        DieselExpressionBuilder::new()
     }
 }
 
-impl<'a, Table: 'a> DieselExpressionBuilder<'a, Table> {
-    pub fn and<Q>(self, other: Q) -> Self
-    where
-        Q: BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a,
-    {
-        let other: BoxedDieselExpression<Table> = Box::new(other);
-
-        let Self(Some(current)) = self else {
-            return Self(Some(other));
-        };
-
-        let current = Box::new(current.and(other));
-
-        Self(Some(current))
+impl<'a, QuerySource: 'a> DieselExpressionBuilder<'a, QuerySource> {
+    pub fn new() -> Self {
+        Self(None)
     }
 
-    pub fn build(self) -> Option<BoxedDieselExpression<'a, Table>> {
-        let Self(query) = self;
+    fn from_query<Q>(query: Q) -> Self
+    where
+        Q: BoxableExpression<QuerySource, Pg, SqlType = sql_types::Bool> + 'a,
+    {
+        Self(Some(Box::new(query)))
+    }
 
-        query
+    pub fn with_condition<Q>(self, other: Q) -> Self
+    where
+        Q: BoxableExpression<QuerySource, Pg, SqlType = sql_types::Bool> + 'a,
+    {
+        let Self(Some(query)) = self else {
+            return Self::from_query(other);
+        };
+
+        let other: BoxedDieselExpression<QuerySource> = Box::new(other);
+
+        Self::from_query(query.and(other))
+    }
+
+    pub fn build(self) -> Option<BoxedDieselExpression<'a, QuerySource>> {
+        let Self(inner) = self;
+
+        inner
     }
 }
 
