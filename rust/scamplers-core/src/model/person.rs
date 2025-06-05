@@ -4,7 +4,9 @@ use super::{Endpoint, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{db_enum, insert_struct, ordinal_columns, query_struct, select_struct},
+    scamplers_macros::{
+        db_enum, insert_struct, ordering_struct, ordinal_columns, query_struct, select_struct,
+    },
     scamplers_schema::person,
 };
 
@@ -106,7 +108,7 @@ pub enum PersonOrdinalColumn {
     Email,
 }
 
-#[cfg_attr(feature = "backend", query_struct)]
+#[cfg_attr(feature = "backend", ordering_struct)]
 #[cfg_attr(feature = "typescript", api_request)]
 pub struct PersonOrdering {
     pub column: PersonOrdinalColumn,

@@ -134,14 +134,50 @@ pub fn update_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
     output.into()
 }
 
-#[proc_macro_attribute]
-pub fn query_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
+fn derive_query_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
     let output = quote! {
-        #[derive(serde::Deserialize, valuable::Valuable, Debug, Default, garde::Validate)]
+        #[derive(serde::Deserialize, valuable::Valuable, Debug, garde::Validate)]
         #[garde(allow_unvalidated)]
         #struct_item
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn ordering_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let input = derive_query_struct(attr, input);
+
+    let struct_item = parse_macro_input!(input as ItemStruct);
+
+    let output = quote! {
+        #[derive(Default)]
+        #struct_item
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn query_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let with_derives = derive_query_struct(attr, input);
+
+    let struct_item = parse_macro_input!(with_derives as ItemStruct);
+    let name = &struct_item.ident;
+
+    let output = quote! {
+        #struct_item
+        // We're relying on the fact that every query struct has a field called order_by
+        impl Default for #name {
+            fn default() -> Self {
+                Self {
+                    order_by: super::default_ordering(),
+                    ..Default::default()
+                }
+            }
+        }
     };
 
     output.into()

@@ -1,12 +1,12 @@
 use axum::{
     Json,
-    extract::{FromRequest, Path, State, rejection::JsonRejection},
+    extract::{FromRequest, OptionalFromRequest, Path, State},
     response::{IntoResponse, Response},
 };
 use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
 use garde::Validate;
 use scamplers_core::model::person::{CreatedUser, NewPerson};
-use serde::Serialize;
+use serde::{Serialize, de::DeserializeOwned};
 use valuable::Valuable;
 
 use crate::{
@@ -19,13 +19,13 @@ use crate::{
 
 use super::error::{Error, Result};
 
+#[derive(Default)]
 pub(super) struct ValidJson<T>(T);
 
 impl<S, T> FromRequest<S> for ValidJson<T>
 where
-    axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,
     S: Send + Sync,
-    T: Validate,
+    T: Validate + DeserializeOwned,
     <T as Validate>::Context: std::default::Default,
 {
     type Rejection = Error;
@@ -34,10 +34,34 @@ where
         req: axum::extract::Request,
         state: &S,
     ) -> std::result::Result<Self, Self::Rejection> {
-        let axum::Json(data) = axum::Json::<T>::from_request(req, state).await?;
+        let Json(data) = <Json<T> as FromRequest<S>>::from_request(req, state).await?;
         data.validate()?;
 
         Ok(Self(data))
+    }
+}
+
+impl<S, T> OptionalFromRequest<S> for ValidJson<T>
+where
+    S: Send + Sync,
+    T: Validate + DeserializeOwned,
+    <T as Validate>::Context: std::default::Default,
+{
+    type Rejection = Error;
+
+    async fn from_request(
+        req: axum::extract::Request,
+        state: &S,
+    ) -> std::result::Result<Option<Self>, Self::Rejection> {
+        let Some(Json(data)) =
+            <Json<T> as OptionalFromRequest<S>>::from_request(req, state).await?
+        else {
+            return Ok(None);
+        };
+
+        data.validate()?;
+
+        Ok(Some(Self(data)))
     }
 }
 
@@ -124,7 +148,7 @@ pub async fn by_query<Resource>(
 ) -> super::error::Result<Json<Vec<Resource>>>
 where
     Resource: crate::db::FetchByQuery + Send,
-    Resource::QueryParams: Send + valuable::Valuable,
+    Resource::QueryParams: Send + valuable::Valuable + Default,
 {
     tracing::info!(deserialized_query = query.as_value());
 

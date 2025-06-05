@@ -6,7 +6,9 @@ use super::Endpoint;
 
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{insert_struct, ordinal_columns, query_struct, select_struct},
+    scamplers_macros::{
+        insert_struct, ordering_struct, ordinal_columns, query_struct, select_struct,
+    },
     scamplers_schema::institution,
 };
 
@@ -69,7 +71,7 @@ pub enum InstitutionOrdinalColumn {
     Name,
 }
 
-#[cfg_attr(feature = "backend", query_struct)]
+#[cfg_attr(feature = "backend", ordering_struct)]
 #[cfg_attr(feature = "typescript", api_request)]
 pub struct InstitutionOrdering {
     pub column: InstitutionOrdinalColumn,
