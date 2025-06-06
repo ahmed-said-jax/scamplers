@@ -13,7 +13,7 @@ pub fn api_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let builder_error_name = format_ident!("{struct_name}Error");
 
     let output = quote! {
-        #[derive(serde::Serialize, Clone, derive_builder::Builder, Default)]
+        #[derive(serde::Serialize, Clone, derive_builder::Builder)]
         #[builder(pattern = "owned", build_fn(error = #builder_error_name))]
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
@@ -134,13 +134,50 @@ pub fn update_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
     output.into()
 }
 
-#[proc_macro_attribute]
-pub fn filter_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
+fn derive_query_struct(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
     let output = quote! {
-        #[derive(serde::Deserialize, valuable::Valuable, Debug, Default)]
+        #[derive(serde::Deserialize, valuable::Valuable, Debug, garde::Validate)]
+        #[garde(allow_unvalidated)]
         #struct_item
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn ordering_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let input = derive_query_struct(attr, input);
+
+    let struct_item = parse_macro_input!(input as ItemStruct);
+
+    let output = quote! {
+        #[derive(Default)]
+        #struct_item
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn query_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let with_derives = derive_query_struct(attr, input);
+
+    let struct_item = parse_macro_input!(with_derives as ItemStruct);
+    let name = &struct_item.ident;
+
+    let output = quote! {
+        #struct_item
+        // We're relying on the fact that every query struct has a field called order_by
+        impl Default for #name {
+            fn default() -> Self {
+                Self {
+                    // order_by: crate::model::DefaultOrdering::default(),
+                    ..Default::default()
+                }
+            }
+        }
     };
 
     output.into()
@@ -216,6 +253,20 @@ pub fn db_json(_attr: TokenStream, input: TokenStream) -> TokenStream {
                 ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
             }
         }
+    };
+
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn ordinal_columns(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let enum_with_derives = derive_enum(input);
+
+    let item = parse_macro_input!(enum_with_derives as ItemEnum);
+
+    let output = quote! {
+        #[derive(Debug, valuable::Valuable)]
+        #item
     };
 
     output.into()

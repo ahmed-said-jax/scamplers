@@ -1,15 +1,22 @@
-use super::{AsEndpoint, institution::Institution};
+use crate::model::Pagination;
+
+use super::{Endpoint, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{db_enum, filter_struct, insert_struct, select_struct},
+    scamplers_macros::{
+        db_enum, insert_struct, ordering_struct, ordinal_columns, query_struct, select_struct,
+    },
     scamplers_schema::person,
 };
 
 #[cfg(feature = "typescript")]
 use scamplers_macros::{api_enum, api_request, api_response};
 
+use super::SEARCH_SUFFIX;
 use uuid::Uuid;
+
+const ENDPOINT: &str = "/people";
 
 #[cfg_attr(feature = "backend", db_enum)]
 #[cfg_attr(feature = "typescript", api_enum)]
@@ -35,6 +42,17 @@ pub struct NewPerson {
     #[cfg_attr(feature = "typescript", builder(default))]
     pub roles: Vec<UserRole>,
 }
+impl Endpoint for NewPerson {
+    fn endpoint() -> String {
+        ENDPOINT.to_string()
+    }
+}
+impl NewPerson {
+    #[must_use]
+    pub fn new_user_endpoint() -> String {
+        "/users".to_string()
+    }
+}
 
 #[cfg_attr(feature = "backend", select_struct(person))]
 #[cfg_attr(feature = "typescript", api_response)]
@@ -47,10 +65,32 @@ pub struct Person {
     #[cfg_attr(feature = "backend", diesel(embed))]
     pub institution: Institution,
 }
-impl AsEndpoint for Person {
-    fn as_endpoint() -> &'static str {
-        "people"
+impl Endpoint for Person {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{{person_id}}")
     }
+}
+
+#[cfg_attr(feature = "backend", select_struct(person))]
+#[cfg_attr(feature = "typescript", api_response)]
+pub struct PersonSummary {
+    pub id: Uuid,
+    pub name: String,
+    pub link: String,
+    pub email: String,
+    pub orcid: Option<String>,
+}
+impl Endpoint for PersonSummary {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
+    }
+}
+
+#[cfg_attr(feature = "backend", select_struct(person))]
+#[cfg_attr(feature = "typescript", api_response)]
+pub struct PersonReference {
+    pub id: Uuid,
+    pub link: String,
 }
 
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
@@ -59,13 +99,23 @@ pub struct CreatedUser {
     pub person: Person,
     pub api_key: Option<String>,
 }
-impl AsEndpoint for CreatedUser {
-    fn as_endpoint() -> &'static str {
-        "/users"
-    }
+
+#[cfg_attr(feature = "backend", ordinal_columns)]
+#[cfg_attr(feature = "typescript", api_enum)]
+pub enum PersonOrdinalColumn {
+    #[default]
+    Name,
+    Email,
 }
 
-#[cfg_attr(feature = "backend", filter_struct(person))]
+#[cfg_attr(feature = "backend", ordering_struct)]
+#[cfg_attr(feature = "typescript", api_request)]
+pub struct PersonOrdering {
+    pub column: PersonOrdinalColumn,
+    pub descending: bool,
+}
+
+#[cfg_attr(feature = "backend", query_struct)]
 #[cfg_attr(feature = "typescript", api_request)]
 pub struct PersonQuery {
     #[cfg_attr(feature = "backend", serde(default))]
@@ -75,4 +125,11 @@ pub struct PersonQuery {
     pub name: Option<String>,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub email: Option<String>,
+    #[cfg_attr(
+        feature = "backend",
+        serde(default = "crate::model::DefaultOrdering::default")
+    )]
+    pub order_by: Vec<PersonOrdering>,
+    #[cfg_attr(feature = "backend", serde(default))]
+    pub pagination: Pagination,
 }

@@ -3,23 +3,16 @@ pub mod model;
 pub mod seed_data;
 mod util;
 
-use diesel::BoxableExpression;
-use diesel::pg::Pg;
-use diesel::sql_types;
 use diesel_async::AsyncPgConnection;
-use util::QueryLimit;
+use util::BoxedDieselExpression;
 
-type BoxedDieselExpression<'a, Table> =
-    Box<dyn BoxableExpression<Table, Pg, SqlType = sql_types::Bool> + 'a>;
+use util::NewBoxedDieselExpression;
+pub use util::set_transaction_user;
 
-trait AsDieselFilter<Table = ()> {
-    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+trait AsDieselFilter<QuerySource = ()> {
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
-        Table: 'a;
-
-    fn _limit(&self) -> QueryLimit {
-        QueryLimit::default()
-    }
+        QuerySource: 'a;
 }
 
 impl AsDieselFilter for () {
@@ -27,19 +20,22 @@ impl AsDieselFilter for () {
     where
         (): 'a,
     {
-        None
+        BoxedDieselExpression::new_expression().build()
     }
 }
 
-impl<FilterStruct, Table> AsDieselFilter<Table> for Option<FilterStruct>
+impl<Query, QuerySource> AsDieselFilter<QuerySource> for Option<Query>
 where
-    FilterStruct: AsDieselFilter<Table>,
+    Query: AsDieselFilter<QuerySource>,
 {
-    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, Table>>
+    fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
-        Table: 'a,
+        QuerySource: 'a,
     {
-        self.as_ref().and_then(AsDieselFilter::as_diesel_filter)
+        match self {
+            Some(query) => query.as_diesel_filter(),
+            None => BoxedDieselExpression::new_expression().build(),
+        }
     }
 }
 
@@ -52,5 +48,26 @@ trait AsDieselQueryBase {
 pub trait Write {
     type Returns;
 
-    async fn write(self, db_conn: &mut AsyncPgConnection) -> error::Result<Self::Returns>;
+    fn write(
+        self,
+        db_conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = error::Result<Self::Returns>> + Send;
+}
+
+pub trait FetchById: Sized {
+    type Id;
+
+    fn fetch_by_id(
+        id: &Self::Id,
+        db_conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = error::Result<Self>> + Send;
+}
+
+pub trait FetchByQuery: Sized {
+    type QueryParams;
+
+    fn fetch_by_query(
+        query: &Self::QueryParams,
+        db_conn: &mut AsyncPgConnection,
+    ) -> impl Future<Output = error::Result<Vec<Self>>> + Send;
 }

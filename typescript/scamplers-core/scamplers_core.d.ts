@@ -1,5 +1,12 @@
 /* tslint:disable */
 /* eslint-disable */
+export enum InstitutionOrdinalColumn {
+  Name = 0,
+}
+export enum PersonOrdinalColumn {
+  Name = 0,
+  Email = 1,
+}
 export enum UserRole {
   AppAdmin = 0,
   ComputationalStaff = 1,
@@ -21,6 +28,82 @@ export class CreatedUser {
   set api_key(value: string | null | undefined);
 }
 export class Institution {
+  private constructor();
+  free(): void;
+  id: string;
+  name: string;
+  link: string;
+}
+export class InstitutionOrdering {
+  private constructor();
+  free(): void;
+  static new(): InstitutionOrderingBuilder;
+  column: InstitutionOrdinalColumn;
+  descending: boolean;
+}
+/**
+ * Builder for [`InstitutionOrdering`](struct.InstitutionOrdering.html).
+ */
+export class InstitutionOrderingBuilder {
+  private constructor();
+  free(): void;
+  column(value: InstitutionOrdinalColumn): InstitutionOrderingBuilder;
+  descending(value: boolean): InstitutionOrderingBuilder;
+  /**
+   * Builds a new `InstitutionOrdering`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): InstitutionOrdering;
+}
+export class InstitutionOrderingError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class InstitutionQuery {
+  private constructor();
+  free(): void;
+  static new(): InstitutionQueryBuilder;
+  ids: string[];
+  get name(): string;
+  set name(value: string | null | undefined);
+  order_by: InstitutionOrdering[];
+  pagination: Pagination;
+}
+/**
+ * Builder for [`InstitutionQuery`](struct.InstitutionQuery.html).
+ */
+export class InstitutionQueryBuilder {
+  private constructor();
+  free(): void;
+  ids(value: string[]): InstitutionQueryBuilder;
+  name(value?: string | null): InstitutionQueryBuilder;
+  order_by(value: InstitutionOrdering[]): InstitutionQueryBuilder;
+  pagination(value: Pagination): InstitutionQueryBuilder;
+  /**
+   * Builds a new `InstitutionQuery`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): InstitutionQuery;
+}
+export class InstitutionQueryError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class InstitutionReference {
+  private constructor();
+  free(): void;
+  id: string;
+  link: string;
+}
+export class InstitutionSummary {
   private constructor();
   free(): void;
   id: string;
@@ -95,6 +178,35 @@ export class NewPersonError {
   free(): void;
   error(): string;
 }
+export class Pagination {
+  private constructor();
+  free(): void;
+  static new(): PaginationBuilder;
+  limit: bigint;
+  offset: bigint;
+}
+/**
+ * Builder for [`Pagination`](struct.Pagination.html).
+ */
+export class PaginationBuilder {
+  private constructor();
+  free(): void;
+  limit(value: bigint): PaginationBuilder;
+  offset(value: bigint): PaginationBuilder;
+  /**
+   * Builds a new `Pagination`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): Pagination;
+}
+export class PaginationError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
 export class Person {
   private constructor();
   free(): void;
@@ -106,6 +218,35 @@ export class Person {
   set orcid(value: string | null | undefined);
   institution: Institution;
 }
+export class PersonOrdering {
+  private constructor();
+  free(): void;
+  static new(): PersonOrderingBuilder;
+  column: PersonOrdinalColumn;
+  descending: boolean;
+}
+/**
+ * Builder for [`PersonOrdering`](struct.PersonOrdering.html).
+ */
+export class PersonOrderingBuilder {
+  private constructor();
+  free(): void;
+  column(value: PersonOrdinalColumn): PersonOrderingBuilder;
+  descending(value: boolean): PersonOrderingBuilder;
+  /**
+   * Builds a new `PersonOrdering`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): PersonOrdering;
+}
+export class PersonOrderingError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
 export class PersonQuery {
   private constructor();
   free(): void;
@@ -115,6 +256,8 @@ export class PersonQuery {
   set name(value: string | null | undefined);
   get email(): string;
   set email(value: string | null | undefined);
+  order_by: PersonOrdering[];
+  pagination: Pagination;
 }
 /**
  * Builder for [`PersonQuery`](struct.PersonQuery.html).
@@ -125,6 +268,8 @@ export class PersonQueryBuilder {
   ids(value: string[]): PersonQueryBuilder;
   name(value?: string | null): PersonQueryBuilder;
   email(value?: string | null): PersonQueryBuilder;
+  order_by(value: PersonOrdering[]): PersonQueryBuilder;
+  pagination(value: Pagination): PersonQueryBuilder;
   /**
    * Builds a new `PersonQuery`.
    *
@@ -138,4 +283,20 @@ export class PersonQueryError {
   private constructor();
   free(): void;
   error(): string;
+}
+export class PersonReference {
+  private constructor();
+  free(): void;
+  id: string;
+  link: string;
+}
+export class PersonSummary {
+  private constructor();
+  free(): void;
+  id: string;
+  name: string;
+  link: string;
+  email: string;
+  get orcid(): string;
+  set orcid(value: string | null | undefined);
 }

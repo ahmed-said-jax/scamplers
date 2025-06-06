@@ -220,7 +220,8 @@ where
     index2_workflow_b_i5: Str,
 }
 
-impl<S: std::hash::BuildHasher> Write for HashMap<IndexSetName, NewDualIndexSet, S> {
+#[allow(clippy::implicit_hasher)]
+impl Write for HashMap<IndexSetName, NewDualIndexSet> {
     type Returns = ();
 
     async fn write(

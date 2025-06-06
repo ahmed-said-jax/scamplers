@@ -7,11 +7,11 @@ use valuable::Valuable;
 #[derive(thiserror::Error, Debug, Serialize, Valuable, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Error {
-    #[error("{entity} with {} = {} already exists", field.clone().unwrap_or_default(), value.clone().unwrap_or_default())]
+    #[error("{entity} with {:?} = {:?} already exists", fields, values)]
     DuplicateRecord {
         entity: String,
-        field: Option<String>,
-        value: Option<String>,
+        fields: Vec<String>,
+        values: Vec<String>,
     },
     #[error("unable to create reference between {entity} and {referenced_entity} with value {} not found", value.clone().unwrap_or_default())]
     ReferenceNotFound {
@@ -99,15 +99,24 @@ impl
                     .collect()
             })
             .unwrap_or_default();
+        dbg!(&field_value);
 
-        let field = field_value.get(1).cloned();
-        let value = field_value.get(2).cloned();
+        let into_split_vecs = |v: &[String], i: usize| {
+            v.get(i)
+                .cloned()
+                .unwrap_or_default()
+                .split(", ")
+                .map(str::to_string)
+                .collect()
+        };
+        let fields = into_split_vecs(&field_value, 1);
+        let values = into_split_vecs(&field_value, 2);
 
         match kind {
             UniqueViolation => Self::DuplicateRecord {
                 entity: entity.to_string(),
-                field,
-                value,
+                fields,
+                values,
             },
             ForeignKeyViolation => {
                 let referenced_entity = details
@@ -120,7 +129,7 @@ impl
                 Self::ReferenceNotFound {
                     entity: entity.to_string(),
                     referenced_entity: referenced_entity.to_string(),
-                    value,
+                    value: values.first().cloned(),
                 }
             }
             _ => Self::from_other_error(diesel::result::Error::DatabaseError(kind, info)),
