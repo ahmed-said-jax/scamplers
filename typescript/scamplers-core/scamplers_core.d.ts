@@ -213,7 +213,8 @@ export class Person {
   id: string;
   name: string;
   link: string;
-  email: string;
+  get email(): string;
+  set email(value: string | null | undefined);
   get orcid(): string;
   set orcid(value: string | null | undefined);
   institution: Institution;
@@ -296,7 +297,8 @@ export class PersonSummary {
   id: string;
   name: string;
   link: string;
-  email: string;
+  get email(): string;
+  set email(value: string | null | undefined);
   get orcid(): string;
   set orcid(value: string | null | undefined);
 }

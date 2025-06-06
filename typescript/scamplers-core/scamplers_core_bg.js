@@ -1706,11 +1706,11 @@ export class Person {
         return v1;
     }
     /**
-     * @param {string} arg0
+     * @param {string | null} [arg0]
      */
     set email(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
         wasm.__wbg_set_person_email(this.__wbg_ptr, ptr0, len0);
     }
     /**
@@ -2297,12 +2297,12 @@ export class PersonSummary {
         return v1;
     }
     /**
-     * @param {string} arg0
+     * @param {string | null} [arg0]
      */
     set email(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_person_email(this.__wbg_ptr, ptr0, len0);
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personsummary_email(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * @returns {string}
@@ -2698,12 +2698,12 @@ export function __wbindgen_cb_drop(arg0) {
     return ret;
 };
 
-export function __wbindgen_closure_wrapper531(arg0, arg1, arg2) {
+export function __wbindgen_closure_wrapper533(arg0, arg1, arg2) {
     const ret = makeMutClosure(arg0, arg1, 96, __wbg_adapter_40);
     return ret;
 };
 
-export function __wbindgen_closure_wrapper587(arg0, arg1, arg2) {
+export function __wbindgen_closure_wrapper589(arg0, arg1, arg2) {
     const ret = makeMutClosure(arg0, arg1, 116, __wbg_adapter_43);
     return ret;
 };

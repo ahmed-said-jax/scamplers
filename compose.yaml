@@ -87,6 +87,8 @@ services:
         uid: "10001"
       - source: auth_microsoft_entra_id_secret
         uid: "10001"
+      - source: auth_microsoft_entra_id_issuer
+        uid: "10001"
       - source: frontend_token
         uid: "10001"
   caddy:

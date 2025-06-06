@@ -60,7 +60,7 @@ pub struct Person {
     pub id: Uuid,
     pub name: String,
     pub link: String,
-    pub email: String,
+    pub email: Option<String>,
     pub orcid: Option<String>,
     #[cfg_attr(feature = "backend", diesel(embed))]
     pub institution: Institution,
@@ -77,7 +77,7 @@ pub struct PersonSummary {
     pub id: Uuid,
     pub name: String,
     pub link: String,
-    pub email: String,
+    pub email: Option<String>,
     pub orcid: Option<String>,
 }
 impl Endpoint for PersonSummary {

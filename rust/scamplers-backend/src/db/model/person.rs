@@ -1,5 +1,8 @@
 use crate::db::{NewBoxedDieselExpression, Write, util::BoxedDieselExpression};
-use diesel::{dsl::InnerJoin, prelude::*};
+use diesel::{
+    dsl::{AssumeNotNull, InnerJoin},
+    prelude::*,
+};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
     Pagination,
@@ -10,9 +13,8 @@ use scamplers_schema::{
     person::{
         self,
         dsl::{
-            email as email_col, email_verified as email_verified_col,
-            hashed_api_key as hashed_api_key_col, id as id_col, ms_user_id as ms_user_id_col,
-            name as name_col,
+            email as email_col, hashed_api_key as hashed_api_key_col, id as id_col,
+            ms_user_id as ms_user_id_col, name as name_col,
         },
     },
 };
@@ -37,7 +39,7 @@ impl<QuerySource> AsDieselFilter<QuerySource> for PersonQuery
 where
     id_col: SelectableExpression<QuerySource>,
     name_col: SelectableExpression<QuerySource>,
-    email_col: SelectableExpression<QuerySource>,
+    AssumeNotNull<email_col>: SelectableExpression<QuerySource>,
 {
     fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
@@ -58,7 +60,7 @@ where
         }
 
         if let Some(email) = email {
-            query = query.with_condition(email_col.ilike(email.as_ilike()));
+            query = query.with_condition(email_col.assume_not_null().ilike(email.as_ilike()));
         }
 
         query.build()
@@ -167,13 +169,12 @@ impl WriteLogin for NewPerson {
         self,
         db_conn: &mut AsyncPgConnection,
     ) -> crate::db::error::Result<CreatedUser> {
-        #[derive(Insertable, AsChangeset)]
+        #[derive(Insertable, AsChangeset, Clone, Copy)]
         #[diesel(table_name = person, primary_key(ms_user_id))]
         struct Upsert<'a> {
             ms_user_id: Option<&'a Uuid>,
             name: &'a str,
             email: &'a str,
-            email_verified: bool,
             hashed_api_key: Option<&'a HashedApiKey>,
             institution_id: &'a Uuid,
         }
@@ -198,7 +199,6 @@ impl WriteLogin for NewPerson {
             ms_user_id: ms_user_id.as_ref(),
             name,
             email,
-            email_verified: true,
             hashed_api_key: None,
             institution_id,
         };
@@ -219,10 +219,10 @@ impl WriteLogin for NewPerson {
         // 1. A user with that `ms_user_id` exists but has no API key (so they haven't logged in before)
         // 2. No user with that `ms_user_id` exists
         } else {
-            // We know that whoever just logged in is the actual owner of this email address. Anyone else that has this email should be unverified. This is a rare case, but we emit this command nonetheless just to be sure
+            // We know that whoever just logged in is the actual owner of this email address. Anyone else that has this email should have it removed from them
             diesel::update(person::table)
                 .filter(email_col.eq(email))
-                .set(email_verified_col.eq(false))
+                .set(email_col.eq(None::<String>))
                 .execute(db_conn)
                 .await?;
 
@@ -233,9 +233,12 @@ impl WriteLogin for NewPerson {
             // Add it to the `upsert` to be emitted to the db
             upsert.hashed_api_key = Some(&hash);
 
-            // Insert the new user, specifying their email is verified (see the definition of `upsert` variable above)
+            // Upsert the new user
             let id = diesel::insert_into(person::table)
                 .values(upsert)
+                .on_conflict(ms_user_id_col)
+                .do_update()
+                .set(upsert)
                 .returning(id_col)
                 .get_result(db_conn)
                 .await?;
