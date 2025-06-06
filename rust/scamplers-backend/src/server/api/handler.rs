@@ -26,7 +26,7 @@ impl<S, T> FromRequest<S> for ValidJson<T>
 where
     S: Send + Sync,
     T: Validate + DeserializeOwned,
-    <T as Validate>::Context: std::default::Default,
+    T::Context: std::default::Default,
 {
     type Rejection = Error;
 
@@ -45,7 +45,7 @@ impl<S, T> OptionalFromRequest<S> for ValidJson<T>
 where
     S: Send + Sync,
     T: Validate + DeserializeOwned,
-    <T as Validate>::Context: std::default::Default,
+    T::Context: std::default::Default,
 {
     type Rejection = Error;
 

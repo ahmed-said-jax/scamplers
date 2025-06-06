@@ -86,7 +86,10 @@ pub struct InstitutionQuery {
     pub ids: Vec<Uuid>,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub name: Option<String>,
-    #[cfg_attr(feature = "backend", serde(default = "super::default_ordering"))]
+    #[cfg_attr(
+        feature = "backend",
+        serde(default = "crate::model::DefaultOrdering::default")
+    )]
     pub order_by: Vec<InstitutionOrdering>,
     #[cfg_attr(feature = "backend", serde(default))]
     pub pagination: Pagination,

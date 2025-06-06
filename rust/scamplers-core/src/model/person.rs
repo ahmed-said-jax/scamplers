@@ -125,7 +125,10 @@ pub struct PersonQuery {
     pub name: Option<String>,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub email: Option<String>,
-    #[cfg_attr(feature = "backend", serde(default = "super::default_ordering"))]
+    #[cfg_attr(
+        feature = "backend",
+        serde(default = "crate::model::DefaultOrdering::default")
+    )]
     pub order_by: Vec<PersonOrdering>,
     #[cfg_attr(feature = "backend", serde(default))]
     pub pagination: Pagination,

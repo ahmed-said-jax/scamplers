@@ -173,7 +173,7 @@ pub fn query_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
         impl Default for #name {
             fn default() -> Self {
                 Self {
-                    order_by: super::default_ordering(),
+                    // order_by: crate::model::DefaultOrdering::default(),
                     ..Default::default()
                 }
             }

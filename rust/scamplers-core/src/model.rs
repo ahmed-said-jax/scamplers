@@ -34,6 +34,14 @@ impl Default for Pagination {
     }
 }
 
-fn default_ordering<T: Default>() -> Vec<T> {
-    vec![T::default()]
+trait DefaultOrdering {
+    fn default() -> Self;
+}
+impl<T> DefaultOrdering for Vec<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        vec![T::default()]
+    }
 }
