@@ -1,7 +1,12 @@
 import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
 import { Institution, NewPerson } from 'scamplers-core';
-import { AUTH_SECRET, MICROSOFT_ENTRA_ID_ID, MICROSOFT_ENTRA_ID_SECRET } from '$lib/server/secrets';
+import {
+	AUTH_SECRET,
+	MICROSOFT_ENTRA_ID_ID,
+	MICROSOFT_ENTRA_ID_SECRET,
+	MICROSOFT_ENTRA_ID_ISSUER
+} from '$lib/server/secrets';
 import { scamplersClient } from '$lib/server/backend';
 import { type JWT } from '@auth/core/jwt';
 
@@ -26,7 +31,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 	providers: [
 		Entra({
 			clientId: MICROSOFT_ENTRA_ID_ID,
-			clientSecret: MICROSOFT_ENTRA_ID_SECRET
+			clientSecret: MICROSOFT_ENTRA_ID_SECRET,
+			issuer: MICROSOFT_ENTRA_ID_ISSUER
 		})
 	],
 	callbacks: {

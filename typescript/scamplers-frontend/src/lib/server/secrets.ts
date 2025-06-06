@@ -12,4 +12,5 @@ async function read_secret(name: string): Promise<string | undefined> {
 export const AUTH_SECRET = await read_secret('auth_secret');
 export const MICROSOFT_ENTRA_ID_ID = await read_secret('auth_microsoft_entra_id_id');
 export const MICROSOFT_ENTRA_ID_SECRET = await read_secret('auth_microsoft_entra_id_secret');
+export const MICROSOFT_ENTRA_ID_ISSUER = await read_secret('auth_microsoft_entra_id_issuer');
 export const FRONTEND_TOKEN = await read_secret('frontend_token');
