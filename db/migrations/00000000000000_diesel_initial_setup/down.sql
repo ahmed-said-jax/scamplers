@@ -4,7 +4,7 @@
 
 drop type hashed_key;
 
-drop role auth_user, login_user, computational_staff, biology_staff, app_admin;
+drop role login_user, computational_staff, biology_staff, app_admin;
 
 drop function get_user_roles(user_id text);
 drop function create_user_if_not_exists(user_id text, roles text []);

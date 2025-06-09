@@ -305,3 +305,16 @@ impl IntoResponse for Error {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ApiKey;
+    use pretty_assertions::assert_eq;
+    #[test]
+    fn api_key_prefix_matches_hash_prefix() {
+        let api_key = ApiKey::new();
+        let hashed = api_key.hash();
+
+        assert_eq!(api_key.prefix(), hashed.prefix);
+    }
+}

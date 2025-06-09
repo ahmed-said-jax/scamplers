@@ -203,7 +203,7 @@ impl WriteLogin for NewPerson {
             .execute(db_conn)
             .await?;
 
-        let id = diesel::insert_into(person::table)
+        let id: Uuid = diesel::insert_into(person::table)
             .values(upsert)
             .on_conflict(ms_user_id_col)
             .do_update()
