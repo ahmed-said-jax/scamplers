@@ -8,13 +8,13 @@
     "https://cdn.10xgenomics.com/raw/upload/v1655151898/support/in-line%20documents/Dual_Index_Kit_TT_Set_A.json"
   ],
   "institution": {
-    "id": "c9eef101-b3a5-48ae-a23b-d772ca46657b",
-    "name": "Jackson Laboratory"
+    "id": "9188040d-6c67-4c5b-b112-36a304b66dad",
+    "name": "Microsoft"
   },
   "app_admin": {
     "name": "Ahmed Said",
-    "email": "ahmed.said@jax.org",
-    "ms_user_id": "133b2851-b37c-4793-9968-2b6bda08630c",
-    "institution_id": "c9eef101-b3a5-48ae-a23b-d772ca46657b"
+    "email": "scamplers-test@outlook.com",
+    "ms_user_id": "00000000-0000-0000-f1e7-f0086e18c6a3",
+    "institution_id": "9188040d-6c67-4c5b-b112-36a304b66dad"
   }
 }

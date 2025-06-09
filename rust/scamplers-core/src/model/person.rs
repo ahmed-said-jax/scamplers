@@ -5,21 +5,25 @@ use super::{Endpoint, institution::Institution};
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
-        db_enum, insert_struct, ordering_struct, ordinal_columns, query_struct, select_struct,
+        backend_db_enum, backend_insertion, backend_ordering, backend_ordinal_columns_enum,
+        backend_query_request, backend_selection,
     },
     scamplers_schema::person,
 };
 
 #[cfg(feature = "typescript")]
-use scamplers_macros::{api_enum, api_request, api_response};
+use scamplers_macros::{
+    frontend_enum, frontend_ordering, frontend_query_request, frontend_response,
+    frontend_write_request,
+};
 
 use super::SEARCH_SUFFIX;
 use uuid::Uuid;
 
 const ENDPOINT: &str = "/people";
 
-#[cfg_attr(feature = "backend", db_enum)]
-#[cfg_attr(feature = "typescript", api_enum)]
+#[cfg_attr(feature = "backend", backend_db_enum)]
+#[cfg_attr(feature = "typescript", frontend_enum)]
 pub enum UserRole {
     AppAdmin,
     ComputationalStaff,
@@ -28,13 +32,14 @@ pub enum UserRole {
     Unknown,
 }
 
-#[cfg_attr(feature = "backend", insert_struct(person), derive(Clone))]
-#[cfg_attr(feature = "typescript", api_request)]
+#[cfg_attr(feature = "backend", backend_insertion(person), derive(Clone))]
+#[cfg_attr(feature = "typescript", frontend_write_request)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,
     #[cfg_attr(feature = "backend", garde(email))]
     pub email: String,
+    #[cfg_attr(feature = "typescript", builder(default))]
     pub orcid: Option<String>,
     pub institution_id: Uuid,
     pub ms_user_id: Option<Uuid>,
@@ -54,13 +59,13 @@ impl NewPerson {
     }
 }
 
-#[cfg_attr(feature = "backend", select_struct(person))]
-#[cfg_attr(feature = "typescript", api_response)]
+#[cfg_attr(feature = "backend", backend_selection(person))]
+#[cfg_attr(feature = "typescript", frontend_response)]
 pub struct Person {
     pub id: Uuid,
     pub name: String,
     pub link: String,
-    pub email: String,
+    pub email: Option<String>,
     pub orcid: Option<String>,
     #[cfg_attr(feature = "backend", diesel(embed))]
     pub institution: Institution,
@@ -71,13 +76,13 @@ impl Endpoint for Person {
     }
 }
 
-#[cfg_attr(feature = "backend", select_struct(person))]
-#[cfg_attr(feature = "typescript", api_response)]
+#[cfg_attr(feature = "backend", backend_selection(person))]
+#[cfg_attr(feature = "typescript", frontend_response)]
 pub struct PersonSummary {
     pub id: Uuid,
     pub name: String,
     pub link: String,
-    pub email: String,
+    pub email: Option<String>,
     pub orcid: Option<String>,
 }
 impl Endpoint for PersonSummary {
@@ -86,50 +91,41 @@ impl Endpoint for PersonSummary {
     }
 }
 
-#[cfg_attr(feature = "backend", select_struct(person))]
-#[cfg_attr(feature = "typescript", api_response)]
+#[cfg_attr(feature = "backend", backend_selection(person))]
+#[cfg_attr(feature = "typescript", frontend_response)]
 pub struct PersonReference {
     pub id: Uuid,
     pub link: String,
 }
 
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
-#[cfg_attr(feature = "typescript", api_response)]
+#[cfg_attr(feature = "typescript", frontend_response)]
 pub struct CreatedUser {
     pub person: Person,
-    pub api_key: Option<String>,
+    pub api_key: String,
 }
 
-#[cfg_attr(feature = "backend", ordinal_columns)]
-#[cfg_attr(feature = "typescript", api_enum)]
+#[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]
+#[cfg_attr(feature = "typescript", frontend_enum)]
 pub enum PersonOrdinalColumn {
     #[default]
     Name,
     Email,
 }
 
-#[cfg_attr(feature = "backend", ordering_struct)]
-#[cfg_attr(feature = "typescript", api_request)]
+#[cfg_attr(feature = "backend", backend_ordering)]
+#[cfg_attr(feature = "typescript", frontend_ordering)]
 pub struct PersonOrdering {
     pub column: PersonOrdinalColumn,
     pub descending: bool,
 }
 
-#[cfg_attr(feature = "backend", query_struct)]
-#[cfg_attr(feature = "typescript", api_request)]
+#[cfg_attr(feature = "backend", backend_query_request)]
+#[cfg_attr(feature = "typescript", frontend_query_request)]
 pub struct PersonQuery {
-    #[cfg_attr(feature = "backend", serde(default))]
-    #[cfg_attr(feature = "typescript", builder(default))]
     pub ids: Vec<Uuid>,
-    #[cfg_attr(feature = "typescript", builder(default))]
     pub name: Option<String>,
-    #[cfg_attr(feature = "typescript", builder(default))]
     pub email: Option<String>,
-    #[cfg_attr(
-        feature = "backend",
-        serde(default = "crate::model::DefaultOrdering::default")
-    )]
     pub order_by: Vec<PersonOrdering>,
-    #[cfg_attr(feature = "backend", serde(default))]
     pub pagination: Pagination,
 }

@@ -78,7 +78,7 @@ pub(super) async fn new_user(
     State(app_state): State<AppState>,
     ValidJson(person): ValidJson<NewPerson>,
 ) -> Result<Json<CreatedUser>> {
-    tracing::debug!(deserialized_person = person.as_value());
+    tracing::info!(deserialized_new_user = person.as_value());
 
     let mut db_conn = app_state.db_conn().await?;
 
@@ -144,12 +144,13 @@ where
 pub async fn by_query<Resource>(
     User(user_id): User,
     State(app_state): State<AppState>,
-    ValidJson(query): ValidJson<Resource::QueryParams>,
+    query: Option<ValidJson<Resource::QueryParams>>,
 ) -> super::error::Result<Json<Vec<Resource>>>
 where
     Resource: crate::db::FetchByQuery + Send,
     Resource::QueryParams: Send + valuable::Valuable + Default,
 {
+    let ValidJson(query) = query.unwrap_or_default();
     tracing::info!(deserialized_query = query.as_value());
 
     let mut db_conn = app_state.db_conn().await?;

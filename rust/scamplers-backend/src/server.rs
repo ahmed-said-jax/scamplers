@@ -267,10 +267,14 @@ async fn run_migrations(
 }
 
 fn app(app_state: AppState) -> Router {
-    api::router()
+    let api_router = api::router()
         .layer(TraceLayer::new_for_http())
         .route("/health", get(async || ()))
-        .with_state(app_state)
+        .with_state(app_state);
+
+    Router::new()
+        .merge(api_router.clone())
+        .nest("/api", api_router)
 }
 
 async fn shutdown_signal(app_state: AppState) {

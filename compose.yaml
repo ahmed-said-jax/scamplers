@@ -87,6 +87,8 @@ services:
         uid: "10001"
       - source: auth_microsoft_entra_id_secret
         uid: "10001"
+      - source: auth_microsoft_entra_id_issuer
+        uid: "10001"
       - source: frontend_token
         uid: "10001"
   caddy:
@@ -131,6 +133,8 @@ secrets:
     environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_ID
   auth_microsoft_entra_id_secret:
     environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_SECRET
+  auth_microsoft_entra_id_issuer:
+    environment: SCAMPLERS_AUTH_MICROSOFT_ENTRA_ID_ISSUER
   frontend_token:
     environment: SCAMPLERS_FRONTEND_TOKEN
   seed_data:

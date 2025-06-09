@@ -8,14 +8,18 @@ pub mod sample_metadata;
 pub mod sequencing_run;
 
 #[cfg(feature = "typescript")]
-use scamplers_macros::api_request;
+use wasm_bindgen::prelude::*;
 
 pub trait Endpoint {
     fn endpoint() -> String;
 }
 const SEARCH_SUFFIX: &str = "search";
 
-#[cfg_attr(feature = "typescript", api_request)]
+#[cfg_attr(
+    feature = "typescript",
+    derive(Clone, serde::Serialize),
+    wasm_bindgen(setter, inspectable)
+)]
 #[cfg_attr(
     feature = "backend",
     derive(serde::Deserialize, valuable::Valuable, Debug)
@@ -31,6 +35,15 @@ impl Default for Pagination {
             limit: 500,
             offset: 0,
         }
+    }
+}
+
+#[cfg(feature = "typescript")]
+#[wasm_bindgen]
+impl Pagination {
+    #[wasm_bindgen(constructor)]
+    pub fn new(limit: i64, offset: i64) -> Self {
+        Self { limit, offset }
     }
 }
 

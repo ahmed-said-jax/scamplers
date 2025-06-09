@@ -17,15 +17,14 @@ export class Client {
   free(): void;
   send_new_institution(data: NewInstitution, api_key?: string | null): Promise<Institution>;
   send_new_person(data: NewPerson, api_key?: string | null): Promise<Person>;
-  send_new_ms_login(data: NewPerson, api_key?: string | null): Promise<CreatedUser>;
   constructor(backend_url: string, token: string);
+  send_new_ms_login(data: NewPerson): Promise<CreatedUser>;
 }
 export class CreatedUser {
   private constructor();
   free(): void;
   person: Person;
-  get api_key(): string;
-  set api_key(value: string | null | undefined);
+  api_key: string;
 }
 export class Institution {
   private constructor();
@@ -36,6 +35,14 @@ export class Institution {
 }
 export class InstitutionOrdering {
   private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
   static new(): InstitutionOrderingBuilder;
   column: InstitutionOrdinalColumn;
@@ -65,37 +72,21 @@ export class InstitutionOrderingError {
 }
 export class InstitutionQuery {
   private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
-  static new(): InstitutionQueryBuilder;
+  static new(): InstitutionQuery;
   ids: string[];
   get name(): string;
   set name(value: string | null | undefined);
   order_by: InstitutionOrdering[];
   pagination: Pagination;
-}
-/**
- * Builder for [`InstitutionQuery`](struct.InstitutionQuery.html).
- */
-export class InstitutionQueryBuilder {
-  private constructor();
-  free(): void;
-  ids(value: string[]): InstitutionQueryBuilder;
-  name(value?: string | null): InstitutionQueryBuilder;
-  order_by(value: InstitutionOrdering[]): InstitutionQueryBuilder;
-  pagination(value: Pagination): InstitutionQueryBuilder;
-  /**
-   * Builds a new `InstitutionQuery`.
-   *
-   * # Errors
-   *
-   * If a required field has not been initialized.
-   */
-  build(): InstitutionQuery;
-}
-export class InstitutionQueryError {
-  private constructor();
-  free(): void;
-  error(): string;
 }
 export class InstitutionReference {
   private constructor();
@@ -112,6 +103,14 @@ export class InstitutionSummary {
 }
 export class NewInstitution {
   private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
   static new(): NewInstitutionBuilder;
   id: string;
@@ -141,6 +140,14 @@ export class NewInstitutionError {
 }
 export class NewPerson {
   private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
   static new(): NewPersonBuilder;
   name: string;
@@ -179,33 +186,18 @@ export class NewPersonError {
   error(): string;
 }
 export class Pagination {
-  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
-  static new(): PaginationBuilder;
+  constructor(limit: bigint, offset: bigint);
   limit: bigint;
   offset: bigint;
-}
-/**
- * Builder for [`Pagination`](struct.Pagination.html).
- */
-export class PaginationBuilder {
-  private constructor();
-  free(): void;
-  limit(value: bigint): PaginationBuilder;
-  offset(value: bigint): PaginationBuilder;
-  /**
-   * Builds a new `Pagination`.
-   *
-   * # Errors
-   *
-   * If a required field has not been initialized.
-   */
-  build(): Pagination;
-}
-export class PaginationError {
-  private constructor();
-  free(): void;
-  error(): string;
 }
 export class Person {
   private constructor();
@@ -213,13 +205,22 @@ export class Person {
   id: string;
   name: string;
   link: string;
-  email: string;
+  get email(): string;
+  set email(value: string | null | undefined);
   get orcid(): string;
   set orcid(value: string | null | undefined);
   institution: Institution;
 }
 export class PersonOrdering {
   private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
   static new(): PersonOrderingBuilder;
   column: PersonOrdinalColumn;
@@ -249,8 +250,16 @@ export class PersonOrderingError {
 }
 export class PersonQuery {
   private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
   free(): void;
-  static new(): PersonQueryBuilder;
+  static new(): PersonQuery;
   ids: string[];
   get name(): string;
   set name(value: string | null | undefined);
@@ -258,31 +267,6 @@ export class PersonQuery {
   set email(value: string | null | undefined);
   order_by: PersonOrdering[];
   pagination: Pagination;
-}
-/**
- * Builder for [`PersonQuery`](struct.PersonQuery.html).
- */
-export class PersonQueryBuilder {
-  private constructor();
-  free(): void;
-  ids(value: string[]): PersonQueryBuilder;
-  name(value?: string | null): PersonQueryBuilder;
-  email(value?: string | null): PersonQueryBuilder;
-  order_by(value: PersonOrdering[]): PersonQueryBuilder;
-  pagination(value: Pagination): PersonQueryBuilder;
-  /**
-   * Builds a new `PersonQuery`.
-   *
-   * # Errors
-   *
-   * If a required field has not been initialized.
-   */
-  build(): PersonQuery;
-}
-export class PersonQueryError {
-  private constructor();
-  free(): void;
-  error(): string;
 }
 export class PersonReference {
   private constructor();
@@ -296,7 +280,8 @@ export class PersonSummary {
   id: string;
   name: string;
   link: string;
-  email: string;
+  get email(): string;
+  set email(value: string | null | undefined);
   get orcid(): string;
   set orcid(value: string | null | undefined);
 }
