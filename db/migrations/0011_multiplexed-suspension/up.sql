@@ -1,14 +1,14 @@
 create table multiplexed_suspension (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     link text generated always as ('/samples/' || id) stored not null,
     name text not null,
-    legacy_id text unique not null,
+    readable_id text unique not null,
     pooled_at timestamp not null,
     notes text []
 );
 
 create table multiplexed_suspension_measurement (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     suspension_id uuid references multiplexed_suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
     data jsonb not null

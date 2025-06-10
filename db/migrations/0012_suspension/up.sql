@@ -1,18 +1,18 @@
 create table multiplexing_tag (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     tag_id text not null,
     type text not null, -- constrained by Rust enum
     unique (tag_id, type)
 );
 
 create table suspension (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     link text generated always as ('/samples/' || id) stored not null,
-    legacy_id text unique not null,
+    readable_id text unique not null,
     metadata_id uuid references sample_metadata on delete restrict on update restrict,
     parent_specimen_id uuid references specimen on delete restrict on update restrict,
     is_derived boolean generated always as (parent_specimen_id is not null) stored,
-    biological_material text not null, -- constrained by Rust-side enum
+    biological_material text not null,
     created_at timestamp not null,
     pooled_into_id uuid references multiplexed_suspension on delete restrict on update restrict,
     multiplexing_tag_id uuid references multiplexing_tag on delete restrict on update restrict,
@@ -30,7 +30,7 @@ create table suspension (
 );
 
 create table suspension_measurement (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     suspension_id uuid references suspension on delete restrict on update restrict not null,
     measured_by uuid references person on delete restrict on update restrict not null,
     data jsonb not null

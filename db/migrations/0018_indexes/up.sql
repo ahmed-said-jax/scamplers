@@ -10,6 +10,11 @@
 
 -- create index comittee_approval_sample_idx on committee_approval (sample_id);
 
+-- create index specimen_type_idx on specimen (type);
+-- create index specimen_embedding_idx on specimen (embedded_in);
+-- create index specimen_preservation_idx on specimen (preserved_with);
+-- create index specimen_measurement_idx on specimen_measurement (specimen_id);
+
 -- create index dataset_name_idx on dataset_metadata (name);
 -- create index dataset_lab_idx on dataset_metadata (lab_id);
 -- create index dataset_delivery_idx on dataset_metadata (delivered_at);
