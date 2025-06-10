@@ -665,14 +665,6 @@ const InstitutionQueryFinalization = (typeof FinalizationRegistry === 'undefined
 
 export class InstitutionQuery {
 
-    static __wrap(ptr) {
-        ptr = ptr >>> 0;
-        const obj = Object.create(InstitutionQuery.prototype);
-        obj.__wbg_ptr = ptr;
-        InstitutionQueryFinalization.register(obj, obj.__wbg_ptr, obj);
-        return obj;
-    }
-
     toJSON() {
         return {
             ids: this.ids,
@@ -763,12 +755,11 @@ export class InstitutionQuery {
         var ptr0 = arg0.__destroy_into_raw();
         wasm.__wbg_set_institutionquery_pagination(this.__wbg_ptr, ptr0);
     }
-    /**
-     * @returns {InstitutionQuery}
-     */
-    static new() {
+    constructor() {
         const ret = wasm.institutionquery_new();
-        return InstitutionQuery.__wrap(ret);
+        this.__wbg_ptr = ret >>> 0;
+        InstitutionQueryFinalization.register(this, this.__wbg_ptr, this);
+        return this;
     }
 }
 
@@ -1751,14 +1742,6 @@ const PersonQueryFinalization = (typeof FinalizationRegistry === 'undefined')
 
 export class PersonQuery {
 
-    static __wrap(ptr) {
-        ptr = ptr >>> 0;
-        const obj = Object.create(PersonQuery.prototype);
-        obj.__wbg_ptr = ptr;
-        PersonQueryFinalization.register(obj, obj.__wbg_ptr, obj);
-        return obj;
-    }
-
     toJSON() {
         return {
             ids: this.ids,
@@ -1867,12 +1850,11 @@ export class PersonQuery {
         var ptr0 = arg0.__destroy_into_raw();
         wasm.__wbg_set_personquery_pagination(this.__wbg_ptr, ptr0);
     }
-    /**
-     * @returns {PersonQuery}
-     */
-    static new() {
+    constructor() {
         const ret = wasm.personquery_new();
-        return PersonQuery.__wrap(ret);
+        this.__wbg_ptr = ret >>> 0;
+        PersonQueryFinalization.register(this, this.__wbg_ptr, this);
+        return this;
     }
 }
 

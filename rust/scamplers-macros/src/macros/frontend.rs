@@ -89,7 +89,7 @@ pub fn query_request(input: TokenStream) -> TokenStream {
 
         #[wasm_bindgen::prelude::wasm_bindgen]
         impl #struct_name {
-            #[wasm_bindgen::prelude::constructor]
+            #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
             pub fn new() -> Self {
                 Self::default()
             }

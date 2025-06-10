@@ -71,7 +71,6 @@ export class InstitutionOrderingError {
   error(): string;
 }
 export class InstitutionQuery {
-  private constructor();
 /**
 ** Return copy of self without private attributes.
 */
@@ -81,7 +80,7 @@ export class InstitutionQuery {
 */
   toString(): string;
   free(): void;
-  static new(): InstitutionQuery;
+  constructor();
   ids: string[];
   get name(): string;
   set name(value: string | null | undefined);
@@ -249,7 +248,6 @@ export class PersonOrderingError {
   error(): string;
 }
 export class PersonQuery {
-  private constructor();
 /**
 ** Return copy of self without private attributes.
 */
@@ -259,7 +257,7 @@ export class PersonQuery {
 */
   toString(): string;
   free(): void;
-  static new(): PersonQuery;
+  constructor();
   ids: string[];
   get name(): string;
   set name(value: string | null | undefined);
