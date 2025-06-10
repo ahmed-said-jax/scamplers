@@ -3,6 +3,9 @@
 export enum InstitutionOrdinalColumn {
   Name = 0,
 }
+export enum LabOrdinalColumn {
+  Name = 0,
+}
 export enum PersonOrdinalColumn {
   Name = 0,
   Email = 1,
@@ -29,9 +32,7 @@ export class CreatedUser {
 export class Institution {
   private constructor();
   free(): void;
-  id: string;
-  name: string;
-  link: string;
+  0: InstitutionSummary;
 }
 export class InstitutionOrdering {
   private constructor();
@@ -96,9 +97,79 @@ export class InstitutionReference {
 export class InstitutionSummary {
   private constructor();
   free(): void;
-  id: string;
+  reference: InstitutionReference;
   name: string;
-  link: string;
+}
+export class Lab {
+  private constructor();
+  free(): void;
+  summary: LabSummary;
+  pi: PersonSummary;
+}
+export class LabOrdering {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): LabOrderingBuilder;
+  column: LabOrdinalColumn;
+  descending: boolean;
+}
+/**
+ * Builder for [`LabOrdering`](struct.LabOrdering.html).
+ */
+export class LabOrderingBuilder {
+  private constructor();
+  free(): void;
+  column(value: LabOrdinalColumn): LabOrderingBuilder;
+  descending(value: boolean): LabOrderingBuilder;
+  /**
+   * Builds a new `LabOrdering`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): LabOrdering;
+}
+export class LabOrderingError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class LabQuery {
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  constructor();
+  ids: string[];
+  get name(): string;
+  set name(value: string | null | undefined);
+  order_by: LabOrdering[];
+  pagination: Pagination;
+}
+export class LabReference {
+  private constructor();
+  free(): void;
+}
+export class LabSummary {
+  private constructor();
+  free(): void;
+  reference: LabReference;
+  name: string;
+  delivery_dir: string;
 }
 export class NewInstitution {
   private constructor();
@@ -242,13 +313,7 @@ export class Pagination {
 export class Person {
   private constructor();
   free(): void;
-  id: string;
-  name: string;
-  link: string;
-  get email(): string;
-  set email(value: string | null | undefined);
-  get orcid(): string;
-  set orcid(value: string | null | undefined);
+  summary: PersonSummary;
   institution: Institution;
 }
 export class PersonOrdering {
@@ -316,9 +381,8 @@ export class PersonReference {
 export class PersonSummary {
   private constructor();
   free(): void;
-  id: string;
+  reference: PersonReference;
   name: string;
-  link: string;
   get email(): string;
   set email(value: string | null | undefined);
   get orcid(): string;

@@ -34,6 +34,7 @@ fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
         #struct_item
 
         #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone)]
+        #[derive(Debug)]
         struct #builder_error_name(String);
 
         impl From<derive_builder::UninitializedFieldError> for #builder_error_name {

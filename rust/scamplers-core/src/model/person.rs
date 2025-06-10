@@ -1,6 +1,4 @@
-use crate::model::Pagination;
-
-use super::{Endpoint, institution::Institution};
+use super::{Endpoint, Pagination, institution::Institution};
 
 #[cfg(feature = "backend")]
 use {
@@ -39,8 +37,10 @@ pub struct NewPerson {
     pub name: String,
     #[cfg_attr(feature = "backend", garde(email))]
     pub email: String,
+    #[cfg_attr(feature = "typescript", builder(default))]
     pub orcid: Option<String>,
     pub institution_id: Uuid,
+    #[cfg_attr(feature = "typescript", builder(default))]
     pub ms_user_id: Option<Uuid>,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     #[cfg_attr(feature = "typescript", builder(default))]
@@ -60,27 +60,18 @@ impl NewPerson {
 
 #[cfg_attr(feature = "backend", backend_selection(person))]
 #[cfg_attr(feature = "typescript", frontend_response)]
-pub struct Person {
+pub struct PersonReference {
     pub id: Uuid,
-    pub name: String,
     pub link: String,
-    pub email: Option<String>,
-    pub orcid: Option<String>,
-    #[cfg_attr(feature = "backend", diesel(embed))]
-    pub institution: Institution,
-}
-impl Endpoint for Person {
-    fn endpoint() -> String {
-        format!("{ENDPOINT}/{{person_id}}")
-    }
 }
 
 #[cfg_attr(feature = "backend", backend_selection(person))]
 #[cfg_attr(feature = "typescript", frontend_response)]
 pub struct PersonSummary {
-    pub id: Uuid,
+    #[serde(flatten)]
+    #[cfg_attr(feature = "backend", diesel(embed))]
+    pub reference: PersonReference,
     pub name: String,
-    pub link: String,
     pub email: Option<String>,
     pub orcid: Option<String>,
 }
@@ -92,9 +83,17 @@ impl Endpoint for PersonSummary {
 
 #[cfg_attr(feature = "backend", backend_selection(person))]
 #[cfg_attr(feature = "typescript", frontend_response)]
-pub struct PersonReference {
-    pub id: Uuid,
-    pub link: String,
+pub struct Person {
+    #[serde(flatten)]
+    #[cfg_attr(feature = "backend", diesel(embed))]
+    pub summary: PersonSummary,
+    #[cfg_attr(feature = "backend", diesel(embed))]
+    pub institution: Institution,
+}
+impl Endpoint for Person {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{{person_id}}")
+    }
 }
 
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]

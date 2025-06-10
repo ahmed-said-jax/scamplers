@@ -253,17 +253,23 @@ function __wbg_adapter_40(arg0, arg1) {
 }
 
 function __wbg_adapter_43(arg0, arg1, arg2) {
-    wasm.closure116_externref_shim(arg0, arg1, arg2);
+    wasm.closure119_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_278(arg0, arg1, arg2, arg3) {
-    wasm.closure151_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_294(arg0, arg1, arg2, arg3) {
+    wasm.closure154_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 /**
  * @enum {0}
  */
 export const InstitutionOrdinalColumn = Object.freeze({
+    Name: 0, "0": "Name",
+});
+/**
+ * @enum {0}
+ */
+export const LabOrdinalColumn = Object.freeze({
     Name: 0, "0": "Name",
 });
 /**
@@ -438,55 +444,19 @@ export class Institution {
         wasm.__wbg_institution_free(ptr, 0);
     }
     /**
-     * @returns {string}
+     * @returns {InstitutionSummary}
      */
-    get id() {
-        const ret = wasm.__wbg_get_institution_id(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
+    get 0() {
+        const ret = wasm.__wbg_get_institution_0(this.__wbg_ptr);
+        return InstitutionSummary.__wrap(ret);
     }
     /**
-     * @param {string} arg0
+     * @param {InstitutionSummary} arg0
      */
-    set id(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_id(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get name() {
-        const ret = wasm.__wbg_get_institution_name(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string} arg0
-     */
-    set name(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_name(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get link() {
-        const ret = wasm.__wbg_get_institution_link(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string} arg0
-     */
-    set link(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_link(this.__wbg_ptr, ptr0, len0);
+    set 0(arg0) {
+        _assertClass(arg0, InstitutionSummary);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_institution_0(this.__wbg_ptr, ptr0);
     }
 }
 
@@ -769,6 +739,14 @@ const InstitutionReferenceFinalization = (typeof FinalizationRegistry === 'undef
 
 export class InstitutionReference {
 
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(InstitutionReference.prototype);
+        obj.__wbg_ptr = ptr;
+        InstitutionReferenceFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -812,7 +790,7 @@ export class InstitutionReference {
     set link(arg0) {
         const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_name(this.__wbg_ptr, ptr0, len0);
+        wasm.__wbg_set_institutionreference_link(this.__wbg_ptr, ptr0, len0);
     }
 }
 
@@ -821,6 +799,14 @@ const InstitutionSummaryFinalization = (typeof FinalizationRegistry === 'undefin
     : new FinalizationRegistry(ptr => wasm.__wbg_institutionsummary_free(ptr >>> 0, 1));
 
 export class InstitutionSummary {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(InstitutionSummary.prototype);
+        obj.__wbg_ptr = ptr;
+        InstitutionSummaryFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -834,21 +820,19 @@ export class InstitutionSummary {
         wasm.__wbg_institutionsummary_free(ptr, 0);
     }
     /**
-     * @returns {string}
+     * @returns {InstitutionReference}
      */
-    get id() {
-        const ret = wasm.__wbg_get_institutionsummary_id(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
+    get reference() {
+        const ret = wasm.__wbg_get_institutionsummary_reference(this.__wbg_ptr);
+        return InstitutionReference.__wrap(ret);
     }
     /**
-     * @param {string} arg0
+     * @param {InstitutionReference} arg0
      */
-    set id(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_id(this.__wbg_ptr, ptr0, len0);
+    set reference(arg0) {
+        _assertClass(arg0, InstitutionReference);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_institutionsummary_reference(this.__wbg_ptr, ptr0);
     }
     /**
      * @returns {string}
@@ -865,13 +849,404 @@ export class InstitutionSummary {
     set name(arg0) {
         const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_name(this.__wbg_ptr, ptr0, len0);
+        wasm.__wbg_set_institutionsummary_name(this.__wbg_ptr, ptr0, len0);
+    }
+}
+
+const LabFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_lab_free(ptr >>> 0, 1));
+
+export class Lab {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_lab_free(ptr, 0);
+    }
+    /**
+     * @returns {LabSummary}
+     */
+    get summary() {
+        const ret = wasm.__wbg_get_lab_summary(this.__wbg_ptr);
+        return LabSummary.__wrap(ret);
+    }
+    /**
+     * @param {LabSummary} arg0
+     */
+    set summary(arg0) {
+        _assertClass(arg0, LabSummary);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_lab_summary(this.__wbg_ptr, ptr0);
+    }
+    /**
+     * @returns {PersonSummary}
+     */
+    get pi() {
+        const ret = wasm.__wbg_get_lab_pi(this.__wbg_ptr);
+        return PersonSummary.__wrap(ret);
+    }
+    /**
+     * @param {PersonSummary} arg0
+     */
+    set pi(arg0) {
+        _assertClass(arg0, PersonSummary);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_lab_pi(this.__wbg_ptr, ptr0);
+    }
+}
+
+const LabOrderingFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_labordering_free(ptr >>> 0, 1));
+
+export class LabOrdering {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(LabOrdering.prototype);
+        obj.__wbg_ptr = ptr;
+        LabOrderingFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    static __unwrap(jsValue) {
+        if (!(jsValue instanceof LabOrdering)) {
+            return 0;
+        }
+        return jsValue.__destroy_into_raw();
+    }
+
+    toJSON() {
+        return {
+            column: this.column,
+            descending: this.descending,
+        };
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabOrderingFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_labordering_free(ptr, 0);
+    }
+    /**
+     * @returns {LabOrdinalColumn}
+     */
+    get column() {
+        const ret = wasm.__wbg_get_labordering_column(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {LabOrdinalColumn} arg0
+     */
+    set column(arg0) {
+        wasm.__wbg_set_labordering_column(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @returns {boolean}
+     */
+    get descending() {
+        const ret = wasm.__wbg_get_labordering_descending(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set descending(arg0) {
+        wasm.__wbg_set_labordering_descending(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @returns {LabOrderingBuilder}
+     */
+    static new() {
+        const ret = wasm.labordering_new();
+        return LabOrderingBuilder.__wrap(ret);
+    }
+}
+
+const LabOrderingBuilderFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_laborderingbuilder_free(ptr >>> 0, 1));
+/**
+ * Builder for [`LabOrdering`](struct.LabOrdering.html).
+ */
+export class LabOrderingBuilder {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(LabOrderingBuilder.prototype);
+        obj.__wbg_ptr = ptr;
+        LabOrderingBuilderFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabOrderingBuilderFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_laborderingbuilder_free(ptr, 0);
+    }
+    /**
+     * @param {LabOrdinalColumn} value
+     * @returns {LabOrderingBuilder}
+     */
+    column(value) {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.laborderingbuilder_column(ptr, value);
+        return LabOrderingBuilder.__wrap(ret);
+    }
+    /**
+     * @param {boolean} value
+     * @returns {LabOrderingBuilder}
+     */
+    descending(value) {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.laborderingbuilder_descending(ptr, value);
+        return LabOrderingBuilder.__wrap(ret);
+    }
+    /**
+     * Builds a new `LabOrdering`.
+     *
+     * # Errors
+     *
+     * If a required field has not been initialized.
+     * @returns {LabOrdering}
+     */
+    build() {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.laborderingbuilder_build(ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return LabOrdering.__wrap(ret[0]);
+    }
+}
+
+const LabOrderingErrorFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_laborderingerror_free(ptr >>> 0, 1));
+
+export class LabOrderingError {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabOrderingErrorFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_laborderingerror_free(ptr, 0);
     }
     /**
      * @returns {string}
      */
-    get link() {
-        const ret = wasm.__wbg_get_institutionsummary_link(this.__wbg_ptr);
+    error() {
+        const ret = wasm.laborderingerror_error(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+}
+
+const LabQueryFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_labquery_free(ptr >>> 0, 1));
+
+export class LabQuery {
+
+    toJSON() {
+        return {
+            ids: this.ids,
+            name: this.name,
+            order_by: this.order_by,
+            pagination: this.pagination,
+        };
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabQueryFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_labquery_free(ptr, 0);
+    }
+    /**
+     * @returns {string[]}
+     */
+    get ids() {
+        const ret = wasm.__wbg_get_labquery_ids(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {string[]} arg0
+     */
+    set ids(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_labquery_ids(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get name() {
+        const ret = wasm.__wbg_get_labquery_name(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set name(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_labquery_name(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {LabOrdering[]}
+     */
+    get order_by() {
+        const ret = wasm.__wbg_get_labquery_order_by(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {LabOrdering[]} arg0
+     */
+    set order_by(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_labquery_order_by(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {Pagination}
+     */
+    get pagination() {
+        const ret = wasm.__wbg_get_labquery_pagination(this.__wbg_ptr);
+        return Pagination.__wrap(ret);
+    }
+    /**
+     * @param {Pagination} arg0
+     */
+    set pagination(arg0) {
+        _assertClass(arg0, Pagination);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_labquery_pagination(this.__wbg_ptr, ptr0);
+    }
+    constructor() {
+        const ret = wasm.labquery_new();
+        this.__wbg_ptr = ret >>> 0;
+        LabQueryFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+}
+
+const LabReferenceFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_labreference_free(ptr >>> 0, 1));
+
+export class LabReference {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(LabReference.prototype);
+        obj.__wbg_ptr = ptr;
+        LabReferenceFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabReferenceFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_labreference_free(ptr, 0);
+    }
+}
+
+const LabSummaryFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_labsummary_free(ptr >>> 0, 1));
+
+export class LabSummary {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(LabSummary.prototype);
+        obj.__wbg_ptr = ptr;
+        LabSummaryFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LabSummaryFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_labsummary_free(ptr, 0);
+    }
+    /**
+     * @returns {LabReference}
+     */
+    get reference() {
+        const ret = wasm.__wbg_get_labsummary_reference(this.__wbg_ptr);
+        return LabReference.__wrap(ret);
+    }
+    /**
+     * @param {LabReference} arg0
+     */
+    set reference(arg0) {
+        _assertClass(arg0, LabReference);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_labsummary_reference(this.__wbg_ptr, ptr0);
+    }
+    /**
+     * @returns {string}
+     */
+    get name() {
+        const ret = wasm.__wbg_get_labsummary_name(this.__wbg_ptr);
         var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
         if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
         return v1;
@@ -879,10 +1254,27 @@ export class InstitutionSummary {
     /**
      * @param {string} arg0
      */
-    set link(arg0) {
+    set name(arg0) {
         const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_link(this.__wbg_ptr, ptr0, len0);
+        wasm.__wbg_set_labsummary_name(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get delivery_dir() {
+        const ret = wasm.__wbg_get_labsummary_delivery_dir(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set delivery_dir(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_labsummary_delivery_dir(this.__wbg_ptr, ptr0, len0);
     }
 }
 
@@ -954,7 +1346,7 @@ export class NewInstitution {
     set name(arg0) {
         const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_institution_name(this.__wbg_ptr, ptr0, len0);
+        wasm.__wbg_set_institutionreference_link(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * @returns {NewInstitutionBuilder}
@@ -1706,89 +2098,19 @@ export class Person {
         wasm.__wbg_person_free(ptr, 0);
     }
     /**
-     * @returns {string}
+     * @returns {PersonSummary}
      */
-    get id() {
-        const ret = wasm.__wbg_get_person_id(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
+    get summary() {
+        const ret = wasm.__wbg_get_person_summary(this.__wbg_ptr);
+        return PersonSummary.__wrap(ret);
     }
     /**
-     * @param {string} arg0
+     * @param {PersonSummary} arg0
      */
-    set id(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_person_id(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get name() {
-        const ret = wasm.__wbg_get_person_name(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string} arg0
-     */
-    set name(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_newperson_name(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get link() {
-        const ret = wasm.__wbg_get_person_link(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string} arg0
-     */
-    set link(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_newperson_email(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get email() {
-        const ret = wasm.__wbg_get_person_email(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string | null} [arg0]
-     */
-    set email(arg0) {
-        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_person_email(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get orcid() {
-        const ret = wasm.__wbg_get_person_orcid(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string | null} [arg0]
-     */
-    set orcid(arg0) {
-        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_person_orcid(this.__wbg_ptr, ptr0, len0);
+    set summary(arg0) {
+        _assertClass(arg0, PersonSummary);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_person_summary(this.__wbg_ptr, ptr0);
     }
     /**
      * @returns {Institution}
@@ -2104,6 +2426,14 @@ const PersonReferenceFinalization = (typeof FinalizationRegistry === 'undefined'
 
 export class PersonReference {
 
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonReference.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonReferenceFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -2157,6 +2487,14 @@ const PersonSummaryFinalization = (typeof FinalizationRegistry === 'undefined')
 
 export class PersonSummary {
 
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonSummary.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonSummaryFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -2169,21 +2507,19 @@ export class PersonSummary {
         wasm.__wbg_personsummary_free(ptr, 0);
     }
     /**
-     * @returns {string}
+     * @returns {PersonReference}
      */
-    get id() {
-        const ret = wasm.__wbg_get_personsummary_id(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
+    get reference() {
+        const ret = wasm.__wbg_get_personsummary_reference(this.__wbg_ptr);
+        return PersonReference.__wrap(ret);
     }
     /**
-     * @param {string} arg0
+     * @param {PersonReference} arg0
      */
-    set id(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_newperson_institution_id(this.__wbg_ptr, ptr0, len0);
+    set reference(arg0) {
+        _assertClass(arg0, PersonReference);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_personsummary_reference(this.__wbg_ptr, ptr0);
     }
     /**
      * @returns {string}
@@ -2200,24 +2536,7 @@ export class PersonSummary {
     set name(arg0) {
         const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_newperson_name(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @returns {string}
-     */
-    get link() {
-        const ret = wasm.__wbg_get_personsummary_link(this.__wbg_ptr);
-        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
-        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
-        return v1;
-    }
-    /**
-     * @param {string} arg0
-     */
-    set link(arg0) {
-        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_newperson_email(this.__wbg_ptr, ptr0, len0);
+        wasm.__wbg_set_personsummary_name(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * @returns {string}
@@ -2251,7 +2570,7 @@ export class PersonSummary {
     set orcid(arg0) {
         var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len0 = WASM_VECTOR_LEN;
-        wasm.__wbg_set_newperson_orcid(this.__wbg_ptr, ptr0, len0);
+        wasm.__wbg_set_personsummary_orcid(this.__wbg_ptr, ptr0, len0);
     }
 }
 
@@ -2360,6 +2679,16 @@ export function __wbg_iterator_9a24c88df860dc65() {
     return ret;
 };
 
+export function __wbg_labordering_new(arg0) {
+    const ret = LabOrdering.__wrap(arg0);
+    return ret;
+};
+
+export function __wbg_labordering_unwrap(arg0) {
+    const ret = LabOrdering.__unwrap(arg0);
+    return ret;
+};
+
 export function __wbg_length_a446193dc22c12f8(arg0) {
     const ret = arg0.length;
     return ret;
@@ -2377,7 +2706,7 @@ export function __wbg_new_23a2665fac83c611(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return __wbg_adapter_278(a, state0.b, arg0, arg1);
+                return __wbg_adapter_294(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -2610,13 +2939,13 @@ export function __wbindgen_cb_drop(arg0) {
     return ret;
 };
 
-export function __wbindgen_closure_wrapper519(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 97, __wbg_adapter_40);
+export function __wbindgen_closure_wrapper617(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 100, __wbg_adapter_40);
     return ret;
 };
 
-export function __wbindgen_closure_wrapper575(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 117, __wbg_adapter_43);
+export function __wbindgen_closure_wrapper673(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 120, __wbg_adapter_43);
     return ret;
 };
 

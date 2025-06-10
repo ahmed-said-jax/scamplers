@@ -30,11 +30,19 @@ impl Write for NewInstitution {
     }
 }
 
-impl AsDieselQueryBase for Institution {
+impl AsDieselQueryBase for InstitutionSummary {
     type QueryBase = institution;
 
     fn as_diesel_query_base() -> Self::QueryBase {
         institution
+    }
+}
+
+impl AsDieselQueryBase for Institution {
+    type QueryBase = <InstitutionSummary as AsDieselQueryBase>::QueryBase;
+
+    fn as_diesel_query_base() -> Self::QueryBase {
+        InstitutionSummary::as_diesel_query_base()
     }
 }
 
@@ -80,6 +88,7 @@ where
 
 impl FetchByQuery for InstitutionSummary {
     type QueryParams = InstitutionQuery;
+
     async fn fetch_by_query(
         query: &Self::QueryParams,
         db_conn: &mut diesel_async::AsyncPgConnection,
@@ -92,7 +101,7 @@ impl FetchByQuery for InstitutionSummary {
             ..
         } = query;
 
-        let mut statement = Institution::as_diesel_query_base()
+        let mut statement = Self::as_diesel_query_base()
             .select(Self::as_select())
             .limit(*limit)
             .offset(*offset)

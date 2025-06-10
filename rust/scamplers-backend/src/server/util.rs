@@ -10,7 +10,7 @@ pub(super) trait DevContainer: Sized {
 
 impl DevContainer for ContainerAsync<Postgres> {
     async fn new() -> anyhow::Result<Self> {
-        let postgres_version = "17-alpine3.21";
+        let postgres_version = "18beta1-alpine";
 
         Ok(Postgres::default()
             .with_host_auth()

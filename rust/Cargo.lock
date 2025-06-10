@@ -2307,6 +2307,7 @@ dependencies = [
  "derive_builder",
  "diesel",
  "garde",
+ "pretty_assertions",
  "reqwest",
  "scamplers-macros",
  "scamplers-schema",

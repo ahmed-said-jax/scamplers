@@ -27,6 +27,9 @@ serde-wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
 derive_builder = { workspace = true, optional = true }
 
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
 [features]
 backend = [
     "diesel",
