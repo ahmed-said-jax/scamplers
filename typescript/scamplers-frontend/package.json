@@ -30,7 +30,7 @@
 		"daisyui": "^5.0.43",
 		"eslint": "^9.28.0",
 		"eslint-config-prettier": "^10.0.1",
-		"eslint-plugin-svelte": "^3.9.1",
+		"eslint-plugin-svelte": "^3.9.2",
 		"globals": "^16.0.0",
 		"jsdom": "^26.0.0",
 		"prettier": "^3.4.2",
@@ -40,15 +40,15 @@
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.8.3",
-		"typescript-eslint": "^8.33.1",
+		"typescript-eslint": "^8.34.0",
 		"vite": "^6.2.5",
 		"vite-plugin-wasm": "^3.4.1",
-		"vitest": "^3.2.2"
+		"vitest": "^3.2.3"
 	},
 	"dependencies": {
 		"@auth/core": "^0.39.0",
 		"@auth/sveltekit": "^1.9.1",
-		"@types/node": "^22.15.30",
+		"@types/node": "^24.0.0",
 		"scamplers-core": "file:../scamplers-core"
 	}
 }
