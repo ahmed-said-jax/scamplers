@@ -137,6 +137,47 @@ export class NewInstitutionError {
   free(): void;
   error(): string;
 }
+export class NewLab {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): NewLabBuilder;
+  name: string;
+  pi_id: string;
+  delivery_dir: string;
+  member_ids: string[];
+}
+/**
+ * Builder for [`NewLab`](struct.NewLab.html).
+ */
+export class NewLabBuilder {
+  private constructor();
+  free(): void;
+  name(value: string): NewLabBuilder;
+  pi_id(value: string): NewLabBuilder;
+  delivery_dir(value: string): NewLabBuilder;
+  member_ids(value: string[]): NewLabBuilder;
+  /**
+   * Builds a new `NewLab`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): NewLab;
+}
+export class NewLabError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
 export class NewPerson {
   private constructor();
 /**

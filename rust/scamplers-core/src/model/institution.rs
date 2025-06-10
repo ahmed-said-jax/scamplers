@@ -90,3 +90,6 @@ pub struct InstitutionQuery {
     pub order_by: Vec<InstitutionOrdering>,
     pub pagination: Pagination,
 }
+
+#[cfg(test)]
+mod tests {}
