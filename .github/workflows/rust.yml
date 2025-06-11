@@ -29,7 +29,7 @@ jobs:
 
       - name: Build
         working-directory: rust
-        run: cargo build --workspace
+        run: cargo build --package scamplers-backend
 
       - name: Lint
         working-directory: rust
