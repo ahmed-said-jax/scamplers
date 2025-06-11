@@ -1,20 +1,13 @@
-use std::env;
-
-use diesel::prelude::*;
-use diesel_async::{
-    AsyncConnection, AsyncPgConnection, RunQueryDsl,
-    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
-};
-use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use futures::{FutureExt, future::BoxFuture};
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use rstest::fixture;
-use scamplers_core::model::institution::{Institution, NewInstitution};
+use scamplers_core::model::institution::NewInstitution;
 use uuid::Uuid;
 
-use crate::{db::model::Write, server::run_migrations};
+use crate::db::model::Write;
 
 trait TestDbConnection {
     async fn new() -> Self;
+    #[allow(dead_code)]
     async fn set_user(&mut self, user_id: &Uuid);
     async fn populate_db(&mut self);
 }

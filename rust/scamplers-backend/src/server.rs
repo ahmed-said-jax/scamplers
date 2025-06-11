@@ -249,7 +249,7 @@ impl AppState {
     }
 }
 
-pub async fn run_migrations(
+async fn run_migrations(
     db_conn: diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>,
 ) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../db/migrations");
