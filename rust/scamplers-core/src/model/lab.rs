@@ -1,12 +1,12 @@
 use crate::model::{Pagination, person::PersonSummary};
 
-use super::Endpoint;
+use super::{Endpoint, SEARCH_SUFFIX};
 
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
         backend_insertion, backend_ordering, backend_ordinal_columns_enum, backend_query_request,
-        backend_selection,
+        backend_selection, backend_update,
     },
     scamplers_schema::lab,
 };
@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 const ENDPOINT: &str = "/labs";
 
-#[cfg_attr(feature = "backend", backend_insertion(lab), derive(Clone))]
+#[cfg_attr(feature = "backend", backend_insertion(lab))]
 #[cfg_attr(feature = "typescript", frontend_write_request)]
 pub struct NewLab {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
@@ -42,8 +42,8 @@ impl Endpoint for NewLab {
 #[cfg_attr(feature = "backend", backend_selection(lab))]
 #[cfg_attr(feature = "typescript", frontend_response)]
 pub struct LabReference {
-    id: Uuid,
-    link: String,
+    pub id: Uuid,
+    pub link: String,
 }
 
 #[cfg_attr(feature = "backend", backend_selection(lab))]
@@ -54,6 +54,11 @@ pub struct LabSummary {
     pub reference: LabReference,
     pub name: String,
     pub delivery_dir: String,
+}
+impl Endpoint for LabSummary {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
+    }
 }
 
 #[cfg_attr(feature = "backend", backend_selection(lab))]
@@ -101,4 +106,26 @@ pub struct LabQuery {
     pub name: Option<String>,
     pub order_by: Vec<LabOrdering>,
     pub pagination: Pagination,
+}
+
+#[cfg_attr(feature = "backend", backend_update(lab))]
+#[cfg_attr(feature = "typescript", frontend_write_request)]
+pub struct LabUpdate {
+    pub id: Uuid,
+    pub name: Option<String>,
+    pub pi_id: Option<Uuid>,
+    pub delivery_dir: Option<String>,
+}
+
+#[cfg_attr(
+    feature = "backend",
+    derive(serde::Deserialize, Default),
+    serde(default)
+)]
+#[cfg_attr(feature = "typescript", frontend_write_request)]
+pub struct LabUpdateWithMembers {
+    #[serde(flatten)]
+    pub update: LabUpdate,
+    pub add_members: Vec<Uuid>,
+    pub remove_members: Vec<Uuid>,
 }

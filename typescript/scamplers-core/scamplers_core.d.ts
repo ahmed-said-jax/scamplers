@@ -163,6 +163,8 @@ export class LabQuery {
 export class LabReference {
   private constructor();
   free(): void;
+  id: string;
+  link: string;
 }
 export class LabSummary {
   private constructor();
@@ -170,6 +172,89 @@ export class LabSummary {
   reference: LabReference;
   name: string;
   delivery_dir: string;
+}
+export class LabUpdate {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): LabUpdateBuilder;
+  id: string;
+  get name(): string;
+  set name(value: string | null | undefined);
+  get pi_id(): string;
+  set pi_id(value: string | null | undefined);
+  get delivery_dir(): string;
+  set delivery_dir(value: string | null | undefined);
+}
+/**
+ * Builder for [`LabUpdate`](struct.LabUpdate.html).
+ */
+export class LabUpdateBuilder {
+  private constructor();
+  free(): void;
+  id(value: string): LabUpdateBuilder;
+  name(value?: string | null): LabUpdateBuilder;
+  pi_id(value?: string | null): LabUpdateBuilder;
+  delivery_dir(value?: string | null): LabUpdateBuilder;
+  /**
+   * Builds a new `LabUpdate`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): LabUpdate;
+}
+export class LabUpdateError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class LabUpdateWithMembers {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): LabUpdateWithMembersBuilder;
+  update: LabUpdate;
+  add_members: string[];
+  remove_members: string[];
+}
+/**
+ * Builder for [`LabUpdateWithMembers`](struct.LabUpdateWithMembers.html).
+ */
+export class LabUpdateWithMembersBuilder {
+  private constructor();
+  free(): void;
+  update(value: LabUpdate): LabUpdateWithMembersBuilder;
+  add_members(value: string[]): LabUpdateWithMembersBuilder;
+  remove_members(value: string[]): LabUpdateWithMembersBuilder;
+  /**
+   * Builds a new `LabUpdateWithMembers`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): LabUpdateWithMembers;
+}
+export class LabUpdateWithMembersError {
+  private constructor();
+  free(): void;
+  error(): string;
 }
 export class NewInstitution {
   private constructor();

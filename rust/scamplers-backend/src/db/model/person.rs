@@ -1,4 +1,11 @@
-use crate::db::{NewBoxedDieselExpression, Write, util::BoxedDieselExpression};
+use crate::{
+    db::{
+        model::{self, AsDieselQueryBase, FetchById},
+        util::{AsIlike, BoxedDieselExpression, NewBoxedDieselExpression},
+    },
+    fetch_by_query,
+    server::auth::{ApiKey, HashedApiKey},
+};
 use diesel::{
     dsl::{AssumeNotNull, InnerJoin},
     prelude::*,
@@ -6,7 +13,7 @@ use diesel::{
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
     Pagination,
-    person::{CreatedUser, NewPerson, Person, PersonOrdering, PersonQuery, PersonSummary},
+    person::{CreatedUser, NewPerson, Person, PersonQuery, PersonSummary},
 };
 use scamplers_schema::{
     institution,
@@ -27,12 +34,7 @@ define_sql_function! {fn revoke_roles_from_user(user_id: Text, roles: Array<Text
 define_sql_function! {fn create_user_if_not_exists(user_id: Text, roles: Array<Text>)}
 define_sql_function! {fn get_user_roles(user_id: Text) -> Array<Text>}
 
-use crate::{
-    db::{AsDieselFilter, AsDieselQueryBase, FetchById, FetchByQuery, util::AsIlike},
-    server::auth::{ApiKey, HashedApiKey},
-};
-
-impl<QuerySource> AsDieselFilter<QuerySource> for PersonQuery
+impl<QuerySource> model::AsDieselFilter<QuerySource> for PersonQuery
 where
     id_col: SelectableExpression<QuerySource>,
     name_col: SelectableExpression<QuerySource>,
@@ -49,15 +51,15 @@ where
         let mut query = BoxedDieselExpression::new_expression();
 
         if !ids.is_empty() {
-            query = query.with_condition(id_col.eq_any(ids));
+            query = query.and_condition(id_col.eq_any(ids));
         }
 
         if let Some(name) = name {
-            query = query.with_condition(name_col.ilike(name.as_ilike()));
+            query = query.and_condition(name_col.ilike(name.as_ilike()));
         }
 
         if let Some(email) = email {
-            query = query.with_condition(email_col.assume_not_null().ilike(email.as_ilike()));
+            query = query.and_condition(email_col.assume_not_null().ilike(email.as_ilike()));
         }
 
         query.build()
@@ -72,46 +74,31 @@ impl AsDieselQueryBase for PersonSummary {
     }
 }
 
-impl FetchByQuery for PersonSummary {
+impl model::FetchById for PersonSummary {
+    type Id = Uuid;
+
+    async fn fetch_by_id(
+        id: &Self::Id,
+        db_conn: &mut AsyncPgConnection,
+    ) -> super::error::Result<Self> {
+        Ok(Self::as_diesel_query_base()
+            .find(id)
+            .select(Self::as_select())
+            .first(db_conn)
+            .await?)
+    }
+}
+
+impl model::FetchByQuery for PersonSummary {
     type QueryParams = PersonQuery;
 
     async fn fetch_by_query(
         query: &Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<Vec<Self>> {
+    ) -> super::error::Result<Vec<Self>> {
         use scamplers_core::model::person::PersonOrdinalColumn::{Email, Name};
 
-        let PersonQuery {
-            order_by,
-            pagination: Pagination { limit, offset },
-            ..
-        } = &query;
-
-        let mut statement = Self::as_diesel_query_base()
-            .select(Self::as_select())
-            .limit(*limit)
-            .offset(*offset)
-            .into_boxed();
-
-        let query = query.as_diesel_filter();
-
-        if let Some(query) = query {
-            statement = statement.filter(query);
-        }
-
-        // This is horrendous and not scalable
-        for PersonOrdering { column, descending } in order_by {
-            statement = match (column, descending) {
-                (Name, false) => statement.then_order_by(name_col.asc()),
-                (Name, true) => statement.then_order_by(name_col.desc()),
-                (Email, false) => statement.then_order_by(email_col.asc()),
-                (Email, true) => statement.then_order_by(email_col.desc()),
-            };
-        }
-
-        let people = statement.load(db_conn).await?;
-
-        Ok(people)
+        fetch_by_query!(query, [(Name, name_col), (Email, email_col)], db_conn)
     }
 }
 
@@ -123,13 +110,13 @@ impl AsDieselQueryBase for Person {
     }
 }
 
-impl FetchById for Person {
+impl model::FetchById for Person {
     type Id = Uuid;
 
     async fn fetch_by_id(
         id: &Self::Id,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<Self> {
+    ) -> super::error::Result<Self> {
         Ok(Self::as_diesel_query_base()
             .select(Self::as_select())
             .filter(id_col.eq(id))
@@ -138,12 +125,9 @@ impl FetchById for Person {
     }
 }
 
-impl Write for NewPerson {
+impl model::Write for NewPerson {
     type Returns = Person;
-    async fn write(
-        self,
-        db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<Self::Returns> {
+    async fn write(self, db_conn: &mut AsyncPgConnection) -> super::error::Result<Self::Returns> {
         let id = diesel::insert_into(person::table)
             .values(self)
             .returning(id_col)
@@ -165,7 +149,7 @@ impl WriteLogin for NewPerson {
     async fn write_ms_login(
         self,
         db_conn: &mut AsyncPgConnection,
-    ) -> crate::db::error::Result<CreatedUser> {
+    ) -> super::error::Result<CreatedUser> {
         #[derive(Insertable, AsChangeset, Clone, Copy)]
         #[diesel(table_name = person, primary_key(ms_user_id))]
         struct Upsert<'a> {

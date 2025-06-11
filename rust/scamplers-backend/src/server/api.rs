@@ -5,10 +5,12 @@ use axum::{
 use scamplers_core::model::{
     Endpoint,
     institution::{Institution, InstitutionSummary, NewInstitution},
+    lab::{LabSummary, LabWithMembers, NewLab},
     person::{NewPerson, Person, PersonSummary},
 };
+use scamplers_schema::lab::dsl::lab;
 
-use crate::server::api::handler::{by_id, by_query, new_user, write};
+use crate::server::api::handler::{by_id, by_query, new_user, relatives, write};
 
 use super::AppState;
 
@@ -28,4 +30,11 @@ pub(super) fn router() -> Router<AppState> {
         .route(&NewPerson::new_user_endpoint(), post(new_user))
         .route(&Person::endpoint(), get(by_id::<Person>))
         .route(&PersonSummary::endpoint(), post(by_query::<PersonSummary>))
+        .route(&NewLab::endpoint(), post(write::<NewLab>))
+        .route(&LabWithMembers::endpoint(), get(by_id::<LabWithMembers>))
+        .route(&LabSummary::endpoint(), post(by_query::<LabSummary>))
+        .route(
+            &format!("{}/members", LabWithMembers::endpoint()),
+            get(relatives::<lab, PersonSummary>),
+        )
 }
