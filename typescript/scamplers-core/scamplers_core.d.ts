@@ -20,6 +20,7 @@ export class Client {
   free(): void;
   send_new_institution(data: NewInstitution, api_key?: string | null): Promise<Institution>;
   send_new_person(data: NewPerson, api_key?: string | null): Promise<Person>;
+  send_new_lab(data: NewLab, api_key?: string | null): Promise<LabWithMembers>;
   constructor(backend_url: string, token: string);
   send_new_ms_login(data: NewPerson): Promise<CreatedUser>;
 }
@@ -255,6 +256,12 @@ export class LabUpdateWithMembersError {
   private constructor();
   free(): void;
   error(): string;
+}
+export class LabWithMembers {
+  private constructor();
+  free(): void;
+  lab: Lab;
+  members: PersonSummary[];
 }
 export class NewInstitution {
   private constructor();

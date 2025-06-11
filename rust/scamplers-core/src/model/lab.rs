@@ -72,7 +72,7 @@ pub struct Lab {
 }
 
 #[cfg_attr(feature = "backend", derive(serde::Serialize))]
-#[cfg_attr(feature = "typescript", derive(serde::Deserialize))]
+#[cfg_attr(feature = "typescript", frontend_response)]
 pub struct LabWithMembers {
     #[serde(flatten)]
     pub lab: Lab,

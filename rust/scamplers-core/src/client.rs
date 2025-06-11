@@ -3,6 +3,7 @@ use {
     crate::model::Endpoint,
     crate::model::{
         institution::{Institution, NewInstitution},
+        lab::{LabWithMembers, NewLab},
         person::{CreatedUser, NewPerson, Person},
     },
     scamplers_macros::scamplers_client,
@@ -12,7 +13,7 @@ use {
 
 #[cfg(feature = "typescript")]
 #[wasm_bindgen]
-#[scamplers_client([(NewInstitution, Institution), (NewPerson, Person)])]
+#[scamplers_client([(NewInstitution, Institution), (NewPerson, Person), (NewLab, LabWithMembers)])]
 struct Client {
     backend_url: String,
     client: reqwest::Client,
