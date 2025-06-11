@@ -249,7 +249,7 @@ impl AppState {
     }
 }
 
-async fn run_migrations(
+pub async fn run_migrations(
     db_conn: diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>,
 ) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../db/migrations");
@@ -258,10 +258,14 @@ async fn run_migrations(
         diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>,
     > = AsyncConnectionWrapper::from(db_conn);
 
+    dbg!("should see this twice");
+
     tokio::task::spawn_blocking(move || {
         wrapper.run_pending_migrations(MIGRATIONS).unwrap();
     })
     .await?;
+
+    dbg!("should also see this one twice");
 
     Ok(())
 }

@@ -79,6 +79,7 @@ serde-wasm-bindgen = { version = "0.6.5" }
 wasm-bindgen-futures = { version = "0.4.50" }
 derive_builder = { version = "0.20.2" }
 pretty_assertions = { version = "1.4.1" }
+rstest = { version = "0.25.0", default-features = false }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
