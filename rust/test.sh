@@ -14,7 +14,7 @@ docker run --name scamplers-test --env POSTGRES_HOST_AUTH_METHOD=trust --env POS
 export SCAMPLERS_TEST_DB_URL="postgres://postgres@localhost:5432/scamplers-test"
 export DATABASE_URL="$SCAMPLERS_TEST_DB_URL"
 
-sleep 1
+sleep 2
 
 diesel migration run --migration-dir ../db/migrations
 
