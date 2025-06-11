@@ -8,9 +8,10 @@
 			return;
 		}
 
-		const response = await fetch('/auth/session');
-		const fullSession = await response.json();
-		apiKey = fullSession.user.apiKey;
+		const { session } = data;
+		if (session && session.user.apiKey) {
+			apiKey = session.user.apiKey;
+		}
 	}
 
 	const { session } = data;

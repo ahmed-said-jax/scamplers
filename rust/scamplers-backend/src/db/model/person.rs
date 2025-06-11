@@ -13,7 +13,7 @@ use diesel::{
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
     Pagination,
-    person::{CreatedUser, NewPerson, Person, PersonQuery, PersonSummary},
+    person::{CreatedUser, NewPerson, Person, PersonQuery, PersonSummary, UserRole},
 };
 use scamplers_schema::{
     institution,
@@ -194,6 +194,12 @@ impl WriteLogin for NewPerson {
             .set(upsert)
             .returning(id_col)
             .get_result(db_conn)
+            .await?;
+
+        // Create the user, but give them no roles
+        let empty_roles: Vec<UserRole> = Vec::with_capacity(0);
+        diesel::select(create_user_if_not_exists(id.to_string(), empty_roles))
+            .execute(db_conn)
             .await?;
 
         let person = Person::fetch_by_id(&id, db_conn).await?;
