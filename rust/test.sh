@@ -7,6 +7,8 @@ function cleanup_docker() {
     docker rm scamplers-test --volumes
 }
 
+trap cleanup_docker EXIT
+
 docker run --name scamplers-test --env POSTGRES_HOST_AUTH_METHOD=trust --env POSTGRES_DB=scamplers-test --publish 5432:5432 --detach postgres:18beta1-alpine
 
 export SCAMPLERS_TEST_DB_URL="postgres://postgres@localhost:5432/scamplers-test"
@@ -17,5 +19,3 @@ sleep 1
 diesel migration run --migration-dir ../db/migrations
 
 cargo test --package scamplers-backend -- --show-output
-
-trap cleanup_docker EXIT
