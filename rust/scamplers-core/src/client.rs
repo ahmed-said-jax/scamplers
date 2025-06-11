@@ -2,9 +2,9 @@
 use {
     crate::model::Endpoint,
     crate::model::{
-        institution::{Institution, NewInstitution},
-        lab::{LabWithMembers, NewLab},
-        person::{CreatedUser, NewPerson, Person},
+        institution::{Institution, InstitutionQuery, InstitutionSummary, NewInstitution},
+        lab::{LabQuery, LabSummary, LabWithMembers, NewLab},
+        person::{CreatedUser, NewPerson, Person, PersonQuery, PersonSummary},
     },
     scamplers_macros::scamplers_client,
     serde::{Serialize, de::DeserializeOwned},
@@ -44,11 +44,7 @@ impl Client {
             client,
         }
     }
-}
 
-#[cfg(feature = "typescript")]
-#[wasm_bindgen]
-impl Client {
     async fn send_request<Req, Resp>(
         &self,
         data: &Req,

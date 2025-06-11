@@ -75,11 +75,6 @@ pub struct PersonSummary {
     pub email: Option<String>,
     pub orcid: Option<String>,
 }
-impl Endpoint for PersonSummary {
-    fn endpoint() -> String {
-        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
-    }
-}
 
 #[cfg_attr(feature = "backend", backend_selection(person))]
 #[cfg_attr(feature = "typescript", frontend_response)]
@@ -126,4 +121,9 @@ pub struct PersonQuery {
     pub email: Option<String>,
     pub order_by: Vec<PersonOrdering>,
     pub pagination: Pagination,
+}
+impl Endpoint for PersonQuery {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
+    }
 }

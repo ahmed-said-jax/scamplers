@@ -4,9 +4,9 @@ use axum::{
 };
 use scamplers_core::model::{
     Endpoint,
-    institution::{Institution, InstitutionSummary, NewInstitution},
-    lab::{LabSummary, LabWithMembers, NewLab},
-    person::{NewPerson, Person, PersonSummary},
+    institution::{Institution, InstitutionQuery, InstitutionSummary, NewInstitution},
+    lab::{LabQuery, LabSummary, LabWithMembers, NewLab},
+    person::{NewPerson, Person, PersonQuery, PersonSummary},
 };
 use scamplers_schema::lab::dsl::lab;
 
@@ -23,16 +23,16 @@ pub(super) fn router() -> Router<AppState> {
         .route(&NewInstitution::endpoint(), post(write::<NewInstitution>))
         .route(&Institution::endpoint(), get(by_id::<Institution>))
         .route(
-            &InstitutionSummary::endpoint(),
+            &InstitutionQuery::endpoint(),
             post(by_query::<InstitutionSummary>),
         )
         .route(&NewPerson::endpoint(), post(write::<NewPerson>))
         .route(&NewPerson::new_user_endpoint(), post(new_user))
         .route(&Person::endpoint(), get(by_id::<Person>))
-        .route(&PersonSummary::endpoint(), post(by_query::<PersonSummary>))
+        .route(&PersonQuery::endpoint(), post(by_query::<PersonSummary>))
         .route(&NewLab::endpoint(), post(write::<NewLab>))
         .route(&LabWithMembers::endpoint(), get(by_id::<LabWithMembers>))
-        .route(&LabSummary::endpoint(), post(by_query::<LabSummary>))
+        .route(&LabQuery::endpoint(), post(by_query::<LabSummary>))
         .route(
             &format!("{}/members", LabWithMembers::endpoint()),
             get(relatives::<lab, PersonSummary>),

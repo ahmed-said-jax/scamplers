@@ -55,11 +55,6 @@ pub struct LabSummary {
     pub name: String,
     pub delivery_dir: String,
 }
-impl Endpoint for LabSummary {
-    fn endpoint() -> String {
-        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
-    }
-}
 
 #[cfg_attr(feature = "backend", backend_selection(lab))]
 #[cfg_attr(feature = "typescript", frontend_response)]
@@ -106,6 +101,11 @@ pub struct LabQuery {
     pub name: Option<String>,
     pub order_by: Vec<LabOrdering>,
     pub pagination: Pagination,
+}
+impl Endpoint for LabQuery {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
+    }
 }
 
 #[cfg_attr(feature = "backend", backend_update(lab))]

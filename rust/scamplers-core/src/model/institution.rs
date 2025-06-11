@@ -50,11 +50,6 @@ pub struct InstitutionSummary {
     pub reference: InstitutionReference,
     pub name: String,
 }
-impl Endpoint for InstitutionSummary {
-    fn endpoint() -> String {
-        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
-    }
-}
 
 #[cfg_attr(
     feature = "backend",
@@ -90,4 +85,9 @@ pub struct InstitutionQuery {
     pub name: Option<String>,
     pub order_by: Vec<InstitutionOrdering>,
     pub pagination: Pagination,
+}
+impl Endpoint for InstitutionQuery {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{SEARCH_SUFFIX}")
+    }
 }
