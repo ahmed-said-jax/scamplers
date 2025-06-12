@@ -3,6 +3,9 @@
 export enum InstitutionOrdinalColumn {
   Name = 0,
 }
+export enum LabOrdinalColumn {
+  Name = 0,
+}
 export enum PersonOrdinalColumn {
   Name = 0,
   Email = 1,
@@ -17,6 +20,7 @@ export class Client {
   free(): void;
   send_new_institution(data: NewInstitution, api_key?: string | null): Promise<Institution>;
   send_new_person(data: NewPerson, api_key?: string | null): Promise<Person>;
+  send_new_lab(data: NewLab, api_key?: string | null): Promise<LabWithMembers>;
   constructor(backend_url: string, token: string);
   send_new_ms_login(data: NewPerson): Promise<CreatedUser>;
 }
@@ -29,9 +33,7 @@ export class CreatedUser {
 export class Institution {
   private constructor();
   free(): void;
-  id: string;
-  name: string;
-  link: string;
+  0: InstitutionSummary;
 }
 export class InstitutionOrdering {
   private constructor();
@@ -71,7 +73,6 @@ export class InstitutionOrderingError {
   error(): string;
 }
 export class InstitutionQuery {
-  private constructor();
 /**
 ** Return copy of self without private attributes.
 */
@@ -81,7 +82,7 @@ export class InstitutionQuery {
 */
   toString(): string;
   free(): void;
-  static new(): InstitutionQuery;
+  constructor();
   ids: string[];
   get name(): string;
   set name(value: string | null | undefined);
@@ -97,9 +98,170 @@ export class InstitutionReference {
 export class InstitutionSummary {
   private constructor();
   free(): void;
-  id: string;
+  reference: InstitutionReference;
   name: string;
+}
+export class Lab {
+  private constructor();
+  free(): void;
+  summary: LabSummary;
+  pi: PersonSummary;
+}
+export class LabOrdering {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): LabOrderingBuilder;
+  column: LabOrdinalColumn;
+  descending: boolean;
+}
+/**
+ * Builder for [`LabOrdering`](struct.LabOrdering.html).
+ */
+export class LabOrderingBuilder {
+  private constructor();
+  free(): void;
+  column(value: LabOrdinalColumn): LabOrderingBuilder;
+  descending(value: boolean): LabOrderingBuilder;
+  /**
+   * Builds a new `LabOrdering`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): LabOrdering;
+}
+export class LabOrderingError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class LabQuery {
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  constructor();
+  ids: string[];
+  get name(): string;
+  set name(value: string | null | undefined);
+  order_by: LabOrdering[];
+  pagination: Pagination;
+}
+export class LabReference {
+  private constructor();
+  free(): void;
+  id: string;
   link: string;
+}
+export class LabSummary {
+  private constructor();
+  free(): void;
+  reference: LabReference;
+  name: string;
+  delivery_dir: string;
+}
+export class LabUpdate {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): LabUpdateBuilder;
+  id: string;
+  get name(): string;
+  set name(value: string | null | undefined);
+  get pi_id(): string;
+  set pi_id(value: string | null | undefined);
+  get delivery_dir(): string;
+  set delivery_dir(value: string | null | undefined);
+}
+/**
+ * Builder for [`LabUpdate`](struct.LabUpdate.html).
+ */
+export class LabUpdateBuilder {
+  private constructor();
+  free(): void;
+  id(value: string): LabUpdateBuilder;
+  name(value?: string | null): LabUpdateBuilder;
+  pi_id(value?: string | null): LabUpdateBuilder;
+  delivery_dir(value?: string | null): LabUpdateBuilder;
+  /**
+   * Builds a new `LabUpdate`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): LabUpdate;
+}
+export class LabUpdateError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class LabUpdateWithMembers {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): LabUpdateWithMembersBuilder;
+  update: LabUpdate;
+  add_members: string[];
+  remove_members: string[];
+}
+/**
+ * Builder for [`LabUpdateWithMembers`](struct.LabUpdateWithMembers.html).
+ */
+export class LabUpdateWithMembersBuilder {
+  private constructor();
+  free(): void;
+  update(value: LabUpdate): LabUpdateWithMembersBuilder;
+  add_members(value: string[]): LabUpdateWithMembersBuilder;
+  remove_members(value: string[]): LabUpdateWithMembersBuilder;
+  /**
+   * Builds a new `LabUpdateWithMembers`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): LabUpdateWithMembers;
+}
+export class LabUpdateWithMembersError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class LabWithMembers {
+  private constructor();
+  free(): void;
+  lab: Lab;
+  members: PersonSummary[];
 }
 export class NewInstitution {
   private constructor();
@@ -134,6 +296,47 @@ export class NewInstitutionBuilder {
   build(): NewInstitution;
 }
 export class NewInstitutionError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class NewLab {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): NewLabBuilder;
+  name: string;
+  pi_id: string;
+  delivery_dir: string;
+  member_ids: string[];
+}
+/**
+ * Builder for [`NewLab`](struct.NewLab.html).
+ */
+export class NewLabBuilder {
+  private constructor();
+  free(): void;
+  name(value: string): NewLabBuilder;
+  pi_id(value: string): NewLabBuilder;
+  delivery_dir(value: string): NewLabBuilder;
+  member_ids(value: string[]): NewLabBuilder;
+  /**
+   * Builds a new `NewLab`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): NewLab;
+}
+export class NewLabError {
   private constructor();
   free(): void;
   error(): string;
@@ -202,13 +405,7 @@ export class Pagination {
 export class Person {
   private constructor();
   free(): void;
-  id: string;
-  name: string;
-  link: string;
-  get email(): string;
-  set email(value: string | null | undefined);
-  get orcid(): string;
-  set orcid(value: string | null | undefined);
+  summary: PersonSummary;
   institution: Institution;
 }
 export class PersonOrdering {
@@ -249,7 +446,6 @@ export class PersonOrderingError {
   error(): string;
 }
 export class PersonQuery {
-  private constructor();
 /**
 ** Return copy of self without private attributes.
 */
@@ -259,7 +455,7 @@ export class PersonQuery {
 */
   toString(): string;
   free(): void;
-  static new(): PersonQuery;
+  constructor();
   ids: string[];
   get name(): string;
   set name(value: string | null | undefined);
@@ -277,9 +473,8 @@ export class PersonReference {
 export class PersonSummary {
   private constructor();
   free(): void;
-  id: string;
+  reference: PersonReference;
   name: string;
-  link: string;
   get email(): string;
   set email(value: string | null | undefined);
   get orcid(): string;

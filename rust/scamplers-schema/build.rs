@@ -16,7 +16,7 @@ fn main() {
     if in_docker {
         return;
     }
-    let postgres_version = option_env!("SCAMPLERS_POSTGRES_VERSION").unwrap_or("17-alpine");
+    let postgres_version = option_env!("SCAMPLERS_POSTGRES_VERSION").unwrap_or("18beta1-alpine");
 
     let postgres_instance = Postgres::default()
         .with_host_auth()

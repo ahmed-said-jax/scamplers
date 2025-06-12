@@ -10,7 +10,10 @@ use serde::{Serialize, de::DeserializeOwned};
 use valuable::Valuable;
 
 use crate::{
-    db::{model::person::WriteLogin, set_transaction_user},
+    db::{
+        model::{self, FetchRelatives, person::WriteLogin},
+        set_transaction_user,
+    },
     server::{
         AppState,
         auth::{Frontend, User},
@@ -93,7 +96,7 @@ pub async fn write<Data>(
     ValidJson(data): ValidJson<Data>,
 ) -> super::error::Result<Json<Data::Returns>>
 where
-    Data: crate::db::Write + Send + valuable::Valuable,
+    Data: model::Write + Send + valuable::Valuable,
     Data::Returns: Send,
 {
     tracing::info!(deserialized_data = data.as_value());
@@ -120,7 +123,7 @@ pub async fn by_id<Resource>(
     Path(resource_id): Path<Resource::Id>,
 ) -> super::error::Result<Json<Resource>>
 where
-    Resource: crate::db::FetchById + Send,
+    Resource: model::FetchById + Send,
     Resource::Id: Send + Sync + valuable::Valuable,
 {
     tracing::info!(deserialized_id = resource_id.as_value());
@@ -147,7 +150,7 @@ pub async fn by_query<Resource>(
     query: Option<ValidJson<Resource::QueryParams>>,
 ) -> super::error::Result<Json<Vec<Resource>>>
 where
-    Resource: crate::db::FetchByQuery + Send,
+    Resource: model::FetchByQuery + Send,
     Resource::QueryParams: Send + valuable::Valuable + Default,
 {
     let ValidJson(query) = query.unwrap_or_default();
@@ -161,6 +164,34 @@ where
                 set_transaction_user(&user_id, conn).await?;
 
                 Resource::fetch_by_query(&query, conn).await
+            }
+            .scope_boxed()
+        })
+        .await?;
+
+    Ok(Json(item))
+}
+
+pub(super) async fn relatives<Table, Relative>(
+    User(user_id): User,
+    State(app_state): State<AppState>,
+    Path(id): Path<Table::Id>,
+) -> super::error::Result<Json<Vec<Relative>>>
+where
+    Table: FetchRelatives<Relative>,
+    Table::Id: Valuable + Send,
+    Relative: Send,
+{
+    tracing::info!(deserialized_id = id.as_value());
+
+    let mut db_conn = app_state.db_conn().await?;
+
+    let item = db_conn
+        .transaction(|conn| {
+            async move {
+                set_transaction_user(&user_id, conn).await?;
+
+                Table::fetch_relatives(&id, conn).await
             }
             .scope_boxed()
         })

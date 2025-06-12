@@ -11,7 +11,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         library_type -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         prepared_at -> Timestamp,
         gems_id -> Uuid,
         n_amplification_cycles -> Int4,
@@ -70,7 +70,7 @@ diesel::table! {
     chromium_library (id) {
         id -> Uuid,
         link -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         cdna_id -> Uuid,
         single_index_set_name -> Nullable<Text>,
         dual_index_set_name -> Nullable<Text>,
@@ -101,7 +101,7 @@ diesel::table! {
     chromium_run (id) {
         id -> Uuid,
         link -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         chip -> Text,
         run_at -> Timestamp,
         run_by -> Uuid,
@@ -135,7 +135,7 @@ diesel::table! {
         name -> Text,
         lab_id -> Uuid,
         data_path -> Text,
-        delivered_at -> Nullable<Timestamp>,
+        delivered_at -> Timestamp,
     }
 }
 
@@ -154,7 +154,7 @@ diesel::table! {
     gems (id) {
         id -> Uuid,
         link -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         n_samples -> Int4,
         chemistry -> Nullable<Text>,
         chromium_run_id -> Uuid,
@@ -209,7 +209,7 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         name -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         pooled_at -> Timestamp,
         notes -> Nullable<Array<Nullable<Text>>>,
     }
@@ -275,9 +275,9 @@ diesel::table! {
     sequencing_run (id) {
         id -> Uuid,
         link -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         begun_at -> Timestamp,
-        finished_at -> Nullable<Timestamp>,
+        finished_at -> Timestamp,
         notes -> Nullable<Array<Nullable<Text>>>,
     }
 }
@@ -295,7 +295,7 @@ diesel::table! {
     specimen (id) {
         id -> Uuid,
         link -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         metadata_id -> Uuid,
         #[sql_name = "type"]
         type_ -> Text,
@@ -318,7 +318,7 @@ diesel::table! {
     suspension (id) {
         id -> Uuid,
         link -> Text,
-        legacy_id -> Text,
+        readable_id -> Text,
         metadata_id -> Nullable<Uuid>,
         parent_specimen_id -> Nullable<Uuid>,
         is_derived -> Nullable<Bool>,

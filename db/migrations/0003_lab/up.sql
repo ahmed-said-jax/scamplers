@@ -1,5 +1,5 @@
 create table lab (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     link text generated always as ('/labs/' || id) stored not null,
     name text unique not null,
     pi_id uuid references person on delete restrict on update restrict not null,

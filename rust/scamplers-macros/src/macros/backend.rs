@@ -39,8 +39,9 @@ pub fn update(attr: TokenStream, input: TokenStream) -> TokenStream {
     let table_name = parse_macro_input!(attr as syn::Path);
 
     let output = quote! {
-        #[derive(serde::Serialize, diesel::prelude::AsChangeset, valuable::Valuable, Debug)]
+        #[derive(serde::Deserialize, diesel::prelude::AsChangeset, diesel::prelude::Identifiable, valuable::Valuable, Debug, Default)]
         #[diesel(table_name = #table_name, check_for_backend(diesel::pg::Pg))]
+        #[serde(default)]
         #struct_item
     };
 

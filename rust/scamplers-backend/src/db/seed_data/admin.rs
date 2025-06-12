@@ -1,11 +1,11 @@
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use garde::Validate;
-use scamplers_core::model::person::{CreatedUser, NewPerson, Person, UserRole};
+use scamplers_core::model::person::{NewPerson, UserRole};
 use scamplers_schema::person;
 use serde::Deserialize;
 
-use crate::db::model::person::{WriteLogin, create_user_if_not_exists};
+use crate::db::model::person::{WriteLogin, grant_roles_to_user};
 
 use super::Write;
 
@@ -28,14 +28,11 @@ impl Write for NewAdmin {
     ) -> super::super::error::Result<Self::Returns> {
         let Self { person } = self;
 
-        let CreatedUser {
-            person: Person { id, .. },
-            ..
-        } = person.write_ms_login(db_conn).await?;
+        let created_user = person.write_ms_login(db_conn).await?;
 
-        // For convenience, we create the admin and grant them roles here, though this should be factored out eventually into a `PersonUpdate` struct that we can just populate and call from in here, rather than copying code
-        diesel::select(create_user_if_not_exists(
-            id.to_string(),
+        // For convenience, grant the admin roles here, though this should be factored out eventually into a `PersonUpdate` struct that we can just populate and call from in here, rather than copying code
+        diesel::select(grant_roles_to_user(
+            created_user.person.summary.reference.id.to_string(),
             vec![UserRole::AppAdmin],
         ))
         .execute(db_conn)

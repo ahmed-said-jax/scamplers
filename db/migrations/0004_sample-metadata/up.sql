@@ -1,10 +1,10 @@
 create table sample_metadata (
-    id uuid primary key default gen_random_uuid(),
+    id uuid primary key default uuidv7(),
     name text not null,
     submitted_by uuid references person on delete restrict on update restrict not null,
     lab_id uuid references lab on delete restrict on update restrict not null,
     received_at timestamp not null,
-    species text [] not null, -- constrained by Rust enum
+    species text [] not null,
     tissue text not null,
     notes text [],
     returned_at timestamp,

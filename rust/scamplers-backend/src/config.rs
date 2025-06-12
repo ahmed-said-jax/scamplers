@@ -6,7 +6,7 @@ use clap::{Args, Parser};
 
 use crate::db::seed_data::SeedData;
 
-#[derive(Args)]
+#[derive(Args, serde::Deserialize, Clone)]
 pub struct Config {
     #[arg(long, default_value_t)]
     dev: bool,

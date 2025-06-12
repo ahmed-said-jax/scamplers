@@ -8,7 +8,7 @@ use serde::Deserialize;
 mod admin;
 mod index_set;
 
-use super::Write;
+use super::model::Write;
 
 #[derive(Deserialize, Clone)]
 pub struct SeedData {

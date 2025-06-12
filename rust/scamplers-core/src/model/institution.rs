@@ -37,23 +37,18 @@ impl Endpoint for NewInstitution {
 
 #[cfg_attr(feature = "backend", backend_selection(institution))]
 #[cfg_attr(feature = "typescript", frontend_response)]
-pub struct Institution {
+pub struct InstitutionReference {
     pub id: Uuid,
-    pub name: String,
     pub link: String,
-}
-impl Endpoint for Institution {
-    fn endpoint() -> String {
-        format!("{ENDPOINT}/{{institution_id}}")
-    }
 }
 
 #[cfg_attr(feature = "backend", backend_selection(institution))]
 #[cfg_attr(feature = "typescript", frontend_response)]
 pub struct InstitutionSummary {
-    pub id: Uuid,
+    #[serde(flatten)]
+    #[cfg_attr(feature = "backend", diesel(embed))]
+    pub reference: InstitutionReference,
     pub name: String,
-    pub link: String,
 }
 impl Endpoint for InstitutionSummary {
     fn endpoint() -> String {
@@ -61,11 +56,17 @@ impl Endpoint for InstitutionSummary {
     }
 }
 
-#[cfg_attr(feature = "backend", backend_selection(institution))]
+#[cfg_attr(
+    feature = "backend",
+    backend_selection(institution),
+    serde(transparent)
+)]
 #[cfg_attr(feature = "typescript", frontend_response)]
-pub struct InstitutionReference {
-    pub id: Uuid,
-    pub link: String,
+pub struct Institution(#[cfg_attr(feature = "backend", diesel(embed))] pub InstitutionSummary);
+impl Endpoint for Institution {
+    fn endpoint() -> String {
+        format!("{ENDPOINT}/{{institution_id}}")
+    }
 }
 
 #[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]

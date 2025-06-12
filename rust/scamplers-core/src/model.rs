@@ -22,7 +22,8 @@ const SEARCH_SUFFIX: &str = "search";
 )]
 #[cfg_attr(
     feature = "backend",
-    derive(serde::Deserialize, valuable::Valuable, Debug)
+    derive(serde::Deserialize, valuable::Valuable, Debug),
+    serde(default)
 )]
 pub struct Pagination {
     pub limit: i64,
@@ -56,5 +57,60 @@ where
 {
     fn default() -> Self {
         vec![T::default()]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "typescript")]
+    #[test]
+    fn write_request_builder() {
+        use scamplers_macros::frontend_write_request;
+
+        #[frontend_write_request]
+        #[derive(Debug, PartialEq)]
+        struct WriteStruct {
+            field: String,
+            #[builder(default)]
+            optional_field: Option<String>,
+        }
+
+        let functional = WriteStruct::new()
+            .field(String::new())
+            .build()
+            .expect("failed to build struct without setting optional field");
+
+        assert_eq!(
+            functional,
+            WriteStruct {
+                field: String::new(),
+                optional_field: None
+            }
+        );
+
+        let error = WriteStruct::new().build().unwrap_err();
+    }
+
+    #[cfg(feature = "typescript")]
+    #[test]
+    fn default_query_request() {
+        use scamplers_macros::frontend_query_request;
+
+        #[frontend_query_request]
+        #[derive(Debug, PartialEq)]
+        struct QueryStruct {
+            optional_field: Option<String>,
+            order_by: Vec<String>,
+        }
+
+        let default_query = QueryStruct::default();
+
+        assert_eq!(
+            default_query,
+            QueryStruct {
+                optional_field: None,
+                order_by: vec![String::new()]
+            }
+        );
     }
 }
