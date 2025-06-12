@@ -19,7 +19,6 @@ use scamplers_core::model::{
     lab::NewLab,
     person::{NewPerson, Person, PersonQuery, PersonSummary},
 };
-use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
 use tokio::sync::OnceCell;
 use uuid::Uuid;
 
@@ -31,13 +30,13 @@ pub const N_LABS: usize = 25;
 pub const N_LAB_MEMBERS: usize = 5;
 
 struct TestState {
-    _container: ContainerAsync<Postgres>,
+    _container: DevContainer,
     db_pool: Pool<AsyncPgConnection>,
 }
 impl TestState {
     async fn new() -> Self {
-        let name = "scamplers-test";
-        let container = ContainerAsync::new(name).await.unwrap();
+        let name = "scamplers-backend_unit_test";
+        let container = DevContainer::new(name, false).await.unwrap();
 
         let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(
             container.db_url().await.unwrap(),
@@ -150,6 +149,7 @@ impl TestDbConnection for DbConnection {
     }
 
     async fn set_random_user(&mut self) {
+        #[allow(clippy::get_first)]
         let user_id = PersonSummary::fetch_by_query(&PersonQuery::default(), self)
             .await
             .unwrap()

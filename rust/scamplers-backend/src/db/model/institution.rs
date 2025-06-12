@@ -107,7 +107,7 @@ mod tests {
     use rstest::rstest;
     use scamplers_core::model::institution::*;
 
-    use crate::test_util::{DbConnection, N_INSTITUTIONS, db_conn, test_query};
+    use crate::db::test_util::{DbConnection, N_INSTITUTIONS, db_conn, test_query};
 
     fn comparison_fn(InstitutionSummary { name, .. }: &InstitutionSummary) -> String {
         name.to_string()

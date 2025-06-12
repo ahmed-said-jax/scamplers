@@ -218,7 +218,7 @@ mod tests {
         PersonOrdering, PersonOrdinalColumn, PersonQuery, PersonSummary,
     };
 
-    use crate::test_util::{DbConnection, N_PEOPLE, db_conn, test_query};
+    use crate::db::test_util::{DbConnection, N_PEOPLE, db_conn, test_query};
 
     fn comparison_fn(PersonSummary { name, .. }: &PersonSummary) -> String {
         name.to_string()

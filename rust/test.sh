@@ -3,9 +3,9 @@
 set -euo pipefail
 
 function cleanup_docker() {
-    docker kill scamplers-test > /dev/null
-    docker rm scamplers-test --volumes > /dev/null
+    docker kill scamplers-backend_unit_test > /dev/null
+    docker rm scamplers-backend_unit_test --volumes > /dev/null
 }
 trap cleanup_docker EXIT
 
-cargo test --package scamplers-backend -- --show-output
+cargo test --package scamplers-backend

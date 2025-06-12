@@ -39,7 +39,6 @@ impl model::Write for LabUpdateWithMembers {
             ..
         } = &update
         {
-            ();
         } else {
             diesel::update(&update)
                 .set(&update)
@@ -207,7 +206,7 @@ impl model::FetchById for LabWithMembers {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashSet, hash::RandomState};
+    use std::collections::HashSet;
 
     use pretty_assertions::assert_eq;
     use rstest::rstest;
@@ -217,8 +216,8 @@ mod tests {
     };
     use scamplers_schema::lab;
 
-    use crate::{
-        db::model::{FetchByQuery, FetchRelatives, Write},
+    use crate::db::{
+        model::{FetchByQuery, FetchRelatives, Write},
         test_util::{DbConnection, N_LAB_MEMBERS, N_LABS, db_conn, test_query},
     };
 
@@ -304,7 +303,10 @@ mod tests {
         assert_eq!(updated_members.len(), N_LAB_MEMBERS - 1);
 
         let extract_ids = |people: &[PersonSummary]| {
-            HashSet::<_, RandomState>::from_iter(people.iter().map(|p| p.reference.id))
+            people
+                .iter()
+                .map(|p| p.reference.id)
+                .collect::<HashSet<_>>()
         };
 
         assert_eq!(

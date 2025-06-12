@@ -11,7 +11,6 @@ use diesel_async::{
     pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::TraceLayer;
 use util::DevContainer;
@@ -104,7 +103,7 @@ fn initialize_logging(log_dir: Option<Utf8PathBuf>) {
 enum AppState {
     Dev {
         db_pool: Pool<AsyncPgConnection>,
-        _pg_container: Arc<ContainerAsync<Postgres>>,
+        _pg_container: Arc<DevContainer>,
         user_id: Uuid,
         http_client: reqwest::Client,
         config: Arc<Config>,
@@ -121,7 +120,7 @@ impl AppState {
         let container_err = "failed to start postgres container instance";
 
         let state = if config.is_dev() {
-            let pg_container: ContainerAsync<Postgres> = ContainerAsync::new("scamplers-dev")
+            let pg_container = DevContainer::new("scamplers-dev", false)
                 .await
                 .context(container_err)?;
             let db_root_url = pg_container.db_url().await?;
@@ -250,6 +249,8 @@ impl AppState {
     }
 }
 
+/// # Panics
+/// # Errors
 pub async fn run_migrations(
     db_conn: diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>,
 ) -> anyhow::Result<()> {

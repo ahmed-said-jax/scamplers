@@ -22,7 +22,8 @@ const SEARCH_SUFFIX: &str = "search";
 )]
 #[cfg_attr(
     feature = "backend",
-    derive(serde::Deserialize, valuable::Valuable, Debug)
+    derive(serde::Deserialize, valuable::Valuable, Debug),
+    serde(default)
 )]
 pub struct Pagination {
     pub limit: i64,
