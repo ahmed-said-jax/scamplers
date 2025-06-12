@@ -17,7 +17,7 @@ use rstest::fixture;
 use scamplers_core::model::{
     institution::NewInstitution,
     lab::NewLab,
-    person::{NewPerson, Person, PersonSummary},
+    person::{NewPerson, Person, PersonQuery, PersonSummary},
 };
 use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
 use tokio::sync::OnceCell;
@@ -104,7 +104,11 @@ impl TestState {
 
             let pi_id = people.choose(rng).map(id).unwrap();
             let name = format!("lab{i}");
-            let member_ids = people.choose_multiple(rng, N_LAB_MEMBERS).map(id).collect();
+            // Use `N_LAB_MEMBERS - 1` because we're expecting to add the PI, so using this constant later can be correct
+            let member_ids = people
+                .choose_multiple(rng, N_LAB_MEMBERS - 1)
+                .map(id)
+                .collect();
 
             let new_lab = NewLab {
                 name: name.clone(),
@@ -146,10 +150,10 @@ impl TestDbConnection for DbConnection {
     }
 
     async fn set_random_user(&mut self) {
-        let user_id = PersonSummary::fetch_by_query(&Default::default(), self)
+        let user_id = PersonSummary::fetch_by_query(&PersonQuery::default(), self)
             .await
             .unwrap()
-            .choose(&mut rand::rng())
+            .get(0)
             .unwrap()
             .reference
             .id;
@@ -158,12 +162,12 @@ impl TestDbConnection for DbConnection {
     }
 }
 
-pub async fn test_query<'a, Record, Value1, Value2>(
+pub async fn test_query<Record, Value1, Value2>(
     query: Record::QueryParams,
     mut db_conn: DbConnection,
     expected_len: usize,
     comparison_fn: fn(&Record) -> Value1,
-    expected: &'a [(usize, Value2)],
+    expected: &[(usize, Value2)],
 ) where
     Record: FetchByQuery,
     Value1: Debug,

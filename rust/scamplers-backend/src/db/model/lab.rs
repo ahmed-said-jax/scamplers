@@ -32,19 +32,19 @@ impl model::Write for LabUpdateWithMembers {
             remove_members,
         } = self;
 
-        match update {
-            LabUpdate {
-                name: None,
-                pi_id: None,
-                delivery_dir: None,
-                ..
-            } => (),
-            _ => {
-                diesel::update(&update)
-                    .set(&update)
-                    .execute(db_conn)
-                    .await?;
-            }
+        if let LabUpdate {
+            name: None,
+            pi_id: None,
+            delivery_dir: None,
+            ..
+        } = &update
+        {
+            ();
+        } else {
+            diesel::update(&update)
+                .set(&update)
+                .execute(db_conn)
+                .await?;
         }
 
         let LabUpdate { id: lab_id, .. } = &update;
@@ -202,5 +202,114 @@ impl model::FetchById for LabWithMembers {
         let lab = Lab::fetch_by_id(id, db_conn).await?;
 
         Ok(Self { lab, members })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashSet, hash::RandomState};
+
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+    use scamplers_core::model::{
+        lab::{LabQuery, LabSummary, LabUpdate, LabUpdateWithMembers, LabWithMembers, NewLab},
+        person::{PersonQuery, PersonSummary},
+    };
+    use scamplers_schema::lab;
+
+    use crate::{
+        db::model::{FetchByQuery, FetchRelatives, Write},
+        test_util::{DbConnection, N_LAB_MEMBERS, N_LABS, db_conn, test_query},
+    };
+
+    fn comparison_fn(LabSummary { name, .. }: &LabSummary) -> String {
+        name.to_string()
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn default_query(#[future] db_conn: DbConnection) {
+        let expected = [(0, "lab0"), (N_LABS - 1, "lab9")];
+        test_query(
+            LabQuery::default(),
+            db_conn,
+            N_LABS,
+            comparison_fn,
+            &expected,
+        )
+        .await;
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn new_lab_without_members(#[future] mut db_conn: DbConnection) {
+        let pi_id = PersonSummary::fetch_by_query(&PersonQuery::default(), &mut db_conn)
+            .await
+            .unwrap()
+            .first()
+            .unwrap()
+            .reference
+            .id;
+
+        let new_lab = NewLab {
+            name: "Rick Sanchez Lab".to_string(),
+            pi_id,
+            delivery_dir: "rick_sanchez".to_string(),
+            member_ids: vec![],
+        };
+
+        new_lab.write(&mut db_conn).await.unwrap();
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn remove_lab_members(#[future] mut db_conn: DbConnection) {
+        let lab_id = LabSummary::fetch_by_query(&LabQuery::default(), &mut db_conn)
+            .await
+            .unwrap()
+            .first()
+            .unwrap()
+            .reference
+            .id;
+
+        let original_members = lab::table::fetch_relatives(&lab_id, &mut db_conn)
+            .await
+            .unwrap();
+        // One extra for the PI
+        assert_eq!(original_members.len(), N_LAB_MEMBERS);
+
+        let remove_members = original_members
+            .iter()
+            .map(|m| m.reference.id)
+            .take(1)
+            .collect();
+        let remove_members_update = LabUpdateWithMembers {
+            update: LabUpdate {
+                id: lab_id,
+                ..Default::default()
+            },
+            remove_members,
+            ..Default::default()
+        };
+
+        let LabWithMembers {
+            lab,
+            members: updated_members,
+        } = remove_members_update.write(&mut db_conn).await.unwrap();
+
+        assert_eq!(lab.summary.reference.id, lab_id);
+        assert_eq!(updated_members.len(), N_LAB_MEMBERS - 1);
+
+        let extract_ids = |people: &[PersonSummary]| {
+            HashSet::<_, RandomState>::from_iter(people.iter().map(|p| p.reference.id))
+        };
+
+        assert_eq!(
+            extract_ids(&original_members[1..5]),
+            extract_ids(&updated_members)
+        );
     }
 }
