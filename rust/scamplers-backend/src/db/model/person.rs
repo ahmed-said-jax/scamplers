@@ -210,3 +210,49 @@ impl WriteLogin for NewPerson {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use scamplers_core::model::person::{
+        PersonOrdering, PersonOrdinalColumn, PersonQuery, PersonSummary,
+    };
+
+    use crate::test_util::{DbConnection, N_PEOPLE, db_conn, test_query};
+
+    fn comparison_fn(PersonSummary { name, .. }: &PersonSummary) -> String {
+        name.to_string()
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn default_person_query(#[future] db_conn: DbConnection) {
+        let expected = [(0, "person0"), (N_PEOPLE - 1, "person99")];
+        test_query(
+            PersonQuery::default(),
+            db_conn,
+            N_PEOPLE,
+            comparison_fn,
+            &expected,
+        )
+        .await;
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn specific_person_query(#[future] db_conn: DbConnection) {
+        let query = PersonQuery {
+            name: Some("person1".to_string()),
+            order_by: vec![PersonOrdering {
+                column: PersonOrdinalColumn::Name,
+                descending: true,
+            }],
+            ..Default::default()
+        };
+
+        let expected = [(0, "person19"), (10, "person1")];
+        test_query(query, db_conn, 11, comparison_fn, &expected).await;
+    }
+}

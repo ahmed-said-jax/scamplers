@@ -32,12 +32,22 @@ impl model::Write for LabUpdateWithMembers {
             remove_members,
         } = self;
 
-        let LabUpdate { id: lab_id, .. } = &update;
+        match update {
+            LabUpdate {
+                name: None,
+                pi_id: None,
+                delivery_dir: None,
+                ..
+            } => (),
+            _ => {
+                diesel::update(&update)
+                    .set(&update)
+                    .execute(db_conn)
+                    .await?;
+            }
+        }
 
-        diesel::update(&update)
-            .set(&update)
-            .execute(db_conn)
-            .await?;
+        let LabUpdate { id: lab_id, .. } = &update;
 
         let member_additions: Vec<_> = add_members
             .iter()

@@ -104,38 +104,34 @@ impl model::FetchByQuery for InstitutionSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diesel_async::AsyncPgConnection;
     use rstest::rstest;
-
-    use pretty_assertions::assert_eq;
     use scamplers_core::model::institution::*;
 
-    use crate::{
-        db::model::FetchByQuery,
-        test_util::{N_INSTITUTIONS, db_conn},
-    };
+    use crate::test_util::{DbConnection, N_INSTITUTIONS, db_conn, test_query};
 
-    #[rstest]
-    #[awt]
-    #[tokio::test]
-    async fn default_institution_query(#[future] mut db_conn: AsyncPgConnection) {
-        let institutions = InstitutionSummary::fetch_by_query(&Default::default(), &mut db_conn)
-            .await
-            .unwrap();
-
-        assert_eq!(institutions.len(), N_INSTITUTIONS);
-
-        let first_inst = institutions.get(0).unwrap();
-        assert_eq!(first_inst.name, "institution0");
-
-        let last_inst = institutions.last().unwrap();
-        assert_eq!(last_inst.name, "institution9");
+    fn comparison_fn(InstitutionSummary { name, .. }: &InstitutionSummary) -> String {
+        name.to_string()
     }
 
     #[rstest]
     #[awt]
     #[tokio::test]
-    async fn specific_institution_query(#[future] mut db_conn: AsyncPgConnection) {
+    async fn default_institution_query(#[future] db_conn: DbConnection) {
+        let expected = [(0, "institution0"), (N_INSTITUTIONS - 1, "institution9")];
+        test_query(
+            InstitutionQuery::default(),
+            db_conn,
+            N_INSTITUTIONS,
+            comparison_fn,
+            &expected,
+        )
+        .await;
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn specific_institution_query(#[future] db_conn: DbConnection) {
         let query = InstitutionQuery {
             name: Some("institution1".to_string()),
             order_by: vec![InstitutionOrdering {
@@ -144,18 +140,8 @@ mod tests {
             }],
             ..Default::default()
         };
+        let expected = [(0, "institution19"), (10, "institution1")];
 
-        let institutions = InstitutionSummary::fetch_by_query(&query, &mut db_conn)
-            .await
-            .unwrap();
-
-        // We expect 10 institutions that start with "institution1"
-        assert_eq!(institutions.len(), 6);
-
-        let first_inst = institutions.get(0).unwrap();
-        assert_eq!(first_inst.name, "institution14");
-
-        let last_inst = institutions.last().unwrap();
-        assert_eq!(last_inst.name, "institution1");
+        test_query(query, db_conn, 11, comparison_fn, &expected).await;
     }
 }

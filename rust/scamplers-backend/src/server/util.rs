@@ -3,18 +3,19 @@ use testcontainers_modules::{
     testcontainers::{ContainerAsync, ImageExt, runners::AsyncRunner},
 };
 
-pub(super) trait DevContainer: Sized {
-    async fn new() -> anyhow::Result<Self>;
+pub trait DevContainer: Sized {
+    async fn new(container_name: &str) -> anyhow::Result<Self>;
     async fn db_url(&self) -> anyhow::Result<String>;
 }
 
 impl DevContainer for ContainerAsync<Postgres> {
-    async fn new() -> anyhow::Result<Self> {
+    async fn new(container_name: &str) -> anyhow::Result<Self> {
         let postgres_version = "18beta1-alpine";
 
         Ok(Postgres::default()
             .with_host_auth()
             .with_tag(postgres_version)
+            .with_container_name(container_name)
             .start()
             .await?)
     }

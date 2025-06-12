@@ -1,65 +1,182 @@
-use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use std::fmt::Debug;
+
+use crate::{
+    db::model::FetchByQuery,
+    server::{run_migrations, util::DevContainer},
+};
+use diesel_async::{
+    AsyncPgConnection, RunQueryDsl,
+    pooled_connection::{
+        AsyncDieselConnectionManager,
+        deadpool::{Object, Pool},
+    },
+};
+use pretty_assertions::assert_eq;
+use rand::seq::IndexedRandom;
 use rstest::fixture;
-use scamplers_core::model::institution::NewInstitution;
+use scamplers_core::model::{
+    institution::NewInstitution,
+    lab::NewLab,
+    person::{NewPerson, Person, PersonSummary},
+};
+use testcontainers_modules::{postgres::Postgres, testcontainers::ContainerAsync};
+use tokio::sync::OnceCell;
 use uuid::Uuid;
 
 use crate::db::model::Write;
 
-trait TestDbConnection {
-    async fn new() -> Self;
-    #[allow(dead_code)]
-    async fn set_user(&mut self, user_id: &Uuid);
-    async fn populate_db(&mut self);
+pub const N_INSTITUTIONS: usize = 20;
+pub const N_PEOPLE: usize = 100;
+pub const N_LABS: usize = 25;
+pub const N_LAB_MEMBERS: usize = 5;
+
+struct TestState {
+    _container: ContainerAsync<Postgres>,
+    db_pool: Pool<AsyncPgConnection>,
 }
-
-const DB_URL: Option<&'static str> = option_env!("SCAMPLERS_TEST_DB_URL");
-pub const N_INSTITUTIONS: usize = 15;
-
-impl TestDbConnection for AsyncPgConnection {
+impl TestState {
     async fn new() -> Self {
-        let db_url = DB_URL.unwrap();
+        let name = "scamplers-test";
+        let container = ContainerAsync::new(name).await.unwrap();
 
-        AsyncPgConnection::establish(db_url)
-            .await
-            .expect(&format!("failed to connect to test database at {db_url}"))
+        let db_config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(
+            container.db_url().await.unwrap(),
+        );
+        let db_pool = Pool::builder(db_config).build().unwrap();
+
+        let mut test_state = Self {
+            _container: container,
+            db_pool,
+        };
+
+        test_state.populate().await;
+
+        test_state
     }
 
-    async fn populate_db(&mut self) {
-        fn catch_duplicate_record_err<T>(
-            result: crate::db::error::Result<T>,
-        ) -> crate::db::error::Result<Option<T>> {
-            use crate::db::error::Error;
+    async fn db_conn(&self) -> Object<AsyncPgConnection> {
+        self.db_pool.get().await.unwrap()
+    }
 
-            if let Err(Error::DuplicateRecord { .. }) = result {
-                return Ok(None);
-            }
+    async fn populate(&mut self) {
+        let db_conn = self.db_conn().await;
+        run_migrations(db_conn).await.unwrap();
 
-            return result.map(|val| Some(val));
-        }
+        let db_conn = &mut self.db_conn().await;
 
+        let mut institutions = Vec::with_capacity(N_INSTITUTIONS);
         for i in 0..N_INSTITUTIONS {
-            let new = NewInstitution {
+            let new_institution = NewInstitution {
                 id: Uuid::now_v7(),
                 name: format!("institution{i}"),
-            };
+            }
+            .write(db_conn)
+            .await
+            .unwrap();
 
-            catch_duplicate_record_err(new.write(self).await).unwrap();
+            institutions.push(new_institution);
+        }
+
+        let rng = &mut rand::rng();
+
+        let mut people = Vec::with_capacity(N_PEOPLE);
+        for i in 0..N_PEOPLE {
+            let institution_id = institutions.choose(rng).unwrap().0.reference.id;
+
+            let new_person = NewPerson {
+                name: format!("person{i}"),
+                email: format!("person{i}@example.com"),
+                institution_id,
+                ms_user_id: None,
+                orcid: None,
+                roles: vec![],
+            }
+            .write(db_conn)
+            .await
+            .unwrap();
+
+            people.push(new_person);
+        }
+
+        let mut labs = Vec::with_capacity(N_LABS);
+        for i in 0..N_LABS {
+            let id = |p: &Person| p.summary.reference.id;
+
+            let pi_id = people.choose(rng).map(id).unwrap();
+            let name = format!("lab{i}");
+            let member_ids = people.choose_multiple(rng, N_LAB_MEMBERS).map(id).collect();
+
+            let new_lab = NewLab {
+                name: name.clone(),
+                pi_id,
+                delivery_dir: format!("{name}_dir"),
+                member_ids,
+            }
+            .write(db_conn)
+            .await
+            .unwrap();
+
+            labs.push(new_lab);
         }
     }
+}
 
+static TEST_STATE: OnceCell<TestState> = OnceCell::const_new();
+pub type DbConnection = Object<AsyncPgConnection>;
+
+#[fixture]
+pub async fn db_conn() -> DbConnection {
+    let test_state = TEST_STATE.get_or_init(TestState::new).await;
+
+    test_state.db_conn().await
+}
+
+#[allow(dead_code)]
+pub trait TestDbConnection {
+    async fn set_user(&mut self, user_id: &Uuid);
+    async fn set_random_user(&mut self);
+}
+
+impl TestDbConnection for DbConnection {
     async fn set_user(&mut self, user_id: &Uuid) {
         diesel::sql_query(format!(r#"set role "{user_id}""#))
             .execute(self)
             .await
             .unwrap();
     }
+
+    async fn set_random_user(&mut self) {
+        let user_id = PersonSummary::fetch_by_query(&Default::default(), self)
+            .await
+            .unwrap()
+            .choose(&mut rand::rng())
+            .unwrap()
+            .reference
+            .id;
+
+        self.set_user(&user_id).await;
+    }
 }
 
-#[fixture]
-pub async fn db_conn() -> AsyncPgConnection {
-    let mut conn = AsyncPgConnection::new().await;
+pub async fn test_query<'a, Record, Value1, Value2>(
+    query: Record::QueryParams,
+    mut db_conn: DbConnection,
+    expected_len: usize,
+    comparison_fn: fn(&Record) -> Value1,
+    expected: &'a [(usize, Value2)],
+) where
+    Record: FetchByQuery,
+    Value1: Debug,
+    Value2: Debug + PartialEq<Value1>,
+{
+    let records = Record::fetch_by_query(&query, &mut db_conn).await.unwrap();
+    assert_eq!(records.len(), expected_len);
 
-    conn.populate_db().await;
-
-    conn
+    for (i, expected_val) in expected {
+        assert_eq!(
+            *expected_val,
+            records.get(*i).map(comparison_fn).unwrap(),
+            "record {i} had unexpected value"
+        );
+    }
 }

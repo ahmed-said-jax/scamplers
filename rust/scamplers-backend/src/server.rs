@@ -18,7 +18,7 @@ use util::DevContainer;
 use uuid::Uuid;
 mod api;
 pub mod auth;
-mod util;
+pub mod util;
 
 /// # Errors
 pub async fn serve(mut config: Config, log_dir: Option<Utf8PathBuf>) -> anyhow::Result<()> {
@@ -121,8 +121,9 @@ impl AppState {
         let container_err = "failed to start postgres container instance";
 
         let state = if config.is_dev() {
-            let pg_container: ContainerAsync<Postgres> =
-                ContainerAsync::new().await.context(container_err)?;
+            let pg_container: ContainerAsync<Postgres> = ContainerAsync::new("scamplers-dev")
+                .await
+                .context(container_err)?;
             let db_root_url = pg_container.db_url().await?;
 
             let mut db_conn = AsyncPgConnection::establish(&db_root_url).await?;
@@ -249,7 +250,7 @@ impl AppState {
     }
 }
 
-async fn run_migrations(
+pub async fn run_migrations(
     db_conn: diesel_async::pooled_connection::deadpool::Object<AsyncPgConnection>,
 ) -> anyhow::Result<()> {
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../db/migrations");
