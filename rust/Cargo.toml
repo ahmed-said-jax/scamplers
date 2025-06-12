@@ -13,7 +13,7 @@ default-members = ["scamplers-backend"]
 edition = "2024"
 
 [workspace.dependencies]
-clap = { version = "4.5.39", features = ["derive", "env"] }
+clap = { version = "4.5.40", features = ["derive", "env"] }
 anyhow = "1.0.98"
 axum = { version = "0.8.4", default-features = false, features = [
     "http2",
@@ -65,14 +65,14 @@ tracing-subscriber = { version = "0.3.19", features = ["json"] }
 argon2 = "0.5.3"
 tower-http = { version = "0.6.6", features = ["trace", "fs"] }
 rand = "0.9.1"
-reqwest = { version = "0.12.19", default-features = false, features = [
+reqwest = { version = "0.12.20", default-features = false, features = [
     "rustls-tls",
     "http2",
     "charset",
     "json",
 ] }
 url = { version = "2.5.4", features = ["serde"] }
-syn = { version = "2.0.101", features = ["full"] }
+syn = { version = "2.0.102", features = ["full"] }
 quote = { version = "1.0.40" }
 heck = { version = "0.5.0" }
 serde-wasm-bindgen = { version = "0.6.5" }
