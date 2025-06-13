@@ -213,12 +213,22 @@ impl WriteLogin for NewPerson {
 
 #[cfg(test)]
 mod tests {
+    use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use rstest::rstest;
-    use scamplers_core::model::person::{
-        PersonOrdering, PersonOrdinalColumn, PersonQuery, PersonSummary,
+    use scamplers_core::model::{
+        institution::{InstitutionQuery, InstitutionSummary},
+        person::{NewPerson, PersonOrdering, PersonOrdinalColumn, PersonQuery, PersonSummary},
     };
+    use uuid::Uuid;
 
-    use crate::db::test_util::{DbConnection, N_PEOPLE, db_conn, test_query};
+    use crate::{
+        config::LOGIN_USER,
+        db::{
+            DbTransaction,
+            model::{FetchByQuery, Write},
+            test_util::{DbConnection, N_PEOPLE, db_conn, test_query},
+        },
+    };
 
     fn comparison_fn(PersonSummary { name, .. }: &PersonSummary) -> String {
         name.to_string()
@@ -259,5 +269,36 @@ mod tests {
     #[rstest]
     #[awt]
     #[tokio::test]
-    async fn s() {}
+    async fn write_ms_login_as_login_user(#[future] mut db_conn: DbConnection) {
+        db_conn
+            .test_transaction::<_, crate::db::error::Error, _>(|tx| {
+                async move {
+                    tx.set_transaction_user(LOGIN_USER).await.unwrap();
+
+                    let institution_id =
+                        InstitutionSummary::fetch_by_query(&InstitutionQuery::default(), tx)
+                            .await
+                            .unwrap()
+                            .get(0)
+                            .unwrap()
+                            .reference
+                            .id;
+
+                    let pete = NewPerson {
+                        name: "Peter Parker".to_string(),
+                        email: "peter.parker@example.com".to_string(),
+                        ms_user_id: Some(Uuid::now_v7()),
+                        orcid: None,
+                        institution_id,
+                        roles: vec![],
+                    };
+
+                    pete.write(tx).await.unwrap();
+
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await;
+    }
 }

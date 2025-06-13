@@ -5,7 +5,7 @@ use crate::{
     server::{run_migrations, util::DevContainer},
 };
 use diesel_async::{
-    AsyncConnection, AsyncPgConnection, RunQueryDsl,
+    AsyncConnection, AsyncPgConnection,
     pooled_connection::{
         AsyncDieselConnectionManager,
         deadpool::{Object, Pool},
@@ -18,7 +18,7 @@ use rstest::fixture;
 use scamplers_core::model::{
     institution::NewInstitution,
     lab::NewLab,
-    person::{NewPerson, Person, PersonQuery, PersonSummary},
+    person::{NewPerson, Person},
 };
 use tokio::sync::OnceCell;
 use uuid::Uuid;
@@ -129,34 +129,6 @@ pub async fn db_conn() -> DbConnection {
     let test_state = TEST_STATE.get_or_init(TestState::new).await;
 
     test_state.db_pool.get().await.unwrap()
-}
-
-#[allow(dead_code)]
-pub trait TestDbConnection {
-    async fn set_user(&mut self, user_id: &Uuid);
-    async fn set_random_user(&mut self);
-}
-
-impl TestDbConnection for DbConnection {
-    async fn set_user(&mut self, user_id: &Uuid) {
-        diesel::sql_query(format!(r#"set role "{user_id}";"#))
-            .execute(self)
-            .await
-            .unwrap();
-    }
-
-    async fn set_random_user(&mut self) {
-        #[allow(clippy::get_first)]
-        let user_id = PersonSummary::fetch_by_query(&PersonQuery::default(), self)
-            .await
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .reference
-            .id;
-
-        self.set_user(&user_id).await;
-    }
 }
 
 pub async fn test_query<Record, Value1, Value2>(

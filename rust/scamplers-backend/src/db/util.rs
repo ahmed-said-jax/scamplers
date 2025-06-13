@@ -1,6 +1,5 @@
 use diesel::{pg::Pg, prelude::*, sql_types};
 use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::deadpool::Object};
-use uuid::Uuid;
 
 pub(super) type BoxedDieselExpression<'a, QuerySource> =
     Box<dyn BoxableExpression<QuerySource, Pg, SqlType = sql_types::Bool> + 'a>;
@@ -83,13 +82,13 @@ impl AsIlike for String {
 }
 
 pub trait DbTransaction {
-    async fn set_user(&mut self, user_id: &Uuid) -> super::error::Result<()>;
+    async fn set_transaction_user(&mut self, user_id: &str) -> super::error::Result<()>;
 }
 
 impl DbTransaction for Object<AsyncPgConnection> {
     /// # Errors
-    async fn set_user(&mut self, user_id: &Uuid) -> super::error::Result<()> {
-        diesel::sql_query(format!(r#"set local role "{user_id}""#))
+    async fn set_transaction_user(&mut self, user: &str) -> super::error::Result<()> {
+        diesel::sql_query(format!(r#"set local role "{user}""#))
             .execute(self)
             .await?;
 

@@ -6,6 +6,8 @@ use clap::{Args, Parser};
 
 use crate::db::seed_data::SeedData;
 
+pub const LOGIN_USER: &str = "login_user";
+
 #[derive(Args, serde::Deserialize, Clone)]
 pub struct Config {
     #[arg(long, default_value_t)]
@@ -93,7 +95,6 @@ impl Config {
     }
 
     fn db_url(&self, root: bool) -> String {
-        const LOGIN_USER: &str = "login_user";
         let Self {
             db_root_user,
             db_root_password,
