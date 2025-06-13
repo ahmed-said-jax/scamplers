@@ -249,15 +249,15 @@ function _assertClass(instance, klass) {
     }
 }
 function __wbg_adapter_40(arg0, arg1) {
-    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h0f4d6dd8db98231c(arg0, arg1);
+    wasm._dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h05b0a418da3bc948(arg0, arg1);
 }
 
 function __wbg_adapter_43(arg0, arg1, arg2) {
-    wasm.closure126_externref_shim(arg0, arg1, arg2);
+    wasm.closure125_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_357(arg0, arg1, arg2, arg3) {
-    wasm.closure161_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_390(arg0, arg1, arg2, arg3) {
+    wasm.closure160_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 /**
@@ -1877,6 +1877,13 @@ export class NewCommitteeApproval {
         return obj;
     }
 
+    static __unwrap(jsValue) {
+        if (!(jsValue instanceof NewCommitteeApproval)) {
+            return 0;
+        }
+        return jsValue.__destroy_into_raw();
+    }
+
     toJSON() {
         return {
             sample_id: this.sample_id,
@@ -2817,6 +2824,365 @@ export class NewPersonError {
     }
 }
 
+const NewSampleMetadataFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_newsamplemetadata_free(ptr >>> 0, 1));
+
+export class NewSampleMetadata {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(NewSampleMetadata.prototype);
+        obj.__wbg_ptr = ptr;
+        NewSampleMetadataFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    toJSON() {
+        return {
+            name: this.name,
+            submitted_by: this.submitted_by,
+            lab_id: this.lab_id,
+            species: this.species,
+            tissue: this.tissue,
+            committee_approvals: this.committee_approvals,
+            notes: this.notes,
+            returned_by: this.returned_by,
+        };
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NewSampleMetadataFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_newsamplemetadata_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    get name() {
+        const ret = wasm.__wbg_get_newsamplemetadata_name(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set name(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newcommitteeapproval_compliance_identifier(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get submitted_by() {
+        const ret = wasm.__wbg_get_newsamplemetadata_submitted_by(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set submitted_by(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_submitted_by(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get lab_id() {
+        const ret = wasm.__wbg_get_newsamplemetadata_lab_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set lab_id(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_lab_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {any[]}
+     */
+    get species() {
+        const ret = wasm.__wbg_get_newsamplemetadata_species(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {any[]} arg0
+     */
+    set species(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_species(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get tissue() {
+        const ret = wasm.__wbg_get_newsamplemetadata_tissue(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set tissue(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_tissue(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {NewCommitteeApproval[]}
+     */
+    get committee_approvals() {
+        const ret = wasm.__wbg_get_newsamplemetadata_committee_approvals(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {NewCommitteeApproval[]} arg0
+     */
+    set committee_approvals(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_committee_approvals(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string[] | undefined}
+     */
+    get notes() {
+        const ret = wasm.__wbg_get_newsamplemetadata_notes(this.__wbg_ptr);
+        let v1;
+        if (ret[0] !== 0) {
+            v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+            wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        }
+        return v1;
+    }
+    /**
+     * @param {string[] | null} [arg0]
+     */
+    set notes(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_notes(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get returned_by() {
+        const ret = wasm.__wbg_get_newsamplemetadata_returned_by(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set returned_by(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newsamplemetadata_returned_by(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {NewSampleMetadataBuilder}
+     */
+    static new() {
+        const ret = wasm.newsamplemetadata_new();
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+}
+
+const NewSampleMetadataBuilderFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_newsamplemetadatabuilder_free(ptr >>> 0, 1));
+/**
+ * Builder for [`NewSampleMetadata`](struct.NewSampleMetadata.html).
+ */
+export class NewSampleMetadataBuilder {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(NewSampleMetadataBuilder.prototype);
+        obj.__wbg_ptr = ptr;
+        NewSampleMetadataBuilderFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NewSampleMetadataBuilderFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_newsamplemetadatabuilder_free(ptr, 0);
+    }
+    /**
+     * @param {string} value
+     * @returns {NewSampleMetadataBuilder}
+     */
+    name(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_name(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string} value
+     * @returns {NewSampleMetadataBuilder}
+     */
+    submitted_by(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_submitted_by(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string} value
+     * @returns {NewSampleMetadataBuilder}
+     */
+    lab_id(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_lab_id(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {any[]} value
+     * @returns {NewSampleMetadataBuilder}
+     */
+    species(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passArrayJsValueToWasm0(value, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_species(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string} value
+     * @returns {NewSampleMetadataBuilder}
+     */
+    tissue(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_tissue(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {NewCommitteeApproval[]} value
+     * @returns {NewSampleMetadataBuilder}
+     */
+    committee_approvals(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passArrayJsValueToWasm0(value, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_committee_approvals(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string[] | null} [value]
+     * @returns {NewSampleMetadataBuilder}
+     */
+    notes(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passArrayJsValueToWasm0(value, wasm.__wbindgen_malloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_notes(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {NewSampleMetadataBuilder}
+     */
+    returned_by(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newsamplemetadatabuilder_returned_by(ptr, ptr0, len0);
+        return NewSampleMetadataBuilder.__wrap(ret);
+    }
+    /**
+     * Builds a new `NewSampleMetadata`.
+     *
+     * # Errors
+     *
+     * If a required field has not been initialized.
+     * @returns {NewSampleMetadata}
+     */
+    build() {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.newsamplemetadatabuilder_build(ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return NewSampleMetadata.__wrap(ret[0]);
+    }
+}
+
+const NewSampleMetadataErrorFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_newsamplemetadataerror_free(ptr >>> 0, 1));
+
+export class NewSampleMetadataError {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(NewSampleMetadataError.prototype);
+        obj.__wbg_ptr = ptr;
+        NewSampleMetadataErrorFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NewSampleMetadataErrorFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_newsamplemetadataerror_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    error() {
+        const ret = wasm.newsamplemetadataerror_error(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+}
+
 const PaginationFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_pagination_free(ptr >>> 0, 1));
@@ -3547,7 +3913,7 @@ export function __wbg_new_23a2665fac83c611(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return __wbg_adapter_357(a, state0.b, arg0, arg1);
+                return __wbg_adapter_390(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -3584,6 +3950,16 @@ export function __wbg_new_e25e5aab09ff45db() { return handleError(function () {
     return ret;
 }, arguments) };
 
+export function __wbg_newcommitteeapproval_new(arg0) {
+    const ret = NewCommitteeApproval.__wrap(arg0);
+    return ret;
+};
+
+export function __wbg_newcommitteeapproval_unwrap(arg0) {
+    const ret = NewCommitteeApproval.__unwrap(arg0);
+    return ret;
+};
+
 export function __wbg_newcommitteeapprovalerror_new(arg0) {
     const ret = NewCommitteeApprovalError.__wrap(arg0);
     return ret;
@@ -3607,6 +3983,11 @@ export function __wbg_newnoargs_105ed471475aaf50(arg0, arg1) {
 
 export function __wbg_newpersonerror_new(arg0) {
     const ret = NewPersonError.__wrap(arg0);
+    return ret;
+};
+
+export function __wbg_newsamplemetadataerror_new(arg0) {
+    const ret = NewSampleMetadataError.__wrap(arg0);
     return ret;
 };
 
@@ -3795,13 +4176,13 @@ export function __wbindgen_cb_drop(arg0) {
     return ret;
 };
 
-export function __wbindgen_closure_wrapper762(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 107, __wbg_adapter_40);
+export function __wbindgen_closure_wrapper822(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 106, __wbg_adapter_40);
     return ret;
 };
 
-export function __wbindgen_closure_wrapper818(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 127, __wbg_adapter_43);
+export function __wbindgen_closure_wrapper878(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 126, __wbg_adapter_43);
     return ret;
 };
 

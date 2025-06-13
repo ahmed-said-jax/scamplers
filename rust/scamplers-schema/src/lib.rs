@@ -12,7 +12,7 @@ diesel::table! {
         link -> Text,
         library_type -> Text,
         readable_id -> Text,
-        prepared_at -> Timestamp,
+        prepared_at -> Timestamptz,
         gems_id -> Uuid,
         n_amplification_cycles -> Int4,
         storage_location -> Nullable<Text>,
@@ -76,7 +76,7 @@ diesel::table! {
         dual_index_set_name -> Nullable<Text>,
         number_of_sample_index_pcr_cycles -> Int4,
         target_reads_per_cell -> Int4,
-        prepared_at -> Timestamp,
+        prepared_at -> Timestamptz,
         notes -> Nullable<Array<Nullable<Text>>>,
     }
 }
@@ -103,7 +103,7 @@ diesel::table! {
         link -> Text,
         readable_id -> Text,
         chip -> Text,
-        run_at -> Timestamp,
+        run_at -> Timestamptz,
         run_by -> Uuid,
         succeeded -> Bool,
         notes -> Nullable<Array<Nullable<Text>>>,
@@ -115,7 +115,7 @@ diesel::table! {
         library_id -> Uuid,
         sequencing_run_id -> Uuid,
         fastq_paths -> Nullable<Array<Nullable<Text>>>,
-        submitted_at -> Timestamp,
+        submitted_at -> Timestamptz,
     }
 }
 
@@ -135,7 +135,7 @@ diesel::table! {
         name -> Text,
         lab_id -> Uuid,
         data_path -> Text,
-        delivered_at -> Timestamp,
+        delivered_at -> Timestamptz,
     }
 }
 
@@ -210,7 +210,7 @@ diesel::table! {
         link -> Text,
         name -> Text,
         readable_id -> Text,
-        pooled_at -> Timestamp,
+        pooled_at -> Timestamptz,
         notes -> Nullable<Array<Nullable<Text>>>,
     }
 }
@@ -262,11 +262,11 @@ diesel::table! {
         name -> Text,
         submitted_by -> Uuid,
         lab_id -> Uuid,
-        received_at -> Timestamp,
+        received_at -> Timestamptz,
         species -> Array<Nullable<Text>>,
         tissue -> Text,
         notes -> Nullable<Array<Nullable<Text>>>,
-        returned_at -> Nullable<Timestamp>,
+        returned_at -> Nullable<Timestamptz>,
         returned_by -> Nullable<Uuid>,
     }
 }
@@ -276,8 +276,8 @@ diesel::table! {
         id -> Uuid,
         link -> Text,
         readable_id -> Text,
-        begun_at -> Timestamp,
-        finished_at -> Timestamp,
+        begun_at -> Timestamptz,
+        finished_at -> Timestamptz,
         notes -> Nullable<Array<Nullable<Text>>>,
     }
 }
@@ -323,7 +323,7 @@ diesel::table! {
         parent_specimen_id -> Nullable<Uuid>,
         is_derived -> Nullable<Bool>,
         biological_material -> Text,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
         pooled_into_id -> Nullable<Uuid>,
         multiplexing_tag_id -> Nullable<Uuid>,
         lysis_duration_min -> Nullable<Float4>,

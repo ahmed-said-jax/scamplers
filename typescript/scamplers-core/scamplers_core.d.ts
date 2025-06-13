@@ -447,6 +447,57 @@ export class NewPersonError {
   free(): void;
   error(): string;
 }
+export class NewSampleMetadata {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): NewSampleMetadataBuilder;
+  name: string;
+  submitted_by: string;
+  lab_id: string;
+  species: any[];
+  tissue: string;
+  committee_approvals: NewCommitteeApproval[];
+  get notes(): string[] | undefined;
+  set notes(value: string[] | null | undefined);
+  get returned_by(): string;
+  set returned_by(value: string | null | undefined);
+}
+/**
+ * Builder for [`NewSampleMetadata`](struct.NewSampleMetadata.html).
+ */
+export class NewSampleMetadataBuilder {
+  private constructor();
+  free(): void;
+  name(value: string): NewSampleMetadataBuilder;
+  submitted_by(value: string): NewSampleMetadataBuilder;
+  lab_id(value: string): NewSampleMetadataBuilder;
+  species(value: any[]): NewSampleMetadataBuilder;
+  tissue(value: string): NewSampleMetadataBuilder;
+  committee_approvals(value: NewCommitteeApproval[]): NewSampleMetadataBuilder;
+  notes(value?: string[] | null): NewSampleMetadataBuilder;
+  returned_by(value?: string | null): NewSampleMetadataBuilder;
+  /**
+   * Builds a new `NewSampleMetadata`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): NewSampleMetadata;
+}
+export class NewSampleMetadataError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
 export class Pagination {
 /**
 ** Return copy of self without private attributes.
