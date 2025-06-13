@@ -208,6 +208,7 @@ impl model::FetchById for LabWithMembers {
 mod tests {
     use std::collections::HashSet;
 
+    use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use pretty_assertions::assert_eq;
     use rstest::rstest;
     use scamplers_core::model::{
@@ -244,74 +245,90 @@ mod tests {
     #[awt]
     #[tokio::test]
     async fn new_lab_without_members(#[future] mut db_conn: DbConnection) {
-        let pi_id = PersonSummary::fetch_by_query(&PersonQuery::default(), &mut db_conn)
-            .await
-            .unwrap()
-            .first()
-            .unwrap()
-            .reference
-            .id;
+        db_conn
+            .test_transaction::<_, crate::db::error::Error, _>(|conn| {
+                async move {
+                    let pi_id = PersonSummary::fetch_by_query(&PersonQuery::default(), conn)
+                        .await
+                        .unwrap()
+                        .first()
+                        .unwrap()
+                        .reference
+                        .id;
 
-        let new_lab = NewLab {
-            name: "Rick Sanchez Lab".to_string(),
-            pi_id,
-            delivery_dir: "rick_sanchez".to_string(),
-            member_ids: vec![],
-        };
+                    let new_lab = NewLab {
+                        name: "Rick Sanchez Lab".to_string(),
+                        pi_id,
+                        delivery_dir: "rick_sanchez".to_string(),
+                        member_ids: vec![],
+                    };
 
-        new_lab.write(&mut db_conn).await.unwrap();
+                    new_lab.write(conn).await.unwrap();
+
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await;
     }
 
     #[rstest]
     #[awt]
     #[tokio::test]
     async fn remove_lab_members(#[future] mut db_conn: DbConnection) {
-        let lab_id = LabSummary::fetch_by_query(&LabQuery::default(), &mut db_conn)
-            .await
-            .unwrap()
-            .first()
-            .unwrap()
-            .reference
-            .id;
+        db_conn
+            .test_transaction::<_, crate::db::error::Error, _>(|conn| {
+                async move {
+                    let lab_id = LabSummary::fetch_by_query(&LabQuery::default(), conn)
+                        .await
+                        .unwrap()
+                        .first()
+                        .unwrap()
+                        .reference
+                        .id;
 
-        let original_members = lab::table::fetch_relatives(&lab_id, &mut db_conn)
-            .await
-            .unwrap();
-        // One extra for the PI
-        assert_eq!(original_members.len(), N_LAB_MEMBERS);
+                    let original_members =
+                        lab::table::fetch_relatives(&lab_id, conn).await.unwrap();
+                    assert_eq!(original_members.len(), N_LAB_MEMBERS);
 
-        let remove_members = original_members
-            .iter()
-            .map(|m| m.reference.id)
-            .take(1)
-            .collect();
-        let remove_members_update = LabUpdateWithMembers {
-            update: LabUpdate {
-                id: lab_id,
-                ..Default::default()
-            },
-            remove_members,
-            ..Default::default()
-        };
+                    let remove_members = original_members
+                        .iter()
+                        .map(|m| m.reference.id)
+                        .take(1)
+                        .collect();
+                    let remove_members_update = LabUpdateWithMembers {
+                        update: LabUpdate {
+                            id: lab_id,
+                            ..Default::default()
+                        },
+                        remove_members,
+                        ..Default::default()
+                    };
 
-        let LabWithMembers {
-            lab,
-            members: updated_members,
-        } = remove_members_update.write(&mut db_conn).await.unwrap();
+                    let LabWithMembers {
+                        lab,
+                        members: updated_members,
+                    } = remove_members_update.write(conn).await.unwrap();
 
-        assert_eq!(lab.summary.reference.id, lab_id);
-        assert_eq!(updated_members.len(), N_LAB_MEMBERS - 1);
+                    assert_eq!(lab.summary.reference.id, lab_id);
+                    assert_eq!(updated_members.len(), N_LAB_MEMBERS - 1);
 
-        let extract_ids = |people: &[PersonSummary]| {
-            people
-                .iter()
-                .map(|p| p.reference.id)
-                .collect::<HashSet<_>>()
-        };
+                    let extract_ids = |people: &[PersonSummary]| {
+                        people
+                            .iter()
+                            .map(|p| p.reference.id)
+                            .collect::<HashSet<_>>()
+                    };
 
-        assert_eq!(
-            extract_ids(&original_members[1..5]),
-            extract_ids(&updated_members)
-        );
+                    assert_eq!(
+                        extract_ids(&original_members[1..5]),
+                        extract_ids(&updated_members)
+                    );
+
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await;
     }
 }
