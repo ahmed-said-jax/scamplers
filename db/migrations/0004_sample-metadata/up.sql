@@ -3,11 +3,11 @@ create table sample_metadata (
     name text not null,
     submitted_by uuid references person on delete restrict on update restrict not null,
     lab_id uuid references lab on delete restrict on update restrict not null,
-    received_at timestamp not null,
+    received_at timestamptz not null,
     species text [] not null,
     tissue text not null,
     notes text [],
-    returned_at timestamp,
+    returned_at timestamptz,
     returned_by uuid references person on delete restrict on update restrict
 );
 

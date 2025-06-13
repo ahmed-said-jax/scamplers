@@ -3,19 +3,19 @@ repos:
     hooks:
       - id: fix-rust
         name: Fix Rust Code
-        entry: ./scripts/fix-rust.sh
+        entry: ./pre-commit_scripts/fix-rust.sh
         language: script
         pass_filenames: false
 
       - id: build-scamplers-core
         name: Build scamplers-core
-        entry: ./scripts/build-scamplers-core.sh
+        entry: ./pre-commit_scripts/build-scamplers-core.sh
         language: script
         pass_filenames: false
 
       - id: fix-typescript
         name: Fix TypeScript Code
-        entry: ./scripts/fix-typescript.sh
+        entry: ./pre-commit_scripts/fix-typescript.sh
         language: script
         pass_filenames: false
 

@@ -3,7 +3,7 @@ create table chromium_run (
     link text generated always as ('/chromium_runs/' || id) stored not null,
     readable_id text unique not null,
     chip text not null,
-    run_at timestamp not null,
+    run_at timestamptz not null,
     run_by uuid references person on delete restrict on update restrict not null,
     succeeded boolean not null,
     notes text []

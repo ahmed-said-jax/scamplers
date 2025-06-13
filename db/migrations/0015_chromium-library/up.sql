@@ -7,7 +7,7 @@ create table chromium_library (
     dual_index_set_name text references dual_index_set on delete restrict on update restrict,
     number_of_sample_index_pcr_cycles integer not null, -- validated on Rust side
     target_reads_per_cell integer not null,
-    prepared_at timestamp not null,
+    prepared_at timestamptz not null,
     notes text [], constraint has_index check ((single_index_set_name is null) != (dual_index_set_name is null))
 );
 
@@ -28,6 +28,6 @@ create table chromium_sequencing_submissions (
     library_id uuid references chromium_library on delete restrict on update restrict not null,
     sequencing_run_id uuid references sequencing_run on delete restrict on update restrict not null,
     fastq_paths text [],
-    submitted_at timestamp not null,
+    submitted_at timestamptz not null,
     primary key (library_id, sequencing_run_id)
 );

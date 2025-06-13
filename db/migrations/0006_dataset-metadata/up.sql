@@ -4,5 +4,5 @@ create table dataset_metadata (
     name text not null,
     lab_id uuid references lab on delete restrict on update restrict not null,
     data_path text not null,
-    delivered_at timestamp not null
+    delivered_at timestamptz not null
 );

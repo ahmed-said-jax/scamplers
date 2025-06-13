@@ -38,3 +38,6 @@ jobs:
       - name: Test
         working-directory: rust
         run: ./test.sh
+
+      - name: Compare typescript/scamplers-core/rust-src to rust/scamplers-core/src
+        run: diff --recursive typescript/scamplers-core/rust-src rust/scamplers-core/src
