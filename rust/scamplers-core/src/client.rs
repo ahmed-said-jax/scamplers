@@ -2,9 +2,9 @@
 use {
     crate::model::Endpoint,
     crate::model::{
-        institution::{Institution, InstitutionQuery, InstitutionSummary, NewInstitution},
-        lab::{LabQuery, LabSummary, LabWithMembers, NewLab},
-        person::{CreatedUser, NewPerson, Person, PersonQuery, PersonSummary},
+        institution::{Institution, NewInstitution},
+        lab::{LabWithMembers, NewLab},
+        person::{CreatedUser, NewPerson, Person},
     },
     scamplers_macros::scamplers_client,
     serde::{Serialize, de::DeserializeOwned},
