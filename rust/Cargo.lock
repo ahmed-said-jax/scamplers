@@ -396,6 +396,18 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chrono"
+version = "0.1.0"
+dependencies = [
+ "chrono 0.4.41",
+ "diesel",
+ "diesel-async",
+ "serde",
+ "valuable",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "chrono"
 version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
@@ -655,7 +667,7 @@ checksum = "ff3e1edb1f37b4953dd5176916347289ed43d7119cc2e6c7c3f7849ff44ea506"
 dependencies = [
  "bitflags 2.9.0",
  "byteorder",
- "chrono",
+ "chrono 0.4.41",
  "diesel_derives",
  "itoa",
  "serde_json",
@@ -2355,7 +2367,7 @@ dependencies = [
 name = "scamplers-core"
 version = "0.1.0"
 dependencies = [
- "chrono",
+ "chrono 0.1.0",
  "derive_builder",
  "diesel",
  "garde",
@@ -2588,7 +2600,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6b6f7f2fcb69f747921f79f3926bd1e203fce4fef62c268dd3abfb6d86029aa"
 dependencies = [
  "base64 0.22.1",
- "chrono",
+ "chrono 0.4.41",
  "hex",
  "indexmap 1.9.3",
  "indexmap 2.9.0",

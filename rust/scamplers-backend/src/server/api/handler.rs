@@ -11,8 +11,8 @@ use valuable::Valuable;
 
 use crate::{
     db::{
+        DbTransaction,
         model::{self, FetchRelatives, person::WriteLogin},
-        set_transaction_user,
     },
     server::{
         AppState,
@@ -106,7 +106,7 @@ where
     let item = db_conn
         .transaction(|conn| {
             async move {
-                set_transaction_user(&user_id, conn).await?;
+                conn.set_user(&user_id).await?;
 
                 data.write(conn).await
             }
@@ -133,7 +133,7 @@ where
     let item = db_conn
         .transaction(|conn| {
             async move {
-                set_transaction_user(&user_id, conn).await?;
+                conn.set_user(&user_id).await?;
 
                 Resource::fetch_by_id(&resource_id, conn).await
             }
@@ -161,7 +161,7 @@ where
     let item = db_conn
         .transaction(|conn| {
             async move {
-                set_transaction_user(&user_id, conn).await?;
+                conn.set_user(&user_id).await?;
 
                 Resource::fetch_by_query(&query, conn).await
             }
@@ -189,7 +189,7 @@ where
     let item = db_conn
         .transaction(|conn| {
             async move {
-                set_transaction_user(&user_id, conn).await?;
+                conn.set_user(&user_id).await?;
 
                 Table::fetch_relatives(&id, conn).await
             }

@@ -256,10 +256,19 @@ function __wbg_adapter_43(arg0, arg1, arg2) {
     wasm.closure126_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_340(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_357(arg0, arg1, arg2, arg3) {
     wasm.closure161_externref_shim(arg0, arg1, arg2, arg3);
 }
 
+/**
+ * @enum {0 | 1 | 2 | 3}
+ */
+export const ComplianceCommitteeType = Object.freeze({
+    Ibc: 0, "0": "Ibc",
+    Irb: 1, "1": "Irb",
+    Iacuc: 2, "2": "Iacuc",
+    Unknown: 3, "3": "Unknown",
+});
 /**
  * @enum {0}
  */
@@ -278,6 +287,20 @@ export const LabOrdinalColumn = Object.freeze({
 export const PersonOrdinalColumn = Object.freeze({
     Name: 0, "0": "Name",
     Email: 1, "1": "Email",
+});
+/**
+ * @enum {0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}
+ */
+export const Species = Object.freeze({
+    AmbystomaMexicanum: 0, "0": "AmbystomaMexicanum",
+    CanisFamiliaris: 1, "1": "CanisFamiliaris",
+    DrosophilaMelanogaster: 2, "2": "DrosophilaMelanogaster",
+    GasterosteusAculeatus: 3, "3": "GasterosteusAculeatus",
+    HomoSapiens: 4, "4": "HomoSapiens",
+    MusMusculus: 5, "5": "MusMusculus",
+    RattusNorvegicus: 6, "6": "RattusNorvegicus",
+    SminthopsisCrassicaudata: 7, "7": "SminthopsisCrassicaudata",
+    Unknown: 8, "8": "Unknown",
 });
 /**
  * @enum {0 | 1 | 2 | 3}
@@ -1840,6 +1863,240 @@ export class LabWithMembers {
     }
 }
 
+const NewCommitteeApprovalFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_newcommitteeapproval_free(ptr >>> 0, 1));
+
+export class NewCommitteeApproval {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(NewCommitteeApproval.prototype);
+        obj.__wbg_ptr = ptr;
+        NewCommitteeApprovalFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    toJSON() {
+        return {
+            sample_id: this.sample_id,
+            institution_id: this.institution_id,
+            committee_type: this.committee_type,
+            compliance_identifier: this.compliance_identifier,
+        };
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NewCommitteeApprovalFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_newcommitteeapproval_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    get sample_id() {
+        const ret = wasm.__wbg_get_newcommitteeapproval_sample_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set sample_id(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newcommitteeapproval_sample_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get institution_id() {
+        const ret = wasm.__wbg_get_newcommitteeapproval_institution_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set institution_id(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newcommitteeapproval_institution_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {ComplianceCommitteeType}
+     */
+    get committee_type() {
+        const ret = wasm.__wbg_get_newcommitteeapproval_committee_type(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {ComplianceCommitteeType} arg0
+     */
+    set committee_type(arg0) {
+        wasm.__wbg_set_newcommitteeapproval_committee_type(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @returns {string}
+     */
+    get compliance_identifier() {
+        const ret = wasm.__wbg_get_newcommitteeapproval_compliance_identifier(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set compliance_identifier(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_newcommitteeapproval_compliance_identifier(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {NewCommitteeApprovalBuilder}
+     */
+    static new() {
+        const ret = wasm.newcommitteeapproval_new();
+        return NewCommitteeApprovalBuilder.__wrap(ret);
+    }
+}
+
+const NewCommitteeApprovalBuilderFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_newcommitteeapprovalbuilder_free(ptr >>> 0, 1));
+/**
+ * Builder for [`NewCommitteeApproval`](struct.NewCommitteeApproval.html).
+ */
+export class NewCommitteeApprovalBuilder {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(NewCommitteeApprovalBuilder.prototype);
+        obj.__wbg_ptr = ptr;
+        NewCommitteeApprovalBuilderFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NewCommitteeApprovalBuilderFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_newcommitteeapprovalbuilder_free(ptr, 0);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {NewCommitteeApprovalBuilder}
+     */
+    sample_id(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newcommitteeapprovalbuilder_sample_id(ptr, ptr0, len0);
+        return NewCommitteeApprovalBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string} value
+     * @returns {NewCommitteeApprovalBuilder}
+     */
+    institution_id(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newcommitteeapprovalbuilder_institution_id(ptr, ptr0, len0);
+        return NewCommitteeApprovalBuilder.__wrap(ret);
+    }
+    /**
+     * @param {ComplianceCommitteeType} value
+     * @returns {NewCommitteeApprovalBuilder}
+     */
+    committee_type(value) {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.newcommitteeapprovalbuilder_committee_type(ptr, value);
+        return NewCommitteeApprovalBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string} value
+     * @returns {NewCommitteeApprovalBuilder}
+     */
+    compliance_identifier(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.newcommitteeapprovalbuilder_compliance_identifier(ptr, ptr0, len0);
+        return NewCommitteeApprovalBuilder.__wrap(ret);
+    }
+    /**
+     * Builds a new `NewCommitteeApproval`.
+     *
+     * # Errors
+     *
+     * If a required field has not been initialized.
+     * @returns {NewCommitteeApproval}
+     */
+    build() {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.newcommitteeapprovalbuilder_build(ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return NewCommitteeApproval.__wrap(ret[0]);
+    }
+}
+
+const NewCommitteeApprovalErrorFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_newcommitteeapprovalerror_free(ptr >>> 0, 1));
+
+export class NewCommitteeApprovalError {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(NewCommitteeApprovalError.prototype);
+        obj.__wbg_ptr = ptr;
+        NewCommitteeApprovalErrorFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NewCommitteeApprovalErrorFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_newcommitteeapprovalerror_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    error() {
+        const ret = wasm.newcommitteeapprovalerror_error(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+}
+
 const NewInstitutionFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_newinstitution_free(ptr >>> 0, 1));
@@ -3290,7 +3547,7 @@ export function __wbg_new_23a2665fac83c611(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return __wbg_adapter_340(a, state0.b, arg0, arg1);
+                return __wbg_adapter_357(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -3326,6 +3583,11 @@ export function __wbg_new_e25e5aab09ff45db() { return handleError(function () {
     const ret = new AbortController();
     return ret;
 }, arguments) };
+
+export function __wbg_newcommitteeapprovalerror_new(arg0) {
+    const ret = NewCommitteeApprovalError.__wrap(arg0);
+    return ret;
+};
 
 export function __wbg_newinstitutionerror_new(arg0) {
     const ret = NewInstitutionError.__wrap(arg0);
@@ -3533,12 +3795,12 @@ export function __wbindgen_cb_drop(arg0) {
     return ret;
 };
 
-export function __wbindgen_closure_wrapper725(arg0, arg1, arg2) {
+export function __wbindgen_closure_wrapper762(arg0, arg1, arg2) {
     const ret = makeMutClosure(arg0, arg1, 107, __wbg_adapter_40);
     return ret;
 };
 
-export function __wbindgen_closure_wrapper781(arg0, arg1, arg2) {
+export function __wbindgen_closure_wrapper818(arg0, arg1, arg2) {
     const ret = makeMutClosure(arg0, arg1, 127, __wbg_adapter_43);
     return ret;
 };

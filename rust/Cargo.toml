@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "chrono",
     "scamplers-backend",
     "scamplers-core",
     "scamplers-macros",
@@ -40,7 +41,7 @@ diesel = { version = "2.2.10", default-features = false, features = [
     "uuid",
     "serde_json",
 ] }
-chrono = { version = "0.4.40", features = ["serde"] }
+_chrono = { package = "chrono", version = "0.4.41", features = ["serde"] }
 futures = { version = "0.3.31" }
 valuable = { version = "0.1.1", features = ["derive"] }
 garde = { version = "0.22.0", features = ["derive", "email", "serde", "regex"] }

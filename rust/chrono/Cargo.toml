@@ -1,0 +1,22 @@
+[package]
+name = "chrono"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+_chrono = { workspace = true }
+serde = { workspace = true }
+diesel = { workspace = true, optional = true }
+diesel-async = { workspace = true, optional = true }
+valuable = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[lints]
+workspace = true
+
+[features]
+backend = ["diesel", "valuable", "diesel-async"]
+typescript = ["wasm-bindgen"]

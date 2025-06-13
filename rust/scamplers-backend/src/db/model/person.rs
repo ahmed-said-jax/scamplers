@@ -255,4 +255,9 @@ mod tests {
         let expected = [(0, "person19"), (10, "person1")];
         test_query(query, db_conn, 11, comparison_fn, &expected).await;
     }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn s() {}
 }
