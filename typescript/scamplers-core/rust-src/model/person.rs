@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 const ENDPOINT: &str = "/people";
 
+#[derive(PartialEq)]
 #[cfg_attr(feature = "backend", backend_db_enum)]
 #[cfg_attr(feature = "typescript", frontend_enum)]
 pub enum UserRole {

@@ -213,11 +213,15 @@ impl WriteLogin for NewPerson {
 
 #[cfg(test)]
 mod tests {
-    use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
+    use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
     use scamplers_core::model::{
         institution::{InstitutionQuery, InstitutionSummary},
-        person::{NewPerson, PersonOrdering, PersonOrdinalColumn, PersonQuery, PersonSummary},
+        person::{
+            CreatedUser, NewPerson, PersonOrdering, PersonOrdinalColumn, PersonQuery,
+            PersonSummary, UserRole,
+        },
     };
     use uuid::Uuid;
 
@@ -225,7 +229,10 @@ mod tests {
         config::LOGIN_USER,
         db::{
             DbTransaction,
-            model::{FetchByQuery, Write},
+            model::{
+                FetchByQuery,
+                person::{WriteLogin, get_user_roles},
+            },
             test_util::{DbConnection, N_PEOPLE, db_conn, test_query},
         },
     };
@@ -269,7 +276,7 @@ mod tests {
     #[rstest]
     #[awt]
     #[tokio::test]
-    async fn write_ms_login_as_login_user(#[future] mut db_conn: DbConnection) {
+    async fn ms_login(#[future] mut db_conn: DbConnection) {
         db_conn
             .test_transaction::<_, crate::db::error::Error, _>(|tx| {
                 async move {
@@ -284,16 +291,46 @@ mod tests {
                             .reference
                             .id;
 
-                    let pete = NewPerson {
+                    // First, write a new user to the db as a login from the frontend
+                    let ms_user_id = Uuid::now_v7();
+
+                    let mut new_person = NewPerson {
                         name: "Peter Parker".to_string(),
                         email: "peter.parker@example.com".to_string(),
-                        ms_user_id: Some(Uuid::now_v7()),
+                        ms_user_id: Some(ms_user_id),
                         orcid: None,
                         institution_id,
                         roles: vec![],
                     };
 
-                    pete.write(tx).await.unwrap();
+                    let CreatedUser {
+                        person: inserted_person,
+                        ..
+                    } = new_person.clone().write_ms_login(tx).await.unwrap();
+
+                    // The user logs out and changes their email address, then logs back in
+                    let new_email = "spider.man@example.com".to_string();
+                    new_person.email = new_email.clone();
+                    let CreatedUser {
+                        person: reinserted_person,
+                        ..
+                    } = new_person.write_ms_login(tx).await.unwrap();
+
+                    assert_eq!(
+                        inserted_person.summary.reference.id,
+                        reinserted_person.summary.reference.id
+                    );
+
+                    assert_eq!(new_email, reinserted_person.summary.email.unwrap());
+
+                    let user_roles: Vec<UserRole> = diesel::select(get_user_roles(
+                        reinserted_person.summary.reference.id.to_string(),
+                    ))
+                    .get_result(tx)
+                    .await
+                    .unwrap();
+
+                    assert_eq!(user_roles, []);
 
                     Ok(())
                 }
