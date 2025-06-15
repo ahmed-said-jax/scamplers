@@ -6,7 +6,7 @@ use scamplers_core::model::{
     Endpoint,
     institution::{Institution, InstitutionSummary, NewInstitution},
     lab::{LabSummary, LabWithMembers, NewLab},
-    person::{NewPerson, Person, PersonSummary},
+    person::{NewPerson, PersonSummary, PersonWithRoles},
 };
 use scamplers_schema::lab::dsl::lab;
 
@@ -28,7 +28,7 @@ pub(super) fn router() -> Router<AppState> {
         )
         .route(&NewPerson::endpoint(), post(write::<NewPerson>))
         .route(&NewPerson::new_user_endpoint(), post(new_user))
-        .route(&Person::endpoint(), get(by_id::<Person>))
+        .route(&PersonWithRoles::endpoint(), get(by_id::<PersonWithRoles>))
         .route(&PersonSummary::endpoint(), post(by_query::<PersonSummary>))
         .route(&NewLab::endpoint(), post(write::<NewLab>))
         .route(&LabWithMembers::endpoint(), get(by_id::<LabWithMembers>))

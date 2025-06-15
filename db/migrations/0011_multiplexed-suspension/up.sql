@@ -3,7 +3,7 @@ create table multiplexed_suspension (
     link text generated always as ('/samples/' || id) stored not null,
     name text not null,
     readable_id text unique not null,
-    pooled_at timestamp not null,
+    pooled_at timestamptz not null,
     notes text []
 );
 

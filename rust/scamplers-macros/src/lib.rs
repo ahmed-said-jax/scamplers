@@ -4,8 +4,8 @@ mod macros;
 use macros::{backend, client, frontend};
 
 #[proc_macro_attribute]
-pub fn frontend_write_request(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    frontend::write_request(input)
+pub fn frontend_insertion(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    frontend::insertion(input)
 }
 
 #[proc_macro_attribute]
@@ -24,6 +24,11 @@ pub fn frontend_response(_attr: TokenStream, input: TokenStream) -> TokenStream 
 }
 
 #[proc_macro_attribute]
+pub fn frontend_update(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    frontend::update(input)
+}
+
+#[proc_macro_attribute]
 pub fn frontend_enum(_attr: TokenStream, input: TokenStream) -> TokenStream {
     frontend::enum_(input)
 }
@@ -36,6 +41,11 @@ pub fn backend_insertion(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn backend_selection(attr: TokenStream, input: TokenStream) -> TokenStream {
     backend::selection(attr, input)
+}
+
+#[proc_macro_attribute]
+pub fn backend_summary(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    backend::summary(input)
 }
 
 #[proc_macro_attribute]

@@ -13,7 +13,7 @@ create table suspension (
     parent_specimen_id uuid references specimen on delete restrict on update restrict,
     is_derived boolean generated always as (parent_specimen_id is not null) stored,
     biological_material text not null,
-    created_at timestamp not null,
+    created_at timestamptz not null,
     pooled_into_id uuid references multiplexed_suspension on delete restrict on update restrict,
     multiplexing_tag_id uuid references multiplexing_tag on delete restrict on update restrict,
     lysis_duration_min real,

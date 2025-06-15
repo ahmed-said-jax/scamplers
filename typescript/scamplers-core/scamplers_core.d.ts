@@ -1,5 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
+export enum ComplianceCommitteeType {
+  Ibc = 0,
+  Irb = 1,
+  Iacuc = 2,
+  Unknown = 3,
+}
 export enum InstitutionOrdinalColumn {
   Name = 0,
 }
@@ -10,6 +16,17 @@ export enum PersonOrdinalColumn {
   Name = 0,
   Email = 1,
 }
+export enum Species {
+  AmbystomaMexicanum = 0,
+  CanisFamiliaris = 1,
+  DrosophilaMelanogaster = 2,
+  GasterosteusAculeatus = 3,
+  HomoSapiens = 4,
+  MusMusculus = 5,
+  RattusNorvegicus = 6,
+  SminthopsisCrassicaudata = 7,
+  Unknown = 8,
+}
 export enum UserRole {
   AppAdmin = 0,
   ComputationalStaff = 1,
@@ -19,7 +36,7 @@ export enum UserRole {
 export class Client {
   free(): void;
   send_new_institution(data: NewInstitution, api_key?: string | null): Promise<Institution>;
-  send_new_person(data: NewPerson, api_key?: string | null): Promise<Person>;
+  send_new_person(data: NewPerson, api_key?: string | null): Promise<PersonWithRoles>;
   send_new_lab(data: NewLab, api_key?: string | null): Promise<LabWithMembers>;
   constructor(backend_url: string, token: string);
   send_new_ms_login(data: NewPerson): Promise<CreatedUser>;
@@ -27,7 +44,7 @@ export class Client {
 export class CreatedUser {
   private constructor();
   free(): void;
-  person: Person;
+  person: PersonWithRoles;
   api_key: string;
 }
 export class Institution {
@@ -263,6 +280,48 @@ export class LabWithMembers {
   lab: Lab;
   members: PersonSummary[];
 }
+export class NewCommitteeApproval {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): NewCommitteeApprovalBuilder;
+  get sample_id(): string;
+  set sample_id(value: string | null | undefined);
+  institution_id: string;
+  committee_type: ComplianceCommitteeType;
+  compliance_identifier: string;
+}
+/**
+ * Builder for [`NewCommitteeApproval`](struct.NewCommitteeApproval.html).
+ */
+export class NewCommitteeApprovalBuilder {
+  private constructor();
+  free(): void;
+  sample_id(value?: string | null): NewCommitteeApprovalBuilder;
+  institution_id(value: string): NewCommitteeApprovalBuilder;
+  committee_type(value: ComplianceCommitteeType): NewCommitteeApprovalBuilder;
+  compliance_identifier(value: string): NewCommitteeApprovalBuilder;
+  /**
+   * Builds a new `NewCommitteeApproval`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): NewCommitteeApproval;
+}
+export class NewCommitteeApprovalError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
 export class NewInstitution {
   private constructor();
 /**
@@ -388,6 +447,57 @@ export class NewPersonError {
   free(): void;
   error(): string;
 }
+export class NewSampleMetadata {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): NewSampleMetadataBuilder;
+  name: string;
+  submitted_by: string;
+  lab_id: string;
+  species: any[];
+  tissue: string;
+  committee_approvals: NewCommitteeApproval[];
+  get notes(): string[] | undefined;
+  set notes(value: string[] | null | undefined);
+  get returned_by(): string;
+  set returned_by(value: string | null | undefined);
+}
+/**
+ * Builder for [`NewSampleMetadata`](struct.NewSampleMetadata.html).
+ */
+export class NewSampleMetadataBuilder {
+  private constructor();
+  free(): void;
+  name(value: string): NewSampleMetadataBuilder;
+  submitted_by(value: string): NewSampleMetadataBuilder;
+  lab_id(value: string): NewSampleMetadataBuilder;
+  species(value: any[]): NewSampleMetadataBuilder;
+  tissue(value: string): NewSampleMetadataBuilder;
+  committee_approvals(value: NewCommitteeApproval[]): NewSampleMetadataBuilder;
+  notes(value?: string[] | null): NewSampleMetadataBuilder;
+  returned_by(value?: string | null): NewSampleMetadataBuilder;
+  /**
+   * Builds a new `NewSampleMetadata`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): NewSampleMetadata;
+}
+export class NewSampleMetadataError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
 export class Pagination {
 /**
 ** Return copy of self without private attributes.
@@ -479,4 +589,99 @@ export class PersonSummary {
   set email(value: string | null | undefined);
   get orcid(): string;
   set orcid(value: string | null | undefined);
+}
+export class PersonUpdate {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): PersonUpdateBuilder;
+  id: string;
+  get name(): string;
+  set name(value: string | null | undefined);
+  get email(): string;
+  set email(value: string | null | undefined);
+  get ms_user_id(): string;
+  set ms_user_id(value: string | null | undefined);
+  get orcid(): string;
+  set orcid(value: string | null | undefined);
+  get institution_id(): string;
+  set institution_id(value: string | null | undefined);
+}
+/**
+ * Builder for [`PersonUpdate`](struct.PersonUpdate.html).
+ */
+export class PersonUpdateBuilder {
+  private constructor();
+  free(): void;
+  id(value: string): PersonUpdateBuilder;
+  name(value?: string | null): PersonUpdateBuilder;
+  email(value?: string | null): PersonUpdateBuilder;
+  ms_user_id(value?: string | null): PersonUpdateBuilder;
+  orcid(value?: string | null): PersonUpdateBuilder;
+  institution_id(value?: string | null): PersonUpdateBuilder;
+  /**
+   * Builds a new `PersonUpdate`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): PersonUpdate;
+}
+export class PersonUpdateError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class PersonUpdateWithRoles {
+  private constructor();
+/**
+** Return copy of self without private attributes.
+*/
+  toJSON(): Object;
+/**
+* Return stringified version of self.
+*/
+  toString(): string;
+  free(): void;
+  static new(): PersonUpdateWithRolesBuilder;
+  update: PersonUpdate;
+  add_roles: any[];
+  remove_roles: any[];
+}
+/**
+ * Builder for [`PersonUpdateWithRoles`](struct.PersonUpdateWithRoles.html).
+ */
+export class PersonUpdateWithRolesBuilder {
+  private constructor();
+  free(): void;
+  update(value: PersonUpdate): PersonUpdateWithRolesBuilder;
+  add_roles(value: any[]): PersonUpdateWithRolesBuilder;
+  remove_roles(value: any[]): PersonUpdateWithRolesBuilder;
+  /**
+   * Builds a new `PersonUpdateWithRoles`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): PersonUpdateWithRoles;
+}
+export class PersonUpdateWithRolesError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class PersonWithRoles {
+  private constructor();
+  free(): void;
+  person: Person;
+  roles: any[];
 }

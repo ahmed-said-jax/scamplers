@@ -33,6 +33,27 @@ pub fn selection(attr: TokenStream, input: TokenStream) -> TokenStream {
     output.into()
 }
 
+pub fn summary(input: TokenStream) -> TokenStream {
+    let struct_item = &parse_macro_input!(input as ItemStruct);
+    let ident = &struct_item.ident;
+
+    let output = quote! {
+        #struct_item
+
+        impl #ident {
+            pub fn id(&self) -> &uuid::Uuid {
+                &self.reference.id
+            }
+
+            pub fn link(&self) -> &str {
+                self.reference.link.as_str()
+            }
+        }
+    };
+
+    output.into()
+}
+
 pub fn update(attr: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
 
