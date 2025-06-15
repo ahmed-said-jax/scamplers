@@ -253,11 +253,11 @@ function __wbg_adapter_40(arg0, arg1) {
 }
 
 function __wbg_adapter_43(arg0, arg1, arg2) {
-    wasm.closure125_externref_shim(arg0, arg1, arg2);
+    wasm.closure128_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_390(arg0, arg1, arg2, arg3) {
-    wasm.closure160_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_425(arg0, arg1, arg2, arg3) {
+    wasm.closure163_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 /**
@@ -348,7 +348,7 @@ export class Client {
     /**
      * @param {NewPerson} data
      * @param {string | null} [api_key]
-     * @returns {Promise<Person>}
+     * @returns {Promise<PersonWithRoles>}
      */
     send_new_person(data, api_key) {
         _assertClass(data, NewPerson);
@@ -420,17 +420,17 @@ export class CreatedUser {
         wasm.__wbg_createduser_free(ptr, 0);
     }
     /**
-     * @returns {Person}
+     * @returns {PersonWithRoles}
      */
     get person() {
         const ret = wasm.__wbg_get_createduser_person(this.__wbg_ptr);
-        return Person.__wrap(ret);
+        return PersonWithRoles.__wrap(ret);
     }
     /**
-     * @param {Person} arg0
+     * @param {PersonWithRoles} arg0
      */
     set person(arg0) {
-        _assertClass(arg0, Person);
+        _assertClass(arg0, PersonWithRoles);
         var ptr0 = arg0.__destroy_into_raw();
         wasm.__wbg_set_createduser_person(this.__wbg_ptr, ptr0);
     }
@@ -1773,14 +1773,6 @@ const LabUpdateWithMembersErrorFinalization = (typeof FinalizationRegistry === '
     : new FinalizationRegistry(ptr => wasm.__wbg_labupdatewithmemberserror_free(ptr >>> 0, 1));
 
 export class LabUpdateWithMembersError {
-
-    static __wrap(ptr) {
-        ptr = ptr >>> 0;
-        const obj = Object.create(LabUpdateWithMembersError.prototype);
-        obj.__wbg_ptr = ptr;
-        LabUpdateWithMembersErrorFinalization.register(obj, obj.__wbg_ptr, obj);
-        return obj;
-    }
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -3766,6 +3758,556 @@ export class PersonSummary {
     }
 }
 
+const PersonUpdateFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personupdate_free(ptr >>> 0, 1));
+
+export class PersonUpdate {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonUpdate.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonUpdateFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            name: this.name,
+            email: this.email,
+            ms_user_id: this.ms_user_id,
+            orcid: this.orcid,
+            institution_id: this.institution_id,
+        };
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonUpdateFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personupdate_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    get id() {
+        const ret = wasm.__wbg_get_personupdate_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string} arg0
+     */
+    set id(arg0) {
+        const ptr0 = passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdate_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get name() {
+        const ret = wasm.__wbg_get_personupdate_name(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set name(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdate_name(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get email() {
+        const ret = wasm.__wbg_get_personupdate_email(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set email(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdate_email(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get ms_user_id() {
+        const ret = wasm.__wbg_get_personupdate_ms_user_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set ms_user_id(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdate_ms_user_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get orcid() {
+        const ret = wasm.__wbg_get_personupdate_orcid(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set orcid(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdate_orcid(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get institution_id() {
+        const ret = wasm.__wbg_get_personupdate_institution_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set institution_id(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdate_institution_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {PersonUpdateBuilder}
+     */
+    static new() {
+        const ret = wasm.personupdate_new();
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+}
+
+const PersonUpdateBuilderFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personupdatebuilder_free(ptr >>> 0, 1));
+/**
+ * Builder for [`PersonUpdate`](struct.PersonUpdate.html).
+ */
+export class PersonUpdateBuilder {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonUpdateBuilder.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonUpdateBuilderFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonUpdateBuilderFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personupdatebuilder_free(ptr, 0);
+    }
+    /**
+     * @param {string} value
+     * @returns {PersonUpdateBuilder}
+     */
+    id(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatebuilder_id(ptr, ptr0, len0);
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {PersonUpdateBuilder}
+     */
+    name(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatebuilder_name(ptr, ptr0, len0);
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {PersonUpdateBuilder}
+     */
+    email(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatebuilder_email(ptr, ptr0, len0);
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {PersonUpdateBuilder}
+     */
+    ms_user_id(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatebuilder_ms_user_id(ptr, ptr0, len0);
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {PersonUpdateBuilder}
+     */
+    orcid(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatebuilder_orcid(ptr, ptr0, len0);
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+    /**
+     * @param {string | null} [value]
+     * @returns {PersonUpdateBuilder}
+     */
+    institution_id(value) {
+        const ptr = this.__destroy_into_raw();
+        var ptr0 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatebuilder_institution_id(ptr, ptr0, len0);
+        return PersonUpdateBuilder.__wrap(ret);
+    }
+    /**
+     * Builds a new `PersonUpdate`.
+     *
+     * # Errors
+     *
+     * If a required field has not been initialized.
+     * @returns {PersonUpdate}
+     */
+    build() {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.personupdatebuilder_build(ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return PersonUpdate.__wrap(ret[0]);
+    }
+}
+
+const PersonUpdateErrorFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personupdateerror_free(ptr >>> 0, 1));
+
+export class PersonUpdateError {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonUpdateErrorFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personupdateerror_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    error() {
+        const ret = wasm.personupdateerror_error(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+}
+
+const PersonUpdateWithRolesFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personupdatewithroles_free(ptr >>> 0, 1));
+
+export class PersonUpdateWithRoles {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonUpdateWithRoles.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonUpdateWithRolesFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    toJSON() {
+        return {
+            update: this.update,
+            add_roles: this.add_roles,
+            remove_roles: this.remove_roles,
+        };
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonUpdateWithRolesFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personupdatewithroles_free(ptr, 0);
+    }
+    /**
+     * @returns {PersonUpdate}
+     */
+    get update() {
+        const ret = wasm.__wbg_get_personupdatewithroles_update(this.__wbg_ptr);
+        return PersonUpdate.__wrap(ret);
+    }
+    /**
+     * @param {PersonUpdate} arg0
+     */
+    set update(arg0) {
+        _assertClass(arg0, PersonUpdate);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_personupdatewithroles_update(this.__wbg_ptr, ptr0);
+    }
+    /**
+     * @returns {any[]}
+     */
+    get add_roles() {
+        const ret = wasm.__wbg_get_personupdatewithroles_add_roles(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {any[]} arg0
+     */
+    set add_roles(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdatewithroles_add_roles(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {any[]}
+     */
+    get remove_roles() {
+        const ret = wasm.__wbg_get_personupdatewithroles_remove_roles(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {any[]} arg0
+     */
+    set remove_roles(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personupdatewithroles_remove_roles(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {PersonUpdateWithRolesBuilder}
+     */
+    static new() {
+        const ret = wasm.personupdatewithroles_new();
+        return PersonUpdateWithRolesBuilder.__wrap(ret);
+    }
+}
+
+const PersonUpdateWithRolesBuilderFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personupdatewithrolesbuilder_free(ptr >>> 0, 1));
+/**
+ * Builder for [`PersonUpdateWithRoles`](struct.PersonUpdateWithRoles.html).
+ */
+export class PersonUpdateWithRolesBuilder {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonUpdateWithRolesBuilder.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonUpdateWithRolesBuilderFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonUpdateWithRolesBuilderFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personupdatewithrolesbuilder_free(ptr, 0);
+    }
+    /**
+     * @param {PersonUpdate} value
+     * @returns {PersonUpdateWithRolesBuilder}
+     */
+    update(value) {
+        const ptr = this.__destroy_into_raw();
+        _assertClass(value, PersonUpdate);
+        var ptr0 = value.__destroy_into_raw();
+        const ret = wasm.personupdatewithrolesbuilder_update(ptr, ptr0);
+        return PersonUpdateWithRolesBuilder.__wrap(ret);
+    }
+    /**
+     * @param {any[]} value
+     * @returns {PersonUpdateWithRolesBuilder}
+     */
+    add_roles(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passArrayJsValueToWasm0(value, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatewithrolesbuilder_add_roles(ptr, ptr0, len0);
+        return PersonUpdateWithRolesBuilder.__wrap(ret);
+    }
+    /**
+     * @param {any[]} value
+     * @returns {PersonUpdateWithRolesBuilder}
+     */
+    remove_roles(value) {
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passArrayJsValueToWasm0(value, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.personupdatewithrolesbuilder_remove_roles(ptr, ptr0, len0);
+        return PersonUpdateWithRolesBuilder.__wrap(ret);
+    }
+    /**
+     * Builds a new `PersonUpdateWithRoles`.
+     *
+     * # Errors
+     *
+     * If a required field has not been initialized.
+     * @returns {PersonUpdateWithRoles}
+     */
+    build() {
+        const ptr = this.__destroy_into_raw();
+        const ret = wasm.personupdatewithrolesbuilder_build(ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return PersonUpdateWithRoles.__wrap(ret[0]);
+    }
+}
+
+const PersonUpdateWithRolesErrorFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personupdatewithroleserror_free(ptr >>> 0, 1));
+
+export class PersonUpdateWithRolesError {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonUpdateWithRolesErrorFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personupdatewithroleserror_free(ptr, 0);
+    }
+    /**
+     * @returns {string}
+     */
+    error() {
+        const ret = wasm.personupdatewithroleserror_error(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+}
+
+const PersonWithRolesFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_personwithroles_free(ptr >>> 0, 1));
+
+export class PersonWithRoles {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(PersonWithRoles.prototype);
+        obj.__wbg_ptr = ptr;
+        PersonWithRolesFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PersonWithRolesFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_personwithroles_free(ptr, 0);
+    }
+    /**
+     * @returns {Person}
+     */
+    get person() {
+        const ret = wasm.__wbg_get_personwithroles_person(this.__wbg_ptr);
+        return Person.__wrap(ret);
+    }
+    /**
+     * @param {Person} arg0
+     */
+    set person(arg0) {
+        _assertClass(arg0, Person);
+        var ptr0 = arg0.__destroy_into_raw();
+        wasm.__wbg_set_personwithroles_person(this.__wbg_ptr, ptr0);
+    }
+    /**
+     * @returns {any[]}
+     */
+    get roles() {
+        const ret = wasm.__wbg_get_personwithroles_roles(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {any[]} arg0
+     */
+    set roles(arg0) {
+        const ptr0 = passArrayJsValueToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personwithroles_roles(this.__wbg_ptr, ptr0, len0);
+    }
+}
+
 export function __wbg_abort_410ec47a64ac6117(arg0, arg1) {
     arg0.abort(arg1);
 };
@@ -3886,11 +4428,6 @@ export function __wbg_labupdateerror_new(arg0) {
     return ret;
 };
 
-export function __wbg_labupdatewithmemberserror_new(arg0) {
-    const ret = LabUpdateWithMembersError.__wrap(arg0);
-    return ret;
-};
-
 export function __wbg_labwithmembers_new(arg0) {
     const ret = LabWithMembers.__wrap(arg0);
     return ret;
@@ -3913,7 +4450,7 @@ export function __wbg_new_23a2665fac83c611(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return __wbg_adapter_390(a, state0.b, arg0, arg1);
+                return __wbg_adapter_425(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -4012,11 +4549,6 @@ export function __wbg_next_6574e1a8a62d1055() { return handleError(function (arg
     return ret;
 }, arguments) };
 
-export function __wbg_person_new(arg0) {
-    const ret = Person.__wrap(arg0);
-    return ret;
-};
-
 export function __wbg_personordering_new(arg0) {
     const ret = PersonOrdering.__wrap(arg0);
     return ret;
@@ -4034,6 +4566,11 @@ export function __wbg_personsummary_new(arg0) {
 
 export function __wbg_personsummary_unwrap(arg0) {
     const ret = PersonSummary.__unwrap(arg0);
+    return ret;
+};
+
+export function __wbg_personwithroles_new(arg0) {
+    const ret = PersonWithRoles.__wrap(arg0);
     return ret;
 };
 
@@ -4176,13 +4713,13 @@ export function __wbindgen_cb_drop(arg0) {
     return ret;
 };
 
-export function __wbindgen_closure_wrapper822(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 106, __wbg_adapter_40);
+export function __wbindgen_closure_wrapper898(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 109, __wbg_adapter_40);
     return ret;
 };
 
-export function __wbindgen_closure_wrapper878(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 126, __wbg_adapter_43);
+export function __wbindgen_closure_wrapper954(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 129, __wbg_adapter_43);
     return ret;
 };
 

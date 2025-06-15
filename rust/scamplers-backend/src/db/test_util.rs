@@ -18,7 +18,7 @@ use rstest::fixture;
 use scamplers_core::model::{
     institution::NewInstitution,
     lab::NewLab,
-    person::{NewPerson, Person},
+    person::{NewPerson, PersonWithRoles},
 };
 use tokio::sync::OnceCell;
 use uuid::Uuid;
@@ -96,7 +96,7 @@ impl TestState {
 
         let mut labs = Vec::with_capacity(N_LABS);
         for i in 0..N_LABS {
-            let id = |p: &Person| p.summary.reference.id;
+            let id = |p: &PersonWithRoles| p.person.summary.reference.id;
 
             let pi_id = people.choose(rng).map(id).unwrap();
             let name = format!("lab{i}");

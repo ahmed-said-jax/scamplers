@@ -62,7 +62,7 @@ fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
     output.into()
 }
 
-pub fn write_request(input: TokenStream) -> TokenStream {
+pub fn insertion(input: TokenStream) -> TokenStream {
     wasm_builder(input, false)
 }
 
@@ -110,6 +110,10 @@ pub fn response(input: TokenStream) -> TokenStream {
     };
 
     output.into()
+}
+
+pub fn update(input: TokenStream) -> TokenStream {
+    wasm_builder(input, true)
 }
 
 pub fn enum_(input: TokenStream) -> TokenStream {

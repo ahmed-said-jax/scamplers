@@ -1,5 +1,6 @@
 use crate::{
     db::{
+        error::Result,
         model::{self, AsDieselQueryBase, FetchById},
         util::{AsIlike, BoxedDieselExpression, NewBoxedDieselExpression},
     },
@@ -13,7 +14,10 @@ use diesel::{
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
     Pagination,
-    person::{CreatedUser, NewPerson, Person, PersonQuery, PersonSummary, UserRole},
+    person::{
+        CreatedUser, NewPerson, Person, PersonQuery, PersonSummary, PersonUpdate,
+        PersonUpdateWithRoles, PersonWithRoles, UserRole,
+    },
 };
 use scamplers_schema::{
     institution,
@@ -77,10 +81,7 @@ impl AsDieselQueryBase for PersonSummary {
 impl model::FetchById for PersonSummary {
     type Id = Uuid;
 
-    async fn fetch_by_id(
-        id: &Self::Id,
-        db_conn: &mut AsyncPgConnection,
-    ) -> super::error::Result<Self> {
+    async fn fetch_by_id(id: &Self::Id, db_conn: &mut AsyncPgConnection) -> Result<Self> {
         Ok(Self::as_diesel_query_base()
             .find(id)
             .select(Self::as_select())
@@ -95,14 +96,14 @@ impl model::FetchByQuery for PersonSummary {
     async fn fetch_by_query(
         query: &Self::QueryParams,
         db_conn: &mut AsyncPgConnection,
-    ) -> super::error::Result<Vec<Self>> {
+    ) -> Result<Vec<Self>> {
         use scamplers_core::model::person::PersonOrdinalColumn::{Email, Name};
 
         fetch_by_query!(query, [(Name, name_col), (Email, email_col)], db_conn)
     }
 }
 
-impl AsDieselQueryBase for Person {
+impl AsDieselQueryBase for PersonWithRoles {
     type QueryBase = InnerJoin<person::table, institution::table>;
 
     fn as_diesel_query_base() -> Self::QueryBase {
@@ -110,31 +111,73 @@ impl AsDieselQueryBase for Person {
     }
 }
 
-impl model::FetchById for Person {
+impl model::FetchById for PersonWithRoles {
     type Id = Uuid;
 
-    async fn fetch_by_id(
-        id: &Self::Id,
-        db_conn: &mut AsyncPgConnection,
-    ) -> super::error::Result<Self> {
-        Ok(Self::as_diesel_query_base()
-            .select(Self::as_select())
+    async fn fetch_by_id(id: &Self::Id, db_conn: &mut AsyncPgConnection) -> Result<Self> {
+        let person = Self::as_diesel_query_base()
+            .select(Person::as_select())
             .filter(id_col.eq(id))
             .get_result(db_conn)
-            .await?)
+            .await?;
+
+        let roles = diesel::select(get_user_roles(&person.summary.reference.id.to_string()))
+            .get_result(db_conn)
+            .await?;
+
+        Ok(Self { person, roles })
     }
 }
 
 impl model::Write for NewPerson {
-    type Returns = Person;
-    async fn write(self, db_conn: &mut AsyncPgConnection) -> super::error::Result<Self::Returns> {
+    type Returns = PersonWithRoles;
+    async fn write(self, db_conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
         let id = diesel::insert_into(person::table)
             .values(self)
             .returning(id_col)
             .get_result(db_conn)
             .await?;
 
-        Person::fetch_by_id(&id, db_conn).await
+        PersonWithRoles::fetch_by_id(&id, db_conn).await
+    }
+}
+
+impl model::Write for PersonUpdateWithRoles {
+    type Returns = PersonWithRoles;
+    async fn write(self, db_conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
+        let PersonUpdateWithRoles {
+            update,
+            add_roles,
+            remove_roles,
+        } = self;
+
+        if let PersonUpdate {
+            name: None,
+            email: None,
+            ms_user_id: None,
+            institution_id: None,
+            orcid: None,
+            ..
+        } = &update
+        {
+        } else {
+            diesel::update(&update)
+                .set(&update)
+                .execute(db_conn)
+                .await?;
+        }
+
+        let user_id = update.id.to_string();
+
+        diesel::select(grant_roles_to_user(&user_id, add_roles))
+            .execute(db_conn)
+            .await?;
+
+        diesel::select(revoke_roles_from_user(&user_id, remove_roles))
+            .execute(db_conn)
+            .await?;
+
+        PersonWithRoles::fetch_by_id(&update.id, db_conn).await
     }
 }
 
@@ -202,7 +245,7 @@ impl WriteLogin for NewPerson {
             .execute(db_conn)
             .await?;
 
-        let person = Person::fetch_by_id(&id, db_conn).await?;
+        let person = PersonWithRoles::fetch_by_id(&id, db_conn).await?;
 
         Ok(CreatedUser {
             person,
@@ -213,14 +256,15 @@ impl WriteLogin for NewPerson {
 
 #[cfg(test)]
 mod tests {
-    use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+    use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use pretty_assertions::assert_eq;
     use rstest::rstest;
     use scamplers_core::model::{
         institution::{InstitutionQuery, InstitutionSummary},
         person::{
-            CreatedUser, NewPerson, PersonOrdering, PersonOrdinalColumn, PersonQuery,
-            PersonSummary, UserRole,
+            CreatedUser, NewPerson, Person, PersonOrdering, PersonOrdinalColumn, PersonQuery,
+            PersonReference, PersonSummary, PersonUpdate, PersonUpdateWithRoles, PersonWithRoles,
+            UserRole,
         },
     };
     use uuid::Uuid;
@@ -229,10 +273,8 @@ mod tests {
         config::LOGIN_USER,
         db::{
             DbTransaction,
-            model::{
-                FetchByQuery,
-                person::{WriteLogin, get_user_roles},
-            },
+            error::Error,
+            model::{FetchByQuery, Write, person::WriteLogin},
             test_util::{DbConnection, N_PEOPLE, db_conn, test_query},
         },
     };
@@ -276,9 +318,63 @@ mod tests {
     #[rstest]
     #[awt]
     #[tokio::test]
-    async fn ms_login(#[future] mut db_conn: DbConnection) {
+    async fn update_user_info(#[future] mut db_conn: DbConnection) {
         db_conn
-            .test_transaction::<_, crate::db::error::Error, _>(|tx| {
+            .test_transaction::<_, Error, _>(|tx| {
+                async move {
+                    let people = PersonSummary::fetch_by_query(&PersonQuery::default(), tx)
+                        .await
+                        .unwrap();
+
+                    let PersonSummary {
+                        reference: PersonReference { id, .. },
+                        ..
+                    } = people.get(0).unwrap();
+
+                    let new_name = "Thomas Anderson".to_string();
+                    let new_email = "thomas.anderson@neo.com".to_string();
+
+                    let update = PersonUpdate {
+                        id: *id,
+                        name: Some(new_name.clone()),
+                        email: Some(new_email.clone()),
+                        ..Default::default()
+                    };
+
+                    let update = PersonUpdateWithRoles {
+                        update,
+                        ..Default::default()
+                    };
+
+                    let PersonWithRoles {
+                        person:
+                            Person {
+                                summary:
+                                    PersonSummary {
+                                        name: updated_name,
+                                        email: updated_email,
+                                        ..
+                                    },
+                                ..
+                            },
+                        ..
+                    } = update.write(tx).await.unwrap();
+                    assert_eq!(new_name, updated_name);
+                    assert_eq!(new_email, updated_email.unwrap());
+
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await;
+    }
+
+    #[rstest]
+    #[awt]
+    #[tokio::test]
+    async fn ms_login_with_roles_update(#[future] mut db_conn: DbConnection) {
+        db_conn
+            .test_transaction::<_, Error, _>(|tx| {
                 async move {
                     tx.set_transaction_user(LOGIN_USER).await.unwrap();
 
@@ -317,20 +413,44 @@ mod tests {
                     } = new_person.write_ms_login(tx).await.unwrap();
 
                     assert_eq!(
-                        inserted_person.summary.reference.id,
-                        reinserted_person.summary.reference.id
+                        inserted_person.person.summary.reference.id,
+                        reinserted_person.person.summary.reference.id
                     );
+                    let id = inserted_person.person.summary.reference.id;
 
-                    assert_eq!(new_email, reinserted_person.summary.email.unwrap());
+                    assert_eq!(new_email, reinserted_person.person.summary.email.unwrap());
 
-                    let user_roles: Vec<UserRole> = diesel::select(get_user_roles(
-                        reinserted_person.summary.reference.id.to_string(),
-                    ))
-                    .get_result(tx)
+                    assert_eq!(inserted_person.roles, []);
+
+                    tx.set_transaction_user("postgres").await.unwrap();
+
+                    let person_with_added_roles = PersonUpdateWithRoles {
+                        update: PersonUpdate {
+                            id,
+                            ..Default::default()
+                        },
+                        add_roles: vec![UserRole::AppAdmin],
+                        ..Default::default()
+                    }
+                    .write(tx)
                     .await
                     .unwrap();
 
-                    assert_eq!(user_roles, []);
+                    assert_eq!(person_with_added_roles.roles, [UserRole::AppAdmin]);
+
+                    let updated = PersonUpdateWithRoles {
+                        update: PersonUpdate {
+                            id,
+                            ..Default::default()
+                        },
+                        remove_roles: vec![UserRole::AppAdmin],
+                        ..Default::default()
+                    }
+                    .write(tx)
+                    .await
+                    .unwrap();
+
+                    assert_eq!(updated.roles, []);
 
                     Ok(())
                 }

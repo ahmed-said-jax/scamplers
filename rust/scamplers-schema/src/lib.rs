@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 pub mod sql_types {
-    #[derive(diesel::sql_types::SqlType, Debug)]
+    #[derive(std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "hashed_key"))]
     pub struct HashedKey;
 }

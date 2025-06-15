@@ -8,7 +8,7 @@ use {
 };
 
 #[cfg(feature = "typescript")]
-use scamplers_macros::{frontend_enum, frontend_write_request};
+use scamplers_macros::{frontend_enum, frontend_insertion};
 
 #[cfg_attr(feature = "backend", backend_db_enum)]
 #[cfg_attr(feature = "typescript", frontend_enum)]
@@ -36,7 +36,7 @@ pub enum ComplianceCommitteeType {
 }
 
 #[cfg_attr(feature = "backend", backend_insertion(committee_approval))]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewCommitteeApproval {
     #[serde(default)]
     pub sample_id: Option<Uuid>,
@@ -47,7 +47,7 @@ pub struct NewCommitteeApproval {
 }
 
 #[cfg_attr(feature = "backend", backend_insertion(sample_metadata))]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewSampleMetadata {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,

@@ -16,14 +16,13 @@ use {
 use super::SEARCH_SUFFIX;
 #[cfg(feature = "typescript")]
 use scamplers_macros::{
-    frontend_enum, frontend_ordering, frontend_query_request, frontend_response,
-    frontend_write_request,
+    frontend_enum, frontend_insertion, frontend_ordering, frontend_query_request, frontend_response,
 };
 
 const ENDPOINT: &str = "/institutions";
 
 #[cfg_attr(feature = "backend", backend_insertion(institution), derive(Clone))]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewInstitution {
     pub id: Uuid,
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]

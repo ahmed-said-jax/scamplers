@@ -13,8 +13,8 @@ use {
 
 #[cfg(feature = "typescript")]
 use scamplers_macros::{
-    frontend_enum, frontend_ordering, frontend_query_request, frontend_response,
-    frontend_write_request,
+    frontend_enum, frontend_insertion, frontend_ordering, frontend_query_request,
+    frontend_response, frontend_update,
 };
 
 use uuid::Uuid;
@@ -22,7 +22,7 @@ use uuid::Uuid;
 const ENDPOINT: &str = "/labs";
 
 #[cfg_attr(feature = "backend", backend_insertion(lab))]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewLab {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,
@@ -109,7 +109,7 @@ pub struct LabQuery {
 }
 
 #[cfg_attr(feature = "backend", backend_update(lab))]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_update)]
 pub struct LabUpdate {
     pub id: Uuid,
     pub name: Option<String>,
@@ -122,7 +122,7 @@ pub struct LabUpdate {
     derive(serde::Deserialize, Default),
     serde(default)
 )]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_update)]
 pub struct LabUpdateWithMembers {
     #[serde(flatten)]
     pub update: LabUpdate,

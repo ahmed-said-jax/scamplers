@@ -4,15 +4,15 @@ use super::{Endpoint, Pagination, institution::Institution};
 use {
     scamplers_macros::{
         backend_db_enum, backend_insertion, backend_ordering, backend_ordinal_columns_enum,
-        backend_query_request, backend_selection,
+        backend_query_request, backend_selection, backend_update,
     },
     scamplers_schema::person,
 };
 
 #[cfg(feature = "typescript")]
 use scamplers_macros::{
-    frontend_enum, frontend_ordering, frontend_query_request, frontend_response,
-    frontend_write_request,
+    frontend_enum, frontend_insertion, frontend_ordering, frontend_query_request,
+    frontend_response, frontend_update,
 };
 
 use super::SEARCH_SUFFIX;
@@ -32,7 +32,7 @@ pub enum UserRole {
 }
 
 #[cfg_attr(feature = "backend", backend_insertion(person), derive(Clone))]
-#[cfg_attr(feature = "typescript", frontend_write_request)]
+#[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub name: String,
@@ -57,6 +57,30 @@ impl NewPerson {
     pub fn new_user_endpoint() -> String {
         "/users".to_string()
     }
+}
+
+#[cfg_attr(feature = "backend", backend_update(person))]
+#[cfg_attr(feature = "typescript", frontend_update)]
+pub struct PersonUpdate {
+    pub id: Uuid,
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub ms_user_id: Option<Uuid>,
+    pub orcid: Option<String>,
+    pub institution_id: Option<Uuid>,
+}
+
+#[cfg_attr(
+    feature = "backend",
+    derive(serde::Deserialize, Default),
+    serde(default)
+)]
+#[cfg_attr(feature = "typescript", frontend_update)]
+pub struct PersonUpdateWithRoles {
+    #[serde(flatten)]
+    pub update: PersonUpdate,
+    pub add_roles: Vec<UserRole>,
+    pub remove_roles: Vec<UserRole>,
 }
 
 #[cfg_attr(feature = "backend", backend_selection(person))]
@@ -91,7 +115,16 @@ pub struct Person {
     #[cfg_attr(feature = "backend", diesel(embed))]
     pub institution: Institution,
 }
-impl Endpoint for Person {
+
+#[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
+#[cfg_attr(feature = "typescript", frontend_response)]
+pub struct PersonWithRoles {
+    #[serde(flatten)]
+    pub person: Person,
+    pub roles: Vec<UserRole>,
+}
+
+impl Endpoint for PersonWithRoles {
     fn endpoint() -> String {
         format!("{ENDPOINT}/{{person_id}}")
     }
@@ -100,7 +133,7 @@ impl Endpoint for Person {
 #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
 #[cfg_attr(feature = "typescript", frontend_response)]
 pub struct CreatedUser {
-    pub person: Person,
+    pub person: PersonWithRoles,
     pub api_key: String,
 }
 

@@ -69,8 +69,10 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 
 			const {
 				person: {
-					summary: {
-						reference: { id }
+					person: {
+						summary: {
+							reference: { id }
+						}
 					}
 				},
 				api_key

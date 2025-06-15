@@ -1,2 +1,3 @@
 [print_schema]
 file = "src/lib.rs"
+custom_type_derives = ["std::fmt::Debug"]
