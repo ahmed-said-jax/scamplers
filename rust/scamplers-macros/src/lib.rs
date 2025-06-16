@@ -43,10 +43,15 @@ pub fn backend_selection(attr: TokenStream, input: TokenStream) -> TokenStream {
     backend::selection(attr, input)
 }
 
-#[proc_macro_attribute]
-pub fn backend_summary(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    backend::summary(input)
-}
+// #[proc_macro_attribute]
+// pub fn backend_summary(_attr: TokenStream, input: TokenStream) -> TokenStream {
+//     backend::summary(input)
+// }
+
+// #[proc_macro_attribute]
+// pub fn backend_detail(_attr: TokenStream, input: TokenStream) -> TokenStream {
+//     backend::detail(input)
+// }
 
 #[proc_macro_attribute]
 pub fn backend_ordering(_attr: TokenStream, input: TokenStream) -> TokenStream {

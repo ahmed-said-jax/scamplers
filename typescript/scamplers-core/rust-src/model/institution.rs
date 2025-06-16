@@ -8,7 +8,7 @@ use super::Endpoint;
 use {
     scamplers_macros::{
         backend_insertion, backend_ordering, backend_ordinal_columns_enum, backend_query_request,
-        backend_selection, backend_summary,
+        backend_selection,
     },
     scamplers_schema::institution,
 };
@@ -41,7 +41,7 @@ pub struct InstitutionReference {
     pub link: String,
 }
 
-#[cfg_attr(feature = "backend", backend_selection(institution), backend_summary)]
+#[cfg_attr(feature = "backend", backend_selection(institution))]
 #[cfg_attr(feature = "typescript", frontend_response)]
 pub struct InstitutionSummary {
     #[serde(flatten)]
