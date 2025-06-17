@@ -10,6 +10,6 @@ function cleanup_docker() {
 
 trap cleanup_docker EXIT
 
-./scripts/build-scamplers-core.sh
+./pre-commit_scripts/build-scamplers-core.sh
 
 COMPOSE_BAKE=true docker compose --env-file ../.env.dev up --build
