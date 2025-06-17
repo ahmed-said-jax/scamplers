@@ -85,9 +85,11 @@ create function create_user_if_not_exists(
     roles text []
 ) returns void language plpgsql volatile strict as $$
     begin
+        set local role user_creator;
         perform create_role_if_not_exists(user_id);
+        execute format('grant %I to login_user with admin true, inherit false', user_id);
+        set local role login_user;
         execute format('alter role %I with login', user_id);
-        execute format('grant %I to login_user with inherit false', user_id);
         perform grant_roles_to_user(user_id, roles);
     end;
 $$;
@@ -107,8 +109,12 @@ select create_role_if_not_exists('biology_staff');
 select create_role_if_not_exists('computational_staff');
 
 select create_role_if_not_exists('login_user');
-alter role login_user with login createrole;
-grant app_admin, biology_staff, computational_staff to login_user with inherit false; --noqa
+alter role login_user with createrole login;
+grant app_admin, biology_staff, computational_staff to login_user with admin true, inherit false; --noqa
+
+select create_role_if_not_exists('user_creator');
+alter role user_creator with createrole;
+grant user_creator to login_user with inherit false;
 
 create type hashed_key as (
     prefix text,
