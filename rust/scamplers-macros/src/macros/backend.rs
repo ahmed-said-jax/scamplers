@@ -2,6 +2,8 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{ItemEnum, ItemImpl, ItemStruct, parse_macro_input};
 
+use crate::macros::common;
+
 use super::common::{derive_enum, impl_query_request_default};
 
 pub fn insertion(attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -31,6 +33,10 @@ pub fn selection(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     output.into()
+}
+
+pub fn with_getters(input: TokenStream) -> TokenStream {
+    common::with_getters(input, false)
 }
 
 pub fn update(attr: TokenStream, input: TokenStream) -> TokenStream {

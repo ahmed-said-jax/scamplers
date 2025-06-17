@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/rust"
+    directory: "rust"
     schedule:
       interval: "daily"
     groups:
@@ -10,7 +10,7 @@ updates:
           - "*"
 
   - package-ecosystem: "npm"
-    directory: "/typescript/scamplers-frontend"
+    directory: "typescript/scamplers-frontend"
     schedule:
       interval: "daily"
     groups:

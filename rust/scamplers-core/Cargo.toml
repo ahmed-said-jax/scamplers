@@ -13,7 +13,7 @@ thiserror = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 diesel = { workspace = true, optional = true }
-chrono = { workspace = true }
+time = { workspace = true }
 valuable = { workspace = true, optional = true }
 strum = { workspace = true, optional = true }
 scraper = { workspace = true, optional = true }
@@ -48,6 +48,7 @@ typescript = [
     "reqwest",
     "wasm-bindgen-futures",
     "derive_builder",
+    "time/wasm-bindgen",
 ]
 
 [lints]

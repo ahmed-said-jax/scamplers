@@ -5,11 +5,12 @@ use crate::{
     server::{run_migrations, util::DevContainer},
 };
 use diesel_async::{
-    AsyncPgConnection, RunQueryDsl,
+    AsyncConnection, AsyncPgConnection,
     pooled_connection::{
         AsyncDieselConnectionManager,
         deadpool::{Object, Pool},
     },
+    scoped_futures::ScopedFutureExt,
 };
 use pretty_assertions::assert_eq;
 use rand::seq::IndexedRandom;
@@ -17,7 +18,7 @@ use rstest::fixture;
 use scamplers_core::model::{
     institution::NewInstitution,
     lab::NewLab,
-    person::{NewPerson, Person, PersonQuery, PersonSummary},
+    person::{NewPerson, Person},
 };
 use tokio::sync::OnceCell;
 use uuid::Uuid;
@@ -43,25 +44,21 @@ impl TestState {
         );
         let db_pool = Pool::builder(db_config).build().unwrap();
 
-        let mut test_state = Self {
+        let test_state = Self {
             _container: container,
             db_pool,
         };
 
-        test_state.populate().await;
+        test_state.populate_db().await;
 
         test_state
     }
 
-    async fn db_conn(&self) -> Object<AsyncPgConnection> {
-        self.db_pool.get().await.unwrap()
-    }
-
-    async fn populate(&mut self) {
-        let db_conn = self.db_conn().await;
+    async fn populate_db(&self) {
+        let db_conn = self.db_pool.get().await.unwrap();
         run_migrations(db_conn).await.unwrap();
 
-        let db_conn = &mut self.db_conn().await;
+        let db_conn = &mut self.db_pool.get().await.unwrap();
 
         let mut institutions = Vec::with_capacity(N_INSTITUTIONS);
         for i in 0..N_INSTITUTIONS {
@@ -80,7 +77,7 @@ impl TestState {
 
         let mut people = Vec::with_capacity(N_PEOPLE);
         for i in 0..N_PEOPLE {
-            let institution_id = institutions.choose(rng).unwrap().0.reference.id;
+            let institution_id = *institutions.choose(rng).unwrap().id();
 
             let new_person = NewPerson {
                 name: format!("person{i}"),
@@ -99,14 +96,12 @@ impl TestState {
 
         let mut labs = Vec::with_capacity(N_LABS);
         for i in 0..N_LABS {
-            let id = |p: &Person| p.summary.reference.id;
-
-            let pi_id = people.choose(rng).map(id).unwrap();
+            let pi_id = *people.choose(rng).map(Person::id).unwrap();
             let name = format!("lab{i}");
             // Use `N_LAB_MEMBERS - 1` because we're expecting to add the PI, so using this constant later can be correct
             let member_ids = people
                 .choose_multiple(rng, N_LAB_MEMBERS - 1)
-                .map(id)
+                .map(|p| *p.id())
                 .collect();
 
             let new_lab = NewLab {
@@ -131,35 +126,7 @@ pub type DbConnection = Object<AsyncPgConnection>;
 pub async fn db_conn() -> DbConnection {
     let test_state = TEST_STATE.get_or_init(TestState::new).await;
 
-    test_state.db_conn().await
-}
-
-#[allow(dead_code)]
-pub trait TestDbConnection {
-    async fn set_user(&mut self, user_id: &Uuid);
-    async fn set_random_user(&mut self);
-}
-
-impl TestDbConnection for DbConnection {
-    async fn set_user(&mut self, user_id: &Uuid) {
-        diesel::sql_query(format!(r#"set role "{user_id}""#))
-            .execute(self)
-            .await
-            .unwrap();
-    }
-
-    async fn set_random_user(&mut self) {
-        #[allow(clippy::get_first)]
-        let user_id = PersonSummary::fetch_by_query(&PersonQuery::default(), self)
-            .await
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .reference
-            .id;
-
-        self.set_user(&user_id).await;
-    }
+    test_state.db_pool.get().await.unwrap()
 }
 
 pub async fn test_query<Record, Value1, Value2>(
@@ -170,17 +137,27 @@ pub async fn test_query<Record, Value1, Value2>(
     expected: &[(usize, Value2)],
 ) where
     Record: FetchByQuery,
+    Record::QueryParams: Send,
     Value1: Debug,
-    Value2: Debug + PartialEq<Value1>,
+    Value2: Debug + PartialEq<Value1> + Sync,
 {
-    let records = Record::fetch_by_query(&query, &mut db_conn).await.unwrap();
-    assert_eq!(records.len(), expected_len);
+    db_conn
+        .test_transaction::<_, crate::db::error::Error, _>(|conn| {
+            async move {
+                let records = Record::fetch_by_query(&query, conn).await.unwrap();
+                assert_eq!(records.len(), expected_len);
 
-    for (i, expected_val) in expected {
-        assert_eq!(
-            *expected_val,
-            records.get(*i).map(comparison_fn).unwrap(),
-            "record {i} had unexpected value"
-        );
-    }
+                for (i, expected_val) in expected {
+                    assert_eq!(
+                        *expected_val,
+                        records.get(*i).map(comparison_fn).unwrap(),
+                        "record {i} had unexpected value"
+                    );
+                }
+
+                Ok(())
+            }
+            .scope_boxed()
+        })
+        .await;
 }

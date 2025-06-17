@@ -3,7 +3,7 @@ create table cdna (
     link text generated always as ('/cdna/' || id) stored not null,
     library_type text not null,
     readable_id text unique not null,
-    prepared_at timestamp not null,
+    prepared_at timestamptz not null,
     gems_id uuid references gems on delete restrict on update restrict not null,
     n_amplification_cycles integer not null,
     storage_location text,

@@ -109,8 +109,8 @@ mod tests {
 
     use crate::db::test_util::{DbConnection, N_INSTITUTIONS, db_conn, test_query};
 
-    fn comparison_fn(InstitutionSummary { name, .. }: &InstitutionSummary) -> String {
-        name.to_string()
+    fn comparison_fn(i: &InstitutionSummary) -> String {
+        i.name().to_string()
     }
 
     #[rstest]

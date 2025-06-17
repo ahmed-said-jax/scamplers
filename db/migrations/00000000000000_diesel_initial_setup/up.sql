@@ -97,7 +97,7 @@ create function get_user_roles(
 ) returns text [] language plpgsql volatile strict as $$
     declare roles text [];
     begin
-        select array_agg(pg_roles.rolname) from pg_roles inner join pg_auth_members on pg_roles.oid = pg_auth_members.roleid and pg_auth_members.member = (select usesysid from pg_user where usename = user_id) into roles;
+        select coalesce(nullif(array_agg(pg_roles.rolname), '{null}'), '{}') from pg_roles inner join pg_auth_members on pg_roles.oid = pg_auth_members.roleid and pg_auth_members.member = (select usesysid from pg_user where usename = user_id) into roles;
         return roles;
     end;
 $$;

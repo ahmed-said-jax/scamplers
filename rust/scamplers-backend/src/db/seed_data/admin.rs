@@ -32,7 +32,7 @@ impl Write for NewAdmin {
 
         // For convenience, grant the admin roles here, though this should be factored out eventually into a `PersonUpdate` struct that we can just populate and call from in here, rather than copying code
         diesel::select(grant_roles_to_user(
-            created_user.person.summary.reference.id.to_string(),
+            created_user.id().to_string(),
             vec![UserRole::AppAdmin],
         ))
         .execute(db_conn)

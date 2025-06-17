@@ -2,6 +2,8 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{ItemEnum, ItemImpl, ItemStruct, parse_macro_input};
 
+use crate::macros::common;
+
 use super::common::{derive_enum, impl_query_request_default};
 
 fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
@@ -30,7 +32,7 @@ fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
         #[builder_field_attr(wasm_bindgen::prelude::wasm_bindgen(readonly))]
-        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter, inspectable)]
+        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
         #struct_item
 
         #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone)]
@@ -62,7 +64,7 @@ fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
     output.into()
 }
 
-pub fn write_request(input: TokenStream) -> TokenStream {
+pub fn insertion(input: TokenStream) -> TokenStream {
     wasm_builder(input, false)
 }
 
@@ -83,7 +85,7 @@ pub fn query_request(input: TokenStream) -> TokenStream {
 
     let output = quote! {
         #[derive(serde::Serialize)]
-        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter, inspectable)]
+        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
         #struct_item
 
         #default_impl
@@ -110,6 +112,14 @@ pub fn response(input: TokenStream) -> TokenStream {
     };
 
     output.into()
+}
+
+pub fn with_getters(input: TokenStream) -> TokenStream {
+    common::with_getters(input, true)
+}
+
+pub fn update(input: TokenStream) -> TokenStream {
+    wasm_builder(input, true)
 }
 
 pub fn enum_(input: TokenStream) -> TokenStream {
