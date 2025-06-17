@@ -1,10 +1,9 @@
 #[cfg(feature = "typescript")]
 use {
-    crate::model::Endpoint,
     crate::model::{
         institution::{Institution, NewInstitution},
-        lab::{LabWithMembers, NewLab},
-        person::{CreatedUser, NewPerson, Person, PersonWithRoles},
+        lab::{Lab, NewLab},
+        person::{CreatedUser, NewPerson, Person},
     },
     scamplers_macros::scamplers_client,
     serde::{Serialize, de::DeserializeOwned},
@@ -13,7 +12,7 @@ use {
 
 #[cfg(feature = "typescript")]
 #[wasm_bindgen]
-#[scamplers_client([(NewInstitution, Institution), (NewPerson, PersonWithRoles), (NewLab, LabWithMembers)])]
+#[scamplers_client([(NewInstitution, Institution), (NewPerson, Person), (NewLab, Lab)])]
 struct Client {
     backend_url: String,
     client: reqwest::Client,
@@ -48,10 +47,11 @@ impl Client {
     async fn send_request<Req, Resp>(
         &self,
         data: &Req,
+        route: &str,
         api_key: Option<String>,
     ) -> Result<Resp, JsValue>
     where
-        Req: Serialize + Endpoint,
+        Req: Serialize,
         Resp: DeserializeOwned,
     {
         let Self {
@@ -59,9 +59,7 @@ impl Client {
             client,
         } = self;
 
-        let endpoint = Req::endpoint();
-
-        let mut request = client.post(&format!("{backend_url}{endpoint}")).json(data);
+        let mut request = client.post(format!("{backend_url}{route}")).json(data);
 
         if let Some(api_key) = api_key {
             request = request.header("X-API-Key", api_key);
@@ -93,12 +91,7 @@ impl Client {
         #[derive(Serialize)]
         struct NewMsLogin<'a>(&'a NewPerson);
 
-        impl Endpoint for NewMsLogin<'_> {
-            fn endpoint() -> String {
-                NewPerson::new_user_endpoint()
-            }
-        }
-
-        self.send_request(&NewMsLogin(data), None).await
+        self.send_request(&NewMsLogin(data), &NewPerson::new_user_route(), None)
+            .await
     }
 }

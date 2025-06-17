@@ -2,6 +2,8 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{ItemEnum, ItemImpl, ItemStruct, parse_macro_input};
 
+use crate::macros::common;
+
 use super::common::{derive_enum, impl_query_request_default};
 
 fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
@@ -110,6 +112,10 @@ pub fn response(input: TokenStream) -> TokenStream {
     };
 
     output.into()
+}
+
+pub fn with_getters(input: TokenStream) -> TokenStream {
+    common::with_getters(input, true)
 }
 
 pub fn update(input: TokenStream) -> TokenStream {

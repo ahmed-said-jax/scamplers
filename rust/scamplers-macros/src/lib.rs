@@ -24,6 +24,11 @@ pub fn frontend_response(_attr: TokenStream, input: TokenStream) -> TokenStream 
 }
 
 #[proc_macro_attribute]
+pub fn frontend_with_getters(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    frontend::with_getters(input)
+}
+
+#[proc_macro_attribute]
 pub fn frontend_update(_attr: TokenStream, input: TokenStream) -> TokenStream {
     frontend::update(input)
 }
@@ -43,15 +48,10 @@ pub fn backend_selection(attr: TokenStream, input: TokenStream) -> TokenStream {
     backend::selection(attr, input)
 }
 
-// #[proc_macro_attribute]
-// pub fn backend_summary(_attr: TokenStream, input: TokenStream) -> TokenStream {
-//     backend::summary(input)
-// }
-
-// #[proc_macro_attribute]
-// pub fn backend_detail(_attr: TokenStream, input: TokenStream) -> TokenStream {
-//     backend::detail(input)
-// }
+#[proc_macro_attribute]
+pub fn backend_with_getters(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    backend::with_getters(input)
+}
 
 #[proc_macro_attribute]
 pub fn backend_ordering(_attr: TokenStream, input: TokenStream) -> TokenStream {

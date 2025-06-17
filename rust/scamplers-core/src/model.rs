@@ -10,11 +10,6 @@ pub mod sequencing_run;
 #[cfg(feature = "typescript")]
 use wasm_bindgen::prelude::*;
 
-pub trait Endpoint {
-    fn endpoint() -> String;
-}
-const SEARCH_SUFFIX: &str = "search";
-
 #[cfg_attr(
     feature = "typescript",
     derive(Clone, serde::Serialize),
@@ -43,6 +38,7 @@ impl Default for Pagination {
 #[wasm_bindgen]
 impl Pagination {
     #[wasm_bindgen(constructor)]
+    #[must_use]
     pub fn new(limit: i64, offset: i64) -> Self {
         Self { limit, offset }
     }
@@ -65,9 +61,9 @@ mod tests {
     #[cfg(feature = "typescript")]
     #[test]
     fn write_request_builder() {
-        use scamplers_macros::frontend_write_request;
+        use scamplers_macros::frontend_insertion;
 
-        #[frontend_write_request]
+        #[frontend_insertion]
         #[derive(Debug, PartialEq)]
         struct WriteStruct {
             field: String,
@@ -88,7 +84,7 @@ mod tests {
             }
         );
 
-        let error = WriteStruct::new().build().unwrap_err();
+        WriteStruct::new().build().unwrap_err();
     }
 
     #[cfg(feature = "typescript")]

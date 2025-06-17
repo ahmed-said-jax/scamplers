@@ -49,7 +49,9 @@ pub fn scamplers_client(attr: TokenStream, input: TokenStream) -> TokenStream {
 
         let method = quote! {
             pub async fn #function_name(&self, data: &#param_type, api_key: Option<String>) -> Result<#return_type, wasm_bindgen::JsValue> {
-                self.send_request(data, api_key).await
+                let endpoint = crate::endpoint::Endpoint::<#param_type, #return_type>::route();
+
+                self.send_request(data, &endpoint, api_key).await
             }
         };
 

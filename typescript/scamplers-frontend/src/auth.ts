@@ -67,19 +67,10 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				.institution_id(tid)
 				.build();
 
-			const {
-				person: {
-					person: {
-						summary: {
-							reference: { id }
-						}
-					}
-				},
-				api_key
-			} = await scamplersClient.send_new_ms_login(newPerson);
+			const createdUser = await scamplersClient.send_new_ms_login(newPerson);
 
-			token.userId = id;
-			token.userApiKey = api_key;
+			token.userId = createdUser.id;
+			token.userApiKey = createdUser.api_key;
 
 			return token;
 		},
