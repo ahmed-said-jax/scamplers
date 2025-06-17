@@ -13,7 +13,7 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(
     feature = "typescript",
     derive(Clone, serde::Serialize),
-    wasm_bindgen(setter, inspectable)
+    wasm_bindgen(setter)
 )]
 #[cfg_attr(
     feature = "backend",

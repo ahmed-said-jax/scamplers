@@ -32,7 +32,7 @@ fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
         #[builder_field_attr(wasm_bindgen::prelude::wasm_bindgen(readonly))]
-        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter, inspectable)]
+        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
         #struct_item
 
         #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone)]
@@ -85,7 +85,7 @@ pub fn query_request(input: TokenStream) -> TokenStream {
 
     let output = quote! {
         #[derive(serde::Serialize)]
-        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter, inspectable)]
+        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
         #struct_item
 
         #default_impl

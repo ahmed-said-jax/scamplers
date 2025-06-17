@@ -62,14 +62,6 @@ export class Institution {
 }
 export class InstitutionOrdering {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): InstitutionOrderingBuilder;
   column: InstitutionOrdinalColumn;
@@ -98,14 +90,6 @@ export class InstitutionOrderingError {
   error(): string;
 }
 export class InstitutionQuery {
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   constructor();
   ids: string[];
@@ -148,14 +132,6 @@ export class LabData {
 }
 export class LabOrdering {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): LabOrderingBuilder;
   column: LabOrdinalColumn;
@@ -184,14 +160,6 @@ export class LabOrderingError {
   error(): string;
 }
 export class LabQuery {
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   constructor();
   ids: string[];
@@ -216,14 +184,6 @@ export class LabSummary {
 }
 export class LabUpdate {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): LabUpdateBuilder;
   id: string;
@@ -260,14 +220,6 @@ export class LabUpdateError {
 }
 export class LabUpdateWithMembers {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): LabUpdateWithMembersBuilder;
   update: LabUpdate;
@@ -299,14 +251,6 @@ export class LabUpdateWithMembersError {
 }
 export class NewCommitteeApproval {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): NewCommitteeApprovalBuilder;
   get sample_id(): string;
@@ -341,14 +285,6 @@ export class NewCommitteeApprovalError {
 }
 export class NewInstitution {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): NewInstitutionBuilder;
   id: string;
@@ -378,14 +314,6 @@ export class NewInstitutionError {
 }
 export class NewLab {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): NewLabBuilder;
   name: string;
@@ -419,14 +347,6 @@ export class NewLabError {
 }
 export class NewPerson {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): NewPersonBuilder;
   name: string;
@@ -466,14 +386,6 @@ export class NewPersonError {
 }
 export class NewSampleMetadata {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): NewSampleMetadataBuilder;
   name: string;
@@ -516,14 +428,6 @@ export class NewSampleMetadataError {
   error(): string;
 }
 export class Pagination {
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   constructor(limit: bigint, offset: bigint);
   limit: bigint;
@@ -552,14 +456,6 @@ export class PersonData {
 }
 export class PersonDataUpdate {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): PersonDataUpdateBuilder;
   id: string;
@@ -602,14 +498,6 @@ export class PersonDataUpdateError {
 }
 export class PersonOrdering {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): PersonOrderingBuilder;
   column: PersonOrdinalColumn;
@@ -638,14 +526,6 @@ export class PersonOrderingError {
   error(): string;
 }
 export class PersonQuery {
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   constructor();
   ids: string[];
@@ -673,14 +553,6 @@ export class PersonSummary {
 }
 export class PersonUpdate {
   private constructor();
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
   free(): void;
   static new(): PersonUpdateBuilder;
   data_update: PersonDataUpdate;

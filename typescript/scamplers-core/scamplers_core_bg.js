@@ -566,17 +566,6 @@ export class InstitutionOrdering {
         return jsValue.__destroy_into_raw();
     }
 
-    toJSON() {
-        return {
-            column: this.column,
-            descending: this.descending,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -719,19 +708,6 @@ const InstitutionQueryFinalization = (typeof FinalizationRegistry === 'undefined
     : new FinalizationRegistry(ptr => wasm.__wbg_institutionquery_free(ptr >>> 0, 1));
 
 export class InstitutionQuery {
-
-    toJSON() {
-        return {
-            ids: this.ids,
-            name: this.name,
-            order_by: this.order_by,
-            pagination: this.pagination,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -1063,17 +1039,6 @@ export class LabOrdering {
         return jsValue.__destroy_into_raw();
     }
 
-    toJSON() {
-        return {
-            column: this.column,
-            descending: this.descending,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -1216,19 +1181,6 @@ const LabQueryFinalization = (typeof FinalizationRegistry === 'undefined')
     : new FinalizationRegistry(ptr => wasm.__wbg_labquery_free(ptr >>> 0, 1));
 
 export class LabQuery {
-
-    toJSON() {
-        return {
-            ids: this.ids,
-            name: this.name,
-            order_by: this.order_by,
-            pagination: this.pagination,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -1419,19 +1371,6 @@ export class LabUpdate {
         obj.__wbg_ptr = ptr;
         LabUpdateFinalization.register(obj, obj.__wbg_ptr, obj);
         return obj;
-    }
-
-    toJSON() {
-        return {
-            id: this.id,
-            name: this.name,
-            pi_id: this.pi_id,
-            delivery_dir: this.delivery_dir,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
@@ -1661,18 +1600,6 @@ export class LabUpdateWithMembers {
         return obj;
     }
 
-    toJSON() {
-        return {
-            update: this.update,
-            add_members: this.add_members,
-            remove_members: this.remove_members,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -1867,19 +1794,6 @@ export class NewCommitteeApproval {
             return 0;
         }
         return jsValue.__destroy_into_raw();
-    }
-
-    toJSON() {
-        return {
-            sample_id: this.sample_id,
-            institution_id: this.institution_id,
-            committee_type: this.committee_type,
-            compliance_identifier: this.compliance_identifier,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
@@ -2103,17 +2017,6 @@ export class NewInstitution {
         return obj;
     }
 
-    toJSON() {
-        return {
-            id: this.id,
-            name: this.name,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -2283,19 +2186,6 @@ export class NewLab {
         obj.__wbg_ptr = ptr;
         NewLabFinalization.register(obj, obj.__wbg_ptr, obj);
         return obj;
-    }
-
-    toJSON() {
-        return {
-            name: this.name,
-            pi_id: this.pi_id,
-            delivery_dir: this.delivery_dir,
-            member_ids: this.member_ids,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
@@ -2523,21 +2413,6 @@ export class NewPerson {
         obj.__wbg_ptr = ptr;
         NewPersonFinalization.register(obj, obj.__wbg_ptr, obj);
         return obj;
-    }
-
-    toJSON() {
-        return {
-            name: this.name,
-            email: this.email,
-            orcid: this.orcid,
-            institution_id: this.institution_id,
-            ms_user_id: this.ms_user_id,
-            roles: this.roles,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
@@ -2821,23 +2696,6 @@ export class NewSampleMetadata {
         obj.__wbg_ptr = ptr;
         NewSampleMetadataFinalization.register(obj, obj.__wbg_ptr, obj);
         return obj;
-    }
-
-    toJSON() {
-        return {
-            name: this.name,
-            submitted_by: this.submitted_by,
-            lab_id: this.lab_id,
-            species: this.species,
-            tissue: this.tissue,
-            committee_approvals: this.committee_approvals,
-            notes: this.notes,
-            returned_by: this.returned_by,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
@@ -3182,17 +3040,6 @@ export class Pagination {
         return obj;
     }
 
-    toJSON() {
-        return {
-            limit: this.limit,
-            offset: this.offset,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -3413,21 +3260,6 @@ export class PersonDataUpdate {
         obj.__wbg_ptr = ptr;
         PersonDataUpdateFinalization.register(obj, obj.__wbg_ptr, obj);
         return obj;
-    }
-
-    toJSON() {
-        return {
-            id: this.id,
-            name: this.name,
-            email: this.email,
-            ms_user_id: this.ms_user_id,
-            orcid: this.orcid,
-            institution_id: this.institution_id,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
@@ -3712,17 +3544,6 @@ export class PersonOrdering {
         return jsValue.__destroy_into_raw();
     }
 
-    toJSON() {
-        return {
-            column: this.column,
-            descending: this.descending,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -3865,20 +3686,6 @@ const PersonQueryFinalization = (typeof FinalizationRegistry === 'undefined')
     : new FinalizationRegistry(ptr => wasm.__wbg_personquery_free(ptr >>> 0, 1));
 
 export class PersonQuery {
-
-    toJSON() {
-        return {
-            ids: this.ids,
-            name: this.name,
-            email: this.email,
-            order_by: this.order_by,
-            pagination: this.pagination,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -4103,18 +3910,6 @@ export class PersonUpdate {
         obj.__wbg_ptr = ptr;
         PersonUpdateFinalization.register(obj, obj.__wbg_ptr, obj);
         return obj;
-    }
-
-    toJSON() {
-        return {
-            data_update: this.data_update,
-            add_roles: this.add_roles,
-            remove_roles: this.remove_roles,
-        };
-    }
-
-    toString() {
-        return JSON.stringify(this);
     }
 
     __destroy_into_raw() {
