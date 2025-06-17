@@ -1,10 +1,20 @@
 /* tslint:disable */
 /* eslint-disable */
+export enum BlockPreservationMethod {
+  FormaldehydeDerivativeFixation = 0,
+}
+export enum BlockType {
+  Block = 0,
+}
 export enum ComplianceCommitteeType {
   Ibc = 0,
   Irb = 1,
   Iacuc = 2,
-  Unknown = 3,
+}
+export enum EmbeddingMatrix {
+  CarboxymethylCellulose = 0,
+  OptimalCuttingTemperatureCompound = 1,
+  Paraffin = 2,
 }
 export enum InstitutionOrdinalColumn {
   Name = 0,
@@ -25,13 +35,11 @@ export enum Species {
   MusMusculus = 5,
   RattusNorvegicus = 6,
   SminthopsisCrassicaudata = 7,
-  Unknown = 8,
 }
 export enum UserRole {
   AppAdmin = 0,
   ComputationalStaff = 1,
   BiologyStaff = 2,
-  Unknown = 3,
 }
 export class Client {
   free(): void;
@@ -40,6 +48,13 @@ export class Client {
   send_new_lab(data: NewLab, api_key?: string | null): Promise<Lab>;
   constructor(backend_url: string, token: string);
   send_new_ms_login(data: NewPerson): Promise<CreatedUser>;
+}
+export class CommitteeApproval {
+  private constructor();
+  free(): void;
+  readonly institution: InstitutionSummary;
+  readonly committee_type: ComplianceCommitteeType;
+  readonly compliance_identifier: string;
 }
 export class CreatedUser {
   private constructor();
@@ -52,6 +67,10 @@ export class CreatedUser {
   readonly institution: Institution;
   readonly roles: any[];
   readonly api_key: string;
+}
+export class EmptyStringError {
+  private constructor();
+  free(): void;
 }
 export class Institution {
   private constructor();
@@ -187,12 +206,12 @@ export class LabUpdate {
   free(): void;
   static new(): LabUpdateBuilder;
   id: string;
-  get name(): string;
-  set name(value: string | null | undefined);
+  get name(): NonEmptyString | undefined;
+  set name(value: NonEmptyString | null | undefined);
   get pi_id(): string;
   set pi_id(value: string | null | undefined);
-  get delivery_dir(): string;
-  set delivery_dir(value: string | null | undefined);
+  get delivery_dir(): NonEmptyString | undefined;
+  set delivery_dir(value: NonEmptyString | null | undefined);
 }
 /**
  * Builder for [`LabUpdate`](struct.LabUpdate.html).
@@ -201,9 +220,9 @@ export class LabUpdateBuilder {
   private constructor();
   free(): void;
   id(value: string): LabUpdateBuilder;
-  name(value?: string | null): LabUpdateBuilder;
+  name(value?: NonEmptyString | null): LabUpdateBuilder;
   pi_id(value?: string | null): LabUpdateBuilder;
-  delivery_dir(value?: string | null): LabUpdateBuilder;
+  delivery_dir(value?: NonEmptyString | null): LabUpdateBuilder;
   /**
    * Builds a new `LabUpdate`.
    *
@@ -257,7 +276,7 @@ export class NewCommitteeApproval {
   set sample_id(value: string | null | undefined);
   institution_id: string;
   committee_type: ComplianceCommitteeType;
-  compliance_identifier: string;
+  compliance_identifier: NonEmptyString;
 }
 /**
  * Builder for [`NewCommitteeApproval`](struct.NewCommitteeApproval.html).
@@ -268,7 +287,7 @@ export class NewCommitteeApprovalBuilder {
   sample_id(value?: string | null): NewCommitteeApprovalBuilder;
   institution_id(value: string): NewCommitteeApprovalBuilder;
   committee_type(value: ComplianceCommitteeType): NewCommitteeApprovalBuilder;
-  compliance_identifier(value: string): NewCommitteeApprovalBuilder;
+  compliance_identifier(value: NonEmptyString): NewCommitteeApprovalBuilder;
   /**
    * Builds a new `NewCommitteeApproval`.
    *
@@ -288,7 +307,7 @@ export class NewInstitution {
   free(): void;
   static new(): NewInstitutionBuilder;
   id: string;
-  name: string;
+  name: NonEmptyString;
 }
 /**
  * Builder for [`NewInstitution`](struct.NewInstitution.html).
@@ -297,7 +316,7 @@ export class NewInstitutionBuilder {
   private constructor();
   free(): void;
   id(value: string): NewInstitutionBuilder;
-  name(value: string): NewInstitutionBuilder;
+  name(value: NonEmptyString): NewInstitutionBuilder;
   /**
    * Builds a new `NewInstitution`.
    *
@@ -316,9 +335,9 @@ export class NewLab {
   private constructor();
   free(): void;
   static new(): NewLabBuilder;
-  name: string;
+  name: NonEmptyString;
   pi_id: string;
-  delivery_dir: string;
+  delivery_dir: NonEmptyString;
   member_ids: string[];
 }
 /**
@@ -327,9 +346,9 @@ export class NewLab {
 export class NewLabBuilder {
   private constructor();
   free(): void;
-  name(value: string): NewLabBuilder;
+  name(value: NonEmptyString): NewLabBuilder;
   pi_id(value: string): NewLabBuilder;
-  delivery_dir(value: string): NewLabBuilder;
+  delivery_dir(value: NonEmptyString): NewLabBuilder;
   member_ids(value: string[]): NewLabBuilder;
   /**
    * Builds a new `NewLab`.
@@ -349,10 +368,10 @@ export class NewPerson {
   private constructor();
   free(): void;
   static new(): NewPersonBuilder;
-  name: string;
+  name: NonEmptyString;
   email: string;
-  get orcid(): string;
-  set orcid(value: string | null | undefined);
+  get orcid(): NonEmptyString | undefined;
+  set orcid(value: NonEmptyString | null | undefined);
   institution_id: string;
   get ms_user_id(): string;
   set ms_user_id(value: string | null | undefined);
@@ -364,9 +383,9 @@ export class NewPerson {
 export class NewPersonBuilder {
   private constructor();
   free(): void;
-  name(value: string): NewPersonBuilder;
+  name(value: NonEmptyString): NewPersonBuilder;
   email(value: string): NewPersonBuilder;
-  orcid(value?: string | null): NewPersonBuilder;
+  orcid(value?: NonEmptyString | null): NewPersonBuilder;
   institution_id(value: string): NewPersonBuilder;
   ms_user_id(value?: string | null): NewPersonBuilder;
   roles(value: any[]): NewPersonBuilder;
@@ -384,48 +403,9 @@ export class NewPersonError {
   free(): void;
   error(): string;
 }
-export class NewSampleMetadata {
-  private constructor();
+export class NonEmptyString {
   free(): void;
-  static new(): NewSampleMetadataBuilder;
-  name: string;
-  submitted_by: string;
-  lab_id: string;
-  species: any[];
-  tissue: string;
-  committee_approvals: NewCommitteeApproval[];
-  get notes(): string[] | undefined;
-  set notes(value: string[] | null | undefined);
-  get returned_by(): string;
-  set returned_by(value: string | null | undefined);
-}
-/**
- * Builder for [`NewSampleMetadata`](struct.NewSampleMetadata.html).
- */
-export class NewSampleMetadataBuilder {
-  private constructor();
-  free(): void;
-  name(value: string): NewSampleMetadataBuilder;
-  submitted_by(value: string): NewSampleMetadataBuilder;
-  lab_id(value: string): NewSampleMetadataBuilder;
-  species(value: any[]): NewSampleMetadataBuilder;
-  tissue(value: string): NewSampleMetadataBuilder;
-  committee_approvals(value: NewCommitteeApproval[]): NewSampleMetadataBuilder;
-  notes(value?: string[] | null): NewSampleMetadataBuilder;
-  returned_by(value?: string | null): NewSampleMetadataBuilder;
-  /**
-   * Builds a new `NewSampleMetadata`.
-   *
-   * # Errors
-   *
-   * If a required field has not been initialized.
-   */
-  build(): NewSampleMetadata;
-}
-export class NewSampleMetadataError {
-  private constructor();
-  free(): void;
-  error(): string;
+  constructor(s: string);
 }
 export class Pagination {
   free(): void;
@@ -459,14 +439,14 @@ export class PersonDataUpdate {
   free(): void;
   static new(): PersonDataUpdateBuilder;
   id: string;
-  get name(): string;
-  set name(value: string | null | undefined);
+  get name(): NonEmptyString | undefined;
+  set name(value: NonEmptyString | null | undefined);
   get email(): string;
   set email(value: string | null | undefined);
   get ms_user_id(): string;
   set ms_user_id(value: string | null | undefined);
-  get orcid(): string;
-  set orcid(value: string | null | undefined);
+  get orcid(): NonEmptyString | undefined;
+  set orcid(value: NonEmptyString | null | undefined);
   get institution_id(): string;
   set institution_id(value: string | null | undefined);
 }
@@ -477,10 +457,10 @@ export class PersonDataUpdateBuilder {
   private constructor();
   free(): void;
   id(value: string): PersonDataUpdateBuilder;
-  name(value?: string | null): PersonDataUpdateBuilder;
+  name(value?: NonEmptyString | null): PersonDataUpdateBuilder;
   email(value?: string | null): PersonDataUpdateBuilder;
   ms_user_id(value?: string | null): PersonDataUpdateBuilder;
-  orcid(value?: string | null): PersonDataUpdateBuilder;
+  orcid(value?: NonEmptyString | null): PersonDataUpdateBuilder;
   institution_id(value?: string | null): PersonDataUpdateBuilder;
   /**
    * Builds a new `PersonDataUpdate`.

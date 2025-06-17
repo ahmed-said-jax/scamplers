@@ -39,6 +39,11 @@ pub fn frontend_enum(_attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn frontend_ordinal_columns_enum(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    frontend::ordinal_columns_enum(input)
+}
+
+#[proc_macro_attribute]
 pub fn backend_insertion(attr: TokenStream, input: TokenStream) -> TokenStream {
     backend::insertion(attr, input)
 }

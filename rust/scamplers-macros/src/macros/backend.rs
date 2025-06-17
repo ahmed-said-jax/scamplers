@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{ItemEnum, ItemImpl, ItemStruct, parse_macro_input};
+use syn::{Item, ItemEnum, ItemImpl, ItemStruct, parse_macro_input};
 
 use crate::macros::common;
 
@@ -45,8 +45,9 @@ pub fn update(attr: TokenStream, input: TokenStream) -> TokenStream {
     let table_name = parse_macro_input!(attr as syn::Path);
 
     let output = quote! {
-        #[derive(serde::Deserialize, diesel::prelude::AsChangeset, diesel::prelude::Identifiable, valuable::Valuable, Debug, Default)]
+        #[derive(serde::Deserialize, diesel::prelude::AsChangeset, diesel::prelude::Identifiable, garde::Validate, valuable::Valuable, Debug, Default)]
         #[diesel(table_name = #table_name, check_for_backend(diesel::pg::Pg))]
+        #[garde(allow_unvalidated)]
         #[serde(default)]
         #struct_item
     };
@@ -92,7 +93,7 @@ pub fn ordinal_columns_enum(input: TokenStream) -> TokenStream {
     let enum_item = parse_macro_input!(enum_with_derives as ItemEnum);
 
     let output = quote! {
-        #[derive(Debug, valuable::Valuable)]
+        #[derive(Debug, valuable::Valuable, Default)]
         #enum_item
     };
 
@@ -117,7 +118,7 @@ pub fn db_enum(input: TokenStream) -> TokenStream {
                 use std::str::FromStr;
 
                 let string: String = FromSql::<sql_types::Text, Pg>::from_sql(bytes)?;
-                Ok(Self::from_str(&string).unwrap_or_default())
+                Ok(Self::from_str(&string).unwrap())
             }
         }
 
@@ -138,13 +139,17 @@ pub fn db_enum(input: TokenStream) -> TokenStream {
 }
 
 pub fn db_json(input: TokenStream) -> TokenStream {
-    let struct_item = parse_macro_input!(input as ItemStruct);
+    let struct_item = parse_macro_input!(input as Item);
 
-    let ItemStruct { ident, .. } = &struct_item;
+    let ident = match &struct_item {
+        Item::Struct(ItemStruct { ident, .. }) | Item::Enum(ItemEnum { ident, .. }) => ident,
+        _ => panic!("backend_db_json can only be used on structs and enums"),
+    };
 
     let output = quote! {
-        #[derive(diesel::deserialize::FromSqlRow, diesel::expression::AsExpression, Debug, Default)]
+        #[derive(Debug, diesel::deserialize::FromSqlRow, diesel::expression::AsExpression, garde::Validate, serde::Deserialize, valuable::Valuable, serde::Serialize)]
         #[diesel(sql_type = diesel::sql_types::Text)]
+        #[garde(allow_unvalidated)]
         #struct_item
 
         impl diesel::deserialize::FromSql<diesel::sql_types::Jsonb, diesel::pg::Pg> for #ident {
@@ -152,7 +157,7 @@ pub fn db_json(input: TokenStream) -> TokenStream {
                 use diesel::{deserialize::FromSql, sql_types, pg::Pg};
 
                 let json: serde_json::Value = FromSql::<sql_types::Jsonb, Pg>::from_sql(bytes)?;
-                Ok(serde_json::from_value(json).unwrap_or_default())
+                Ok(serde_json::from_value(json).unwrap())
             }
         }
 
@@ -163,7 +168,7 @@ pub fn db_json(input: TokenStream) -> TokenStream {
             ) -> diesel::serialize::Result {
                 use diesel::{serialize::ToSql, sql_types, pg::Pg};
 
-                let as_json: serde_json::to_value(self).unwrap();
+                let as_json = serde_json::to_value(self).unwrap();
                 ToSql::<sql_types::Jsonb, Pg>::to_sql(&as_json, &mut out.reborrow())
             }
         }

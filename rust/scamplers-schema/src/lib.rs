@@ -259,6 +259,7 @@ diesel::table! {
 diesel::table! {
     sample_metadata (id) {
         id -> Uuid,
+        readable_id -> Text,
         name -> Text,
         submitted_by -> Uuid,
         lab_id -> Uuid,
@@ -295,7 +296,6 @@ diesel::table! {
     specimen (id) {
         id -> Uuid,
         link -> Text,
-        readable_id -> Text,
         metadata_id -> Uuid,
         #[sql_name = "type"]
         type_ -> Text,

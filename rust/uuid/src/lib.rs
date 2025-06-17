@@ -1,11 +1,10 @@
+#[cfg(feature = "backend")]
+use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 use {
     _uuid::Bytes,
     serde::{Deserialize, Serialize},
     std::{fmt::Display, str::FromStr},
 };
-
-#[cfg(feature = "backend")]
-use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 
 #[cfg_attr(feature = "backend", derive(FromSqlRow, AsExpression))]
 #[cfg_attr(feature = "backend", diesel(sql_type = sql_types::Uuid))]

@@ -1,7 +1,10 @@
+use crate::{model::Pagination, string::NonEmptyString};
+#[cfg(feature = "typescript")]
+use scamplers_macros::{
+    frontend_insertion, frontend_ordering, frontend_ordinal_columns_enum, frontend_query_request,
+    frontend_response, frontend_with_getters,
+};
 use uuid::Uuid;
-
-use crate::model::Pagination;
-
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
@@ -11,18 +14,12 @@ use {
     scamplers_schema::institution,
 };
 
-#[cfg(feature = "typescript")]
-use scamplers_macros::{
-    frontend_enum, frontend_insertion, frontend_ordering, frontend_query_request,
-    frontend_response, frontend_with_getters,
-};
-
 #[cfg_attr(feature = "backend", backend_insertion(institution), derive(Clone))]
 #[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewInstitution {
     pub id: Uuid,
-    #[cfg_attr(feature = "backend", garde(length(min = 1)))]
-    pub name: String,
+    #[cfg_attr(feature = "backend", garde(dive))]
+    pub name: NonEmptyString,
 }
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
@@ -103,7 +100,7 @@ impl Institution {
 }
 
 #[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]
-#[cfg_attr(feature = "typescript", frontend_enum)]
+#[cfg_attr(feature = "typescript", frontend_ordinal_columns_enum)]
 pub enum InstitutionOrdinalColumn {
     #[default]
     Name,

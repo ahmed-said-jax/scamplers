@@ -134,3 +134,16 @@ pub fn enum_(input: TokenStream) -> TokenStream {
 
     output.into()
 }
+
+pub fn ordinal_columns_enum(input: TokenStream) -> TokenStream {
+    let wasmified = enum_(input);
+
+    let enum_item = parse_macro_input!(wasmified as ItemEnum);
+
+    let output = quote! {
+        #[derive(Default)]
+        #enum_item
+    };
+
+    output.into()
+}

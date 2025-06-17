@@ -9,7 +9,7 @@ pub(super) fn derive_enum(input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemEnum);
 
     let output = quote! {
-        #[derive(serde::Deserialize, serde::Serialize, Default, Clone, Copy)]
+        #[derive(serde::Deserialize, serde::Serialize, Clone, Copy)]
         #[serde(rename_all = "snake_case")]
         #item
     };

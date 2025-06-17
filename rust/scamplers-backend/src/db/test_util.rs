@@ -15,10 +15,13 @@ use diesel_async::{
 use pretty_assertions::assert_eq;
 use rand::seq::IndexedRandom;
 use rstest::fixture;
-use scamplers_core::model::{
-    institution::NewInstitution,
-    lab::NewLab,
-    person::{NewPerson, Person},
+use scamplers_core::{
+    model::{
+        institution::NewInstitution,
+        lab::NewLab,
+        person::{NewPerson, Person},
+    },
+    string::ToNonEmptyString,
 };
 use tokio::sync::OnceCell;
 use uuid::Uuid;
@@ -64,7 +67,7 @@ impl TestState {
         for i in 0..N_INSTITUTIONS {
             let new_institution = NewInstitution {
                 id: Uuid::now_v7(),
-                name: format!("institution{i}"),
+                name: format!("institution{i}").to_non_empty_string().unwrap(),
             }
             .write(db_conn)
             .await
@@ -80,7 +83,7 @@ impl TestState {
             let institution_id = *institutions.choose(rng).unwrap().id();
 
             let new_person = NewPerson {
-                name: format!("person{i}"),
+                name: format!("person{i}").to_non_empty_string().unwrap(),
                 email: format!("person{i}@example.com"),
                 institution_id,
                 ms_user_id: None,
@@ -97,7 +100,7 @@ impl TestState {
         let mut labs = Vec::with_capacity(N_LABS);
         for i in 0..N_LABS {
             let pi_id = *people.choose(rng).map(Person::id).unwrap();
-            let name = format!("lab{i}");
+            let name = format!("lab{i}").to_non_empty_string().unwrap();
             // Use `N_LAB_MEMBERS - 1` because we're expecting to add the PI, so using this constant later can be correct
             let member_ids = people
                 .choose_multiple(rng, N_LAB_MEMBERS - 1)
@@ -107,7 +110,7 @@ impl TestState {
             let new_lab = NewLab {
                 name: name.clone(),
                 pi_id,
-                delivery_dir: format!("{name}_dir"),
+                delivery_dir: format!("{name}_dir").to_non_empty_string().unwrap(),
                 member_ids,
             }
             .write(db_conn)

@@ -1,5 +1,6 @@
 create table sample_metadata (
     id uuid primary key default uuidv7(),
+    readable_id text unique not null,
     name text not null,
     submitted_by uuid references person on delete restrict on update restrict not null,
     lab_id uuid references lab on delete restrict on update restrict not null,

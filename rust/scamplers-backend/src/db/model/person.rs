@@ -217,7 +217,7 @@ impl WriteLogin for NewPerson {
 
         let upsert = Upsert {
             ms_user_id: ms_user_id.as_ref(),
-            name,
+            name: name.as_ref(),
             email,
             hashed_api_key: &hashed_api_key,
             institution_id,
@@ -256,12 +256,15 @@ mod tests {
     use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use pretty_assertions::assert_eq;
     use rstest::rstest;
-    use scamplers_core::model::{
-        institution::{InstitutionQuery, InstitutionSummary},
-        person::{
-            NewPerson, PersonDataUpdate, PersonOrdering, PersonOrdinalColumn, PersonQuery,
-            PersonSummary, PersonUpdate, UserRole,
+    use scamplers_core::{
+        model::{
+            institution::{InstitutionQuery, InstitutionSummary},
+            person::{
+                NewPerson, PersonDataUpdate, PersonOrdering, PersonOrdinalColumn, PersonQuery,
+                PersonSummary, PersonUpdate, UserRole,
+            },
         },
+        string::ToNonEmptyString,
     };
     use uuid::Uuid;
 
@@ -324,7 +327,7 @@ mod tests {
 
                     let id = people.get(0).unwrap().id();
 
-                    let new_name = "Thomas Anderson".to_string();
+                    let new_name = "Thomas Anderson".to_non_empty_string().unwrap();
                     let new_email = "thomas.anderson@neo.com".to_string();
 
                     let data_update = PersonDataUpdate {
@@ -373,7 +376,7 @@ mod tests {
                     let ms_user_id = Uuid::now_v7();
 
                     let mut new_person = NewPerson {
-                        name: "Peter Parker".to_string(),
+                        name: "Peter Parker".to_non_empty_string().unwrap(),
                         email: "peter.parker@example.com".to_string(),
                         ms_user_id: Some(ms_user_id),
                         orcid: None,

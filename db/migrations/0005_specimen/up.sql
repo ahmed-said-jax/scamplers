@@ -3,7 +3,6 @@
 create table specimen (
     id uuid primary key default uuidv7(),
     link text generated always as ('/samples/' || id) stored not null,
-    readable_id text unique not null,
     metadata_id uuid not null references sample_metadata on delete restrict on update restrict,
     type text not null,
     embedded_in text,

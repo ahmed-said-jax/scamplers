@@ -1,5 +1,12 @@
-use super::Pagination;
+use crate::string::NonEmptyString;
 
+use super::Pagination;
+#[cfg(feature = "typescript")]
+use scamplers_macros::{
+    frontend_enum, frontend_insertion, frontend_ordering, frontend_ordinal_columns_enum,
+    frontend_query_request, frontend_update, frontend_with_getters,
+};
+use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
@@ -9,14 +16,6 @@ use {
     scamplers_schema::person,
 };
 
-#[cfg(feature = "typescript")]
-use scamplers_macros::{
-    frontend_enum, frontend_insertion, frontend_ordering, frontend_query_request, frontend_update,
-    frontend_with_getters,
-};
-
-use uuid::Uuid;
-
 #[derive(PartialEq)]
 #[cfg_attr(feature = "backend", backend_db_enum)]
 #[cfg_attr(feature = "typescript", frontend_enum)]
@@ -24,19 +23,18 @@ pub enum UserRole {
     AppAdmin,
     ComputationalStaff,
     BiologyStaff,
-    #[default]
-    Unknown,
 }
 
 #[cfg_attr(feature = "backend", backend_insertion(person), derive(Clone))]
 #[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewPerson {
-    #[cfg_attr(feature = "backend", garde(length(min = 1)))]
-    pub name: String,
+    #[cfg_attr(feature = "backend", garde(dive))]
+    pub name: NonEmptyString,
     #[cfg_attr(feature = "backend", garde(email))]
     pub email: String,
+    #[cfg_attr(feature = "backend", garde(dive))]
     #[cfg_attr(feature = "typescript", builder(default))]
-    pub orcid: Option<String>,
+    pub orcid: Option<NonEmptyString>,
     pub institution_id: Uuid,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub ms_user_id: Option<Uuid>,
@@ -123,7 +121,7 @@ mod read {
 pub use read::*;
 
 #[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]
-#[cfg_attr(feature = "typescript", frontend_enum)]
+#[cfg_attr(feature = "typescript", frontend_ordinal_columns_enum)]
 pub enum PersonOrdinalColumn {
     #[default]
     Name,
@@ -151,21 +149,26 @@ pub struct PersonQuery {
 #[cfg_attr(feature = "typescript", frontend_update)]
 pub struct PersonDataUpdate {
     pub id: Uuid,
-    pub name: Option<String>,
+    #[cfg_attr(feature = "backend", garde(dive))]
+    pub name: Option<NonEmptyString>,
+    #[cfg_attr(feature = "backend", garde(email))]
     pub email: Option<String>,
     pub ms_user_id: Option<Uuid>,
-    pub orcid: Option<String>,
+    #[cfg_attr(feature = "backend", garde(dive))]
+    pub orcid: Option<NonEmptyString>,
     pub institution_id: Option<Uuid>,
 }
 
 #[cfg_attr(
     feature = "backend",
-    derive(serde::Deserialize, Default),
+    derive(serde::Deserialize, Default, garde::Validate),
     serde(default)
 )]
+#[cfg_attr(feature = "backend", garde(allow_unvalidated))]
 #[cfg_attr(feature = "typescript", frontend_update)]
 pub struct PersonUpdate {
     #[serde(flatten)]
+    #[cfg_attr(feature = "backend", garde(dive))]
     pub data_update: PersonDataUpdate,
     pub add_roles: Vec<UserRole>,
     pub remove_roles: Vec<UserRole>,

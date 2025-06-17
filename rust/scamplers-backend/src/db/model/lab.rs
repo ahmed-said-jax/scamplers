@@ -211,9 +211,12 @@ mod tests {
     use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use pretty_assertions::assert_eq;
     use rstest::rstest;
-    use scamplers_core::model::{
-        lab::{LabQuery, LabSummary, LabUpdate, LabUpdateWithMembers, NewLab},
-        person::{PersonQuery, PersonSummary},
+    use scamplers_core::{
+        model::{
+            lab::{LabQuery, LabSummary, LabUpdate, LabUpdateWithMembers, NewLab},
+            person::{PersonQuery, PersonSummary},
+        },
+        string::ToNonEmptyString,
     };
     use scamplers_schema::lab;
 
@@ -254,9 +257,9 @@ mod tests {
                         .remove(0);
 
                     let new_lab = NewLab {
-                        name: "Rick Sanchez Lab".to_string(),
+                        name: "Rick Sanchez Lab".to_non_empty_string().unwrap(),
                         pi_id: *pi.id(),
-                        delivery_dir: "rick_sanchez".to_string(),
+                        delivery_dir: "rick_sanchez".to_non_empty_string().unwrap(),
                         member_ids: vec![],
                     };
 

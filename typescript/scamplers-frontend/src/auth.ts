@@ -1,6 +1,6 @@
 import { SvelteKitAuth, type DefaultSession } from '@auth/sveltekit';
 import Entra from '@auth/sveltekit/providers/microsoft-entra-id';
-import { Institution, NewPerson } from 'scamplers-core';
+import { Institution, NewPerson, NonEmptyString } from 'scamplers-core';
 import {
 	AUTH_SECRET,
 	MICROSOFT_ENTRA_ID_ID,
@@ -61,7 +61,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			const { name, email, oid, tid } = profile;
 
 			const newPerson = NewPerson.new()
-				.name(name)
+				.name(new NonEmptyString(name))
 				.email(email)
 				.ms_user_id(oid)
 				.institution_id(tid)
