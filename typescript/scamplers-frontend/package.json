@@ -36,19 +36,19 @@
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"prettier-plugin-tailwindcss": "^0.6.12",
-		"svelte": "^5.34.3",
+		"svelte": "^5.34.5",
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.8.3",
-		"typescript-eslint": "^8.34.0",
+		"typescript-eslint": "^8.34.1",
 		"vite": "^6.2.5",
 		"vite-plugin-wasm": "^3.4.1",
-		"vitest": "^3.2.3"
+		"vitest": "^3.2.4"
 	},
 	"dependencies": {
 		"@auth/core": "^0.39.0",
 		"@auth/sveltekit": "^1.9.1",
-		"@types/node": "^24.0.2",
+		"@types/node": "^24.0.3",
 		"scamplers-core": "file:../scamplers-core"
 	}
 }
