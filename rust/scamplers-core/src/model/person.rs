@@ -4,14 +4,14 @@ use super::Pagination;
 #[cfg(feature = "typescript")]
 use scamplers_macros::{
     frontend_enum, frontend_insertion, frontend_ordering, frontend_ordinal_columns_enum,
-    frontend_query_request, frontend_update, frontend_with_getters,
+    frontend_query_request, frontend_with_getters,
 };
 use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
         backend_db_enum, backend_insertion, backend_ordering, backend_ordinal_columns_enum,
-        backend_query_request, backend_update, backend_with_getters,
+        backend_query_request, backend_with_getters,
     },
     scamplers_schema::person,
 };
@@ -25,7 +25,15 @@ pub enum UserRole {
     BiologyStaff,
 }
 
-#[cfg_attr(feature = "backend", backend_insertion(person), derive(Clone))]
+#[cfg_attr(
+    feature = "backend",
+    backend_insertion(person),
+    derive(Clone, bon::Builder)
+)]
+#[cfg_attr(
+    feature = "backend",
+    builder(on(NonEmptyString, into), on(String, into))
+)]
 #[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewPerson {
     #[cfg_attr(feature = "backend", garde(dive))]
@@ -38,7 +46,12 @@ pub struct NewPerson {
     pub institution_id: Uuid,
     #[cfg_attr(feature = "typescript", builder(default))]
     pub ms_user_id: Option<Uuid>,
-    #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
+    #[cfg_attr(
+        feature = "backend",
+        diesel(skip_insertion),
+        serde(default),
+        builder(default)
+    )]
     #[cfg_attr(feature = "typescript", builder(default))]
     pub roles: Vec<UserRole>,
 }
@@ -51,17 +64,25 @@ impl NewPerson {
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
 #[cfg_attr(feature = "typescript", frontend_with_getters)]
-mod read {
-    use crate::model::{institution::Institution, person::UserRole};
+mod with_getters {
+    #[cfg(feature = "backend")]
+    use crate::model::IsUpdate;
+    use crate::{
+        model::{institution::Institution, person::UserRole},
+        string::NonEmptyString,
+    };
     #[cfg(feature = "typescript")]
-    use scamplers_macros::frontend_response;
+    use scamplers_macros::{frontend_response, frontend_update};
     use uuid::Uuid;
     #[cfg(feature = "backend")]
-    use {scamplers_macros::backend_selection, scamplers_schema::person};
+    use {
+        scamplers_macros::{backend_selection, backend_update},
+        scamplers_schema::person,
+    };
 
     #[cfg_attr(feature = "backend", backend_selection(person))]
     #[cfg_attr(feature = "typescript", frontend_response)]
-    pub struct PersonReference {
+    pub struct PersonHandle {
         id: Uuid,
         link: String,
     }
@@ -71,7 +92,7 @@ mod read {
     pub struct PersonSummary {
         #[serde(flatten)]
         #[cfg_attr(feature = "backend", diesel(embed))]
-        reference: PersonReference,
+        handle: PersonHandle,
         name: String,
         email: Option<String>,
         orcid: Option<String>,
@@ -79,7 +100,7 @@ mod read {
 
     #[cfg_attr(feature = "backend", backend_selection(person))]
     #[cfg_attr(feature = "typescript", frontend_response)]
-    pub struct PersonData {
+    pub struct PersonCore {
         #[serde(flatten)]
         #[cfg_attr(feature = "backend", diesel(embed))]
         summary: PersonSummary,
@@ -87,38 +108,116 @@ mod read {
         institution: Institution,
     }
 
-    #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
+    #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug, bon::Builder))]
     #[cfg_attr(feature = "typescript", frontend_response)]
     pub struct Person {
         #[serde(flatten)]
-        data: PersonData,
+        core: PersonCore,
         roles: Vec<UserRole>,
     }
 
-    #[cfg(feature = "backend")]
-    impl Person {
-        #[must_use]
-        pub fn new(data: PersonData, roles: Vec<UserRole>) -> Self {
-            Self { data, roles }
-        }
-    }
-
-    #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug))]
+    #[cfg_attr(feature = "backend", derive(serde::Serialize, Debug, bon::Builder))]
+    #[cfg_attr(feature = "backend", builder(on(String, into)))]
     #[cfg_attr(feature = "typescript", frontend_response)]
     pub struct CreatedUser {
-        data: Person,
+        person: Person,
         api_key: String,
     }
 
+    #[cfg_attr(feature = "backend", backend_update(person))]
+    #[cfg_attr(feature = "typescript", frontend_update)]
+    pub struct PersonUpdateCore {
+        id: Uuid,
+        #[cfg_attr(feature = "backend", garde(dive))]
+        name: Option<NonEmptyString>,
+        #[cfg_attr(feature = "backend", garde(email))]
+        email: Option<String>,
+        ms_user_id: Option<Uuid>,
+        #[cfg_attr(feature = "backend", garde(dive))]
+        orcid: Option<NonEmptyString>,
+        institution_id: Option<Uuid>,
+    }
+
     #[cfg(feature = "backend")]
-    impl CreatedUser {
+    impl IsUpdate for PersonUpdateCore {
+        fn is_update(&self) -> bool {
+            !matches!(
+                self,
+                Self {
+                    name: None,
+                    email: None,
+                    orcid: None,
+                    institution_id: None,
+                    ..
+                }
+            )
+        }
+    }
+
+    #[cfg_attr(
+        feature = "backend",
+        derive(serde::Deserialize, Default, garde::Validate)
+    )]
+    #[cfg_attr(feature = "backend", garde(allow_unvalidated), serde(default))]
+    #[cfg_attr(feature = "typescript", frontend_update)]
+    pub struct PersonUpdate {
+        grant_roles: Vec<UserRole>,
+        revoke_roles: Vec<UserRole>,
+        #[cfg_attr(feature = "backend", garde(dive), serde(flatten))]
+        core: PersonUpdateCore,
+    }
+
+    #[cfg(feature = "backend")]
+    impl PersonUpdate {
         #[must_use]
-        pub fn new(data: Person, api_key: String) -> Self {
-            Self { data, api_key }
+        pub fn core(&self) -> &PersonUpdateCore {
+            &self.core
+        }
+    }
+
+    #[cfg(feature = "backend")]
+    #[bon::bon]
+    impl PersonUpdate {
+        #[builder(on(String, into), on(NonEmptyString, into))]
+        pub fn new(
+            #[builder(field)] grant_roles: Vec<UserRole>,
+            #[builder(field)] revoke_roles: Vec<UserRole>,
+            id: Uuid,
+            name: Option<NonEmptyString>,
+            email: Option<String>,
+            ms_user_id: Option<Uuid>,
+            orcid: Option<NonEmptyString>,
+            institution_id: Option<Uuid>,
+        ) -> Self {
+            let core = PersonUpdateCore {
+                id,
+                name,
+                email,
+                ms_user_id,
+                orcid,
+                institution_id,
+            };
+            Self {
+                grant_roles,
+                revoke_roles,
+                core,
+            }
+        }
+    }
+
+    #[cfg(feature = "backend")]
+    impl<S: person_update_builder::State> PersonUpdateBuilder<S> {
+        pub fn grant_role(mut self, role: UserRole) -> Self {
+            self.grant_roles.push(role);
+            self
+        }
+        pub fn revoke_role(mut self, role: UserRole) -> Self {
+            self.revoke_roles.push(role);
+            self
         }
     }
 }
-pub use read::*;
+pub use with_getters::*;
 
 #[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]
 #[cfg_attr(feature = "typescript", frontend_ordinal_columns_enum)]
@@ -143,33 +242,4 @@ pub struct PersonQuery {
     pub email: Option<String>,
     pub order_by: Vec<PersonOrdering>,
     pub pagination: Pagination,
-}
-
-#[cfg_attr(feature = "backend", backend_update(person))]
-#[cfg_attr(feature = "typescript", frontend_update)]
-pub struct PersonDataUpdate {
-    pub id: Uuid,
-    #[cfg_attr(feature = "backend", garde(dive))]
-    pub name: Option<NonEmptyString>,
-    #[cfg_attr(feature = "backend", garde(email))]
-    pub email: Option<String>,
-    pub ms_user_id: Option<Uuid>,
-    #[cfg_attr(feature = "backend", garde(dive))]
-    pub orcid: Option<NonEmptyString>,
-    pub institution_id: Option<Uuid>,
-}
-
-#[cfg_attr(
-    feature = "backend",
-    derive(serde::Deserialize, Default, garde::Validate),
-    serde(default)
-)]
-#[cfg_attr(feature = "backend", garde(allow_unvalidated))]
-#[cfg_attr(feature = "typescript", frontend_update)]
-pub struct PersonUpdate {
-    #[serde(flatten)]
-    #[cfg_attr(feature = "backend", garde(dive))]
-    pub data_update: PersonDataUpdate,
-    pub add_roles: Vec<UserRole>,
-    pub remove_roles: Vec<UserRole>,
 }

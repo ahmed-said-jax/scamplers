@@ -1,53 +1,84 @@
-#[cfg(feature = "typescript")]
-use scamplers_macros::frontend_enum;
-use time::OffsetDateTime;
+use crate::model::specimen::{block::NewBlock, core::MeasurementData, tissue::NewTissue};
 use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{backend_db_enum, backend_db_json, backend_insertion},
+    scamplers_macros::{backend_insertion, backend_with_getters},
     scamplers_schema::specimen_measurement,
 };
+
 pub mod block;
+mod core;
+pub mod tissue;
 
-use crate::string::NonEmptyString;
-
-#[cfg_attr(feature = "backend", backend_db_enum)]
-#[cfg_attr(feature = "typescript", frontend_enum)]
-pub enum EmbeddingMatrix {
-    CarboxymethylCellulose,
-    OptimalCuttingTemperatureCompound,
-    Paraffin,
+#[cfg_attr(feature = "backend", derive(serde::Deserialize))]
+#[cfg_attr(feature = "backend", serde(rename_all = "lowercase", tag = "type"))]
+pub enum NewSpecimen {
+    Block(NewBlock),
+    Tissue(NewTissue),
 }
 
-#[cfg_attr(feature = "backend", backend_db_json, serde(rename_all = "UPPERCASE"))]
-pub enum NewMeasurementData {
-    Rin {
-        #[cfg_attr(feature = "backend", valuable(skip))]
-        measured_at: OffsetDateTime,
-        #[cfg_attr(feature = "backend", garde(dive))]
-        instrument_name: NonEmptyString, // This should be an enum
-        #[cfg_attr(feature = "backend", garde(range(min = 1.0, max = 10.0)))]
-        value: f32,
-    },
-    Dv200 {
-        #[cfg_attr(feature = "backend", valuable(skip))]
-        measured_at: OffsetDateTime,
-        #[cfg_attr(feature = "backend", garde(dive))]
-        instrument_name: NonEmptyString, // This should be a different enum
-        #[cfg_attr(feature = "backend", garde(range(min = 0.0, max = 1.0)))]
-        value: f32,
-    },
-}
-
-#[cfg_attr(feature = "backend", backend_insertion(specimen_measurement))]
+#[cfg_attr(
+    feature = "backend",
+    backend_insertion(specimen_measurement),
+    derive(bon::Builder)
+)]
 pub struct NewSpecimenMeasurement {
-    pub specimen_id: Uuid,
-    pub measured_by: Uuid,
+    specimen_id: Uuid,
+    measured_by: Uuid,
     #[cfg_attr(
         feature = "backend",
         garde(dive),
         diesel(skip_insertion),
         serde(flatten)
     )]
-    pub data: NewMeasurementData,
+    data: MeasurementData,
 }
+
+#[cfg_attr(feature = "backend", backend_with_getters)]
+mod with_getters {
+    use crate::model::{
+        person::PersonHandle, sample_metadata::SampleMetadataSummary, specimen::MeasurementData,
+    };
+    use uuid::Uuid;
+
+    #[cfg(feature = "backend")]
+    use {
+        scamplers_macros::backend_selection,
+        scamplers_schema::{specimen, specimen_measurement},
+    };
+
+    #[cfg_attr(feature = "backend", backend_selection(specimen))]
+    pub struct SpecimenHandle {
+        id: Uuid,
+        link: String,
+    }
+
+    #[cfg_attr(feature = "backend", backend_selection(specimen))]
+    pub struct SpecimenSummary {
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
+        handle: SpecimenHandle,
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
+        metadata: SampleMetadataSummary,
+        type_: String,
+        embedded_in: Option<String>,
+        fixative: Option<String>,
+        frozen: bool,
+        cryopreserved: bool,
+        storage_buffer: Option<String>,
+    }
+
+    #[cfg_attr(feature = "backend", backend_selection(specimen_measurement))]
+    struct SpecimenMeasurement {
+        #[cfg_attr(feature = "backend", diesel(embed))]
+        measured_by: PersonHandle,
+        data: MeasurementData,
+    }
+
+    #[cfg_attr(feature = "backend", derive(serde::Serialize, bon::Builder))]
+    pub struct Specimen {
+        #[cfg_attr(feature = "backend", serde(flatten))]
+        summary: SpecimenSummary,
+        measurements: Vec<SpecimenMeasurement>,
+    }
+}
+pub use with_getters::*;

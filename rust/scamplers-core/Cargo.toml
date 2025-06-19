@@ -9,6 +9,7 @@ name = "scamplers_core"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
+bon = { workspace = true, optional = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
@@ -40,6 +41,7 @@ backend = [
     "uuid/backend",
     "scamplers-schema",
     "serde_json",
+    "bon",
 ]
 typescript = [
     "wasm-bindgen",

@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use uuid::Uuid;
 
 use crate::model::{
-    institution::{Institution, InstitutionQuery, InstitutionSummary, NewInstitution},
+    institution::{Institution, InstitutionQuery, NewInstitution},
     lab::{Lab, LabQuery, LabSummary, NewLab},
     person::{NewPerson, Person, PersonQuery, PersonSummary},
 };
@@ -27,7 +27,7 @@ impl Endpoint<Uuid, Institution> {
     }
 }
 
-impl Endpoint<InstitutionQuery, InstitutionSummary> {
+impl Endpoint<InstitutionQuery, Institution> {
     #[must_use]
     pub fn route() -> String {
         format!("{INSTITUTIONS}/{SEARCH_SUFFIX}")

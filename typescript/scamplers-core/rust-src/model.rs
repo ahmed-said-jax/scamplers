@@ -35,6 +35,10 @@ impl Default for Pagination {
     }
 }
 
+pub trait IsUpdate {
+    fn is_update(&self) -> bool;
+}
+
 #[cfg(feature = "typescript")]
 #[wasm_bindgen]
 impl Pagination {

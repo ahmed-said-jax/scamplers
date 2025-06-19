@@ -265,7 +265,6 @@ diesel::table! {
         lab_id -> Uuid,
         received_at -> Timestamptz,
         species -> Array<Nullable<Text>>,
-        tissue -> Text,
         notes -> Nullable<Array<Nullable<Text>>>,
         returned_at -> Nullable<Timestamptz>,
         returned_by -> Nullable<Uuid>,
@@ -300,8 +299,10 @@ diesel::table! {
         #[sql_name = "type"]
         type_ -> Text,
         embedded_in -> Nullable<Text>,
-        preserved_with -> Nullable<Text>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        fixative -> Nullable<Text>,
+        frozen -> Bool,
+        cryopreserved -> Bool,
+        storage_buffer -> Nullable<Text>,
     }
 }
 

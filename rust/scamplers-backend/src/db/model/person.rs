@@ -13,10 +13,10 @@ use diesel::{
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::{
-    Pagination,
+    IsUpdate, Pagination,
     person::{
-        CreatedUser, NewPerson, Person, PersonData, PersonDataUpdate, PersonQuery, PersonSummary,
-        PersonUpdate, UserRole,
+        CreatedUser, NewPerson, Person, PersonCore, PersonQuery, PersonSummary, PersonUpdate,
+        UserRole,
     },
 };
 use scamplers_schema::{
@@ -115,17 +115,17 @@ impl model::FetchById for Person {
     type Id = Uuid;
 
     async fn fetch_by_id(id: &Self::Id, db_conn: &mut AsyncPgConnection) -> Result<Self> {
-        let data = Self::as_diesel_query_base()
-            .select(PersonData::as_select())
+        let core = Self::as_diesel_query_base()
+            .select(PersonCore::as_select())
             .filter(id_col.eq(id))
             .get_result(db_conn)
             .await?;
 
-        let roles = diesel::select(get_user_roles(data.id().to_string()))
+        let roles = diesel::select(get_user_roles(core.id().to_string()))
             .get_result(db_conn)
             .await?;
 
-        Ok(Person::new(data, roles))
+        Ok(Person::builder().core(core).roles(roles).build())
     }
 }
 
@@ -145,39 +145,25 @@ impl model::Write for NewPerson {
 impl model::Write for PersonUpdate {
     type Returns = Person;
     async fn write(self, db_conn: &mut AsyncPgConnection) -> Result<Self::Returns> {
-        let PersonUpdate {
-            data_update: update,
-            add_roles,
-            remove_roles,
-        } = self;
+        let (core, grant_roles, revoke_roles) =
+            (self.core(), self.grant_roles(), self.revoke_roles());
 
-        if let PersonDataUpdate {
-            name: None,
-            email: None,
-            ms_user_id: None,
-            institution_id: None,
-            orcid: None,
-            ..
-        } = &update
-        {
-        } else {
-            diesel::update(&update)
-                .set(&update)
-                .execute(db_conn)
-                .await?;
+        if core.is_update() {
+            diesel::update(core).set(core).execute(db_conn).await?;
         }
 
-        let user_id = update.id.to_string();
+        let user_id = core.id();
+        let user_id_str = user_id.to_string();
 
-        diesel::select(grant_roles_to_user(&user_id, add_roles))
+        diesel::select(grant_roles_to_user(&user_id_str, grant_roles))
             .execute(db_conn)
             .await?;
 
-        diesel::select(revoke_roles_from_user(&user_id, remove_roles))
+        diesel::select(revoke_roles_from_user(&user_id_str, revoke_roles))
             .execute(db_conn)
             .await?;
 
-        Person::fetch_by_id(&update.id, db_conn).await
+        Person::fetch_by_id(user_id, db_conn).await
     }
 }
 
@@ -245,9 +231,12 @@ impl WriteLogin for NewPerson {
             .execute(db_conn)
             .await?;
 
-        let data = Person::fetch_by_id(&id, db_conn).await?;
+        let person = Person::fetch_by_id(&id, db_conn).await?;
 
-        Ok(CreatedUser::new(data, api_key.into()))
+        Ok(CreatedUser::builder()
+            .person(person)
+            .api_key(api_key)
+            .build())
     }
 }
 
@@ -256,15 +245,12 @@ mod tests {
     use diesel_async::{AsyncConnection, scoped_futures::ScopedFutureExt};
     use pretty_assertions::assert_eq;
     use rstest::rstest;
-    use scamplers_core::{
-        model::{
-            institution::{InstitutionQuery, InstitutionSummary},
-            person::{
-                NewPerson, PersonDataUpdate, PersonOrdering, PersonOrdinalColumn, PersonQuery,
-                PersonSummary, PersonUpdate, UserRole,
-            },
+    use scamplers_core::model::{
+        institution::{Institution, InstitutionQuery},
+        person::{
+            NewPerson, PersonOrdering, PersonOrdinalColumn, PersonQuery, PersonSummary,
+            PersonUpdate, UserRole,
         },
-        string::ToNonEmptyString,
     };
     use uuid::Uuid;
 
@@ -327,26 +313,20 @@ mod tests {
 
                     let id = people.get(0).unwrap().id();
 
-                    let new_name = "Thomas Anderson".to_non_empty_string().unwrap();
-                    let new_email = "thomas.anderson@neo.com".to_string();
+                    let new_name = "Thomas Anderson";
+                    let new_email = "thomas.anderson@neo.com";
 
-                    let data_update = PersonDataUpdate {
-                        id: *id,
-                        name: Some(new_name.clone()),
-                        email: Some(new_email.clone()),
-                        ..Default::default()
-                    };
+                    let updated_person = PersonUpdate::builder()
+                        .id(*id)
+                        .name(new_name)
+                        .email(new_email)
+                        .build()
+                        .write(tx)
+                        .await
+                        .unwrap();
 
-                    let updated_person = PersonUpdate {
-                        data_update,
-                        ..Default::default()
-                    }
-                    .write(tx)
-                    .await
-                    .unwrap();
-
-                    assert_eq!(new_name, *updated_person.name());
-                    assert_eq!(new_email, *updated_person.email().as_ref().unwrap());
+                    assert_eq!(new_name, updated_person.name());
+                    assert_eq!(new_email, updated_person.email().as_ref().unwrap());
 
                     Ok(())
                 }
@@ -365,7 +345,7 @@ mod tests {
                     tx.set_transaction_user(LOGIN_USER).await.unwrap();
 
                     let institution_id =
-                        *InstitutionSummary::fetch_by_query(&InstitutionQuery::default(), tx)
+                        *Institution::fetch_by_query(&InstitutionQuery::default(), tx)
                             .await
                             .unwrap()
                             .get(0)
@@ -375,14 +355,12 @@ mod tests {
                     // First, write a new user to the db as a login from the frontend
                     let ms_user_id = Uuid::now_v7();
 
-                    let mut new_person = NewPerson {
-                        name: "Peter Parker".to_non_empty_string().unwrap(),
-                        email: "peter.parker@example.com".to_string(),
-                        ms_user_id: Some(ms_user_id),
-                        orcid: None,
-                        institution_id,
-                        roles: vec![],
-                    };
+                    let mut new_person = NewPerson::builder()
+                        .name("Peter Parker")
+                        .email("peter.parker@example.com")
+                        .ms_user_id(ms_user_id)
+                        .institution_id(institution_id)
+                        .build();
 
                     let created_user = new_person.clone().write_ms_login(tx).await.unwrap();
 
@@ -399,33 +377,25 @@ mod tests {
 
                     let id = *created_user.id();
 
-                    let person_with_added_roles = PersonUpdate {
-                        data_update: PersonDataUpdate {
-                            id,
-                            ..Default::default()
-                        },
-                        add_roles: vec![UserRole::AppAdmin],
-                        ..Default::default()
-                    }
-                    .write(tx)
-                    .await
-                    .unwrap();
+                    let person_with_granted_roles = PersonUpdate::builder()
+                        .id(id)
+                        .grant_role(UserRole::AppAdmin)
+                        .build()
+                        .write(tx)
+                        .await
+                        .unwrap();
 
-                    assert_eq!(person_with_added_roles.roles(), &[UserRole::AppAdmin]);
+                    assert_eq!(person_with_granted_roles.roles(), &[UserRole::AppAdmin]);
 
-                    let updated = PersonUpdate {
-                        data_update: PersonDataUpdate {
-                            id,
-                            ..Default::default()
-                        },
-                        remove_roles: vec![UserRole::AppAdmin],
-                        ..Default::default()
-                    }
-                    .write(tx)
-                    .await
-                    .unwrap();
+                    let person_with_revoked_roles = PersonUpdate::builder()
+                        .id(id)
+                        .revoke_role(UserRole::AppAdmin)
+                        .build()
+                        .write(tx)
+                        .await
+                        .unwrap();
 
-                    assert_eq!(updated.roles(), &[]);
+                    assert_eq!(person_with_revoked_roles.roles(), &[]);
 
                     Ok(())
                 }

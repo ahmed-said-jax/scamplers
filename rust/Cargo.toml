@@ -13,6 +13,7 @@ default-members = ["scamplers-backend"]
 edition = "2024"
 
 [workspace.dependencies]
+bon = { version = "3.6.4" }
 clap = { version = "4.5.40", features = ["derive", "env"] }
 anyhow = "1.0.98"
 axum = { version = "0.8.4", default-features = false, features = [

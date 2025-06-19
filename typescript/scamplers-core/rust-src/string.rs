@@ -9,10 +9,7 @@ use {
         sql_types,
     },
     garde::rules::AsStr,
-    std::{
-        fmt::Display,
-        str::{self, FromStr},
-    },
+    std::{fmt::Display, str},
 };
 
 #[cfg(feature = "typescript")]
@@ -43,7 +40,7 @@ pub struct NonEmptyString(#[cfg_attr(feature = "backend", garde(length(min = 1))
 #[cfg_attr(feature = "typescript", wasm_bindgen)]
 pub struct EmptyStringError;
 
-pub trait ToNonEmptyString {
+trait ToNonEmptyString {
     fn to_non_empty_string(&self) -> std::result::Result<NonEmptyString, EmptyStringError>;
 }
 
@@ -54,14 +51,6 @@ impl ToNonEmptyString for str {
         }
 
         Ok(NonEmptyString(self.to_string()))
-    }
-}
-
-#[cfg(feature = "backend")]
-impl FromStr for NonEmptyString {
-    type Err = EmptyStringError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.to_non_empty_string()
     }
 }
 
@@ -83,6 +72,18 @@ impl PartialEq<String> for NonEmptyString {
 impl Display for NonEmptyString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl From<&str> for NonEmptyString {
+    fn from(value: &str) -> Self {
+        value.to_non_empty_string().unwrap()
+    }
+}
+
+impl From<String> for NonEmptyString {
+    fn from(value: String) -> Self {
+        Self::from(value.as_str())
     }
 }
 
@@ -112,7 +113,7 @@ impl AsStr for NonEmptyString {
 #[wasm_bindgen]
 impl NonEmptyString {
     #[wasm_bindgen(constructor)]
-    pub fn new(s: String) -> std::result::Result<Self, EmptyStringError> {
+    pub fn new(s: &str) -> std::result::Result<Self, EmptyStringError> {
         s.to_non_empty_string()
     }
 }

@@ -1,10 +1,8 @@
-use std::fs;
-
+use crate::db::seed_data::SeedData;
 use anyhow::{Context, bail};
 use camino::Utf8PathBuf;
 use clap::{Args, Parser};
-
-use crate::db::seed_data::SeedData;
+use std::fs;
 
 pub const LOGIN_USER: &str = "login_user";
 

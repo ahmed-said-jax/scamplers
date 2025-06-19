@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use scamplers_core::model::{
     Pagination,
-    institution::{Institution, InstitutionQuery, InstitutionSummary, NewInstitution},
+    institution::{Institution, InstitutionQuery, NewInstitution},
 };
 use scamplers_schema::institution::dsl::{id as id_col, institution, name as name_col};
 use uuid::Uuid;
@@ -31,19 +31,11 @@ impl model::Write for NewInstitution {
     }
 }
 
-impl model::AsDieselQueryBase for InstitutionSummary {
+impl model::AsDieselQueryBase for Institution {
     type QueryBase = institution;
 
     fn as_diesel_query_base() -> Self::QueryBase {
         institution
-    }
-}
-
-impl model::AsDieselQueryBase for Institution {
-    type QueryBase = <InstitutionSummary as model::AsDieselQueryBase>::QueryBase;
-
-    fn as_diesel_query_base() -> Self::QueryBase {
-        InstitutionSummary::as_diesel_query_base()
     }
 }
 
@@ -88,7 +80,7 @@ where
     }
 }
 
-impl model::FetchByQuery for InstitutionSummary {
+impl model::FetchByQuery for Institution {
     type QueryParams = InstitutionQuery;
 
     async fn fetch_by_query(
@@ -109,7 +101,7 @@ mod tests {
 
     use crate::db::test_util::{DbConnection, N_INSTITUTIONS, db_conn, test_query};
 
-    fn comparison_fn(i: &InstitutionSummary) -> String {
+    fn comparison_fn(i: &Institution) -> String {
         i.name().to_string()
     }
 

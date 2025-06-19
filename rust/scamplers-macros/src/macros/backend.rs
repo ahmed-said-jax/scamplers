@@ -141,9 +141,10 @@ pub fn db_enum(input: TokenStream) -> TokenStream {
 pub fn db_json(input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as Item);
 
-    let ident = match &struct_item {
-        Item::Struct(ItemStruct { ident, .. }) | Item::Enum(ItemEnum { ident, .. }) => ident,
-        _ => panic!("backend_db_json can only be used on structs and enums"),
+    let (Item::Struct(ItemStruct { ident, .. }) | Item::Enum(ItemEnum { ident, .. })) =
+        &struct_item
+    else {
+        panic!("backend_db_json can only be used on structs and enums")
     };
 
     let output = quote! {

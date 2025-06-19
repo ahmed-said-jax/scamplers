@@ -1,8 +1,5 @@
 /* tslint:disable */
 /* eslint-disable */
-export enum BlockPreservationMethod {
-  FormaldehydeDerivativeFixation = 0,
-}
 export enum BlockType {
   Block = 0,
 }
@@ -11,10 +8,9 @@ export enum ComplianceCommitteeType {
   Irb = 1,
   Iacuc = 2,
 }
-export enum EmbeddingMatrix {
+export enum FrozenBlockEmbeddingMatrix {
   CarboxymethylCellulose = 0,
   OptimalCuttingTemperatureCompound = 1,
-  Paraffin = 2,
 }
 export enum InstitutionOrdinalColumn {
   Name = 0,
@@ -36,6 +32,9 @@ export enum Species {
   RattusNorvegicus = 6,
   SminthopsisCrassicaudata = 7,
 }
+export enum TissueType {
+  Tissue = 0,
+}
 export enum UserRole {
   AppAdmin = 0,
   ComputationalStaff = 1,
@@ -52,21 +51,21 @@ export class Client {
 export class CommitteeApproval {
   private constructor();
   free(): void;
-  readonly institution: InstitutionSummary;
-  readonly committee_type: ComplianceCommitteeType;
-  readonly compliance_identifier: string;
+  institution(): InstitutionHandle;
+  committee_type(): ComplianceCommitteeType;
+  compliance_identifier(): string;
 }
 export class CreatedUser {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly email: string;
-  readonly orcid: string;
-  readonly institution: Institution;
-  readonly roles: any[];
-  readonly api_key: string;
+  id(): string;
+  link(): string;
+  name(): string;
+  email(): string;
+  orcid(): string;
+  institution(): Institution;
+  roles(): any[];
+  api_key(): string;
 }
 export class EmptyStringError {
   private constructor();
@@ -75,9 +74,15 @@ export class EmptyStringError {
 export class Institution {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
+  id(): string;
+  link(): string;
+  name(): string;
+}
+export class InstitutionHandle {
+  private constructor();
+  free(): void;
+  id(): string;
+  link(): string;
 }
 export class InstitutionOrdering {
   private constructor();
@@ -117,37 +122,30 @@ export class InstitutionQuery {
   order_by: InstitutionOrdering[];
   pagination: Pagination;
 }
-export class InstitutionReference {
-  private constructor();
-  free(): void;
-  readonly id: string;
-  readonly link: string;
-}
-export class InstitutionSummary {
-  private constructor();
-  free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-}
 export class Lab {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly delivery_dir: string;
-  readonly pi: PersonSummary;
-  readonly members: PersonSummary[];
+  id(): string;
+  link(): string;
+  name(): string;
+  delivery_dir(): string;
+  pi(): PersonSummary;
+  members(): PersonSummary[];
 }
-export class LabData {
+export class LabCore {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly delivery_dir: string;
-  readonly pi: PersonSummary;
+  id(): string;
+  link(): string;
+  name(): string;
+  delivery_dir(): string;
+  pi(): PersonSummary;
+}
+export class LabHandle {
+  private constructor();
+  free(): void;
+  id(): string;
+  link(): string;
 }
 export class LabOrdering {
   private constructor();
@@ -187,31 +185,24 @@ export class LabQuery {
   order_by: LabOrdering[];
   pagination: Pagination;
 }
-export class LabReference {
-  private constructor();
-  free(): void;
-  readonly id: string;
-  readonly link: string;
-}
 export class LabSummary {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly delivery_dir: string;
+  id(): string;
+  link(): string;
+  name(): string;
+  delivery_dir(): string;
 }
 export class LabUpdate {
   private constructor();
   free(): void;
+  id(): string;
+  name(): NonEmptyString | undefined;
+  pi_id(): string;
+  delivery_dir(): NonEmptyString | undefined;
+  add_members(): string[];
+  remove_members(): string[];
   static new(): LabUpdateBuilder;
-  id: string;
-  get name(): NonEmptyString | undefined;
-  set name(value: NonEmptyString | null | undefined);
-  get pi_id(): string;
-  set pi_id(value: string | null | undefined);
-  get delivery_dir(): NonEmptyString | undefined;
-  set delivery_dir(value: NonEmptyString | null | undefined);
 }
 /**
  * Builder for [`LabUpdate`](struct.LabUpdate.html).
@@ -219,10 +210,9 @@ export class LabUpdate {
 export class LabUpdateBuilder {
   private constructor();
   free(): void;
-  id(value: string): LabUpdateBuilder;
-  name(value?: NonEmptyString | null): LabUpdateBuilder;
-  pi_id(value?: string | null): LabUpdateBuilder;
-  delivery_dir(value?: NonEmptyString | null): LabUpdateBuilder;
+  core(value: LabUpdateCore): LabUpdateBuilder;
+  add_members(value: string[]): LabUpdateBuilder;
+  remove_members(value: string[]): LabUpdateBuilder;
   /**
    * Builds a new `LabUpdate`.
    *
@@ -232,38 +222,40 @@ export class LabUpdateBuilder {
    */
   build(): LabUpdate;
 }
-export class LabUpdateError {
+export class LabUpdateCore {
   private constructor();
   free(): void;
-  error(): string;
-}
-export class LabUpdateWithMembers {
-  private constructor();
-  free(): void;
-  static new(): LabUpdateWithMembersBuilder;
-  update: LabUpdate;
-  add_members: string[];
-  remove_members: string[];
+  id(): string;
+  name(): NonEmptyString | undefined;
+  pi_id(): string;
+  delivery_dir(): NonEmptyString | undefined;
+  static new(): LabUpdateCoreBuilder;
 }
 /**
- * Builder for [`LabUpdateWithMembers`](struct.LabUpdateWithMembers.html).
+ * Builder for [`LabUpdateCore`](struct.LabUpdateCore.html).
  */
-export class LabUpdateWithMembersBuilder {
+export class LabUpdateCoreBuilder {
   private constructor();
   free(): void;
-  update(value: LabUpdate): LabUpdateWithMembersBuilder;
-  add_members(value: string[]): LabUpdateWithMembersBuilder;
-  remove_members(value: string[]): LabUpdateWithMembersBuilder;
+  id(value: string): LabUpdateCoreBuilder;
+  name(value?: NonEmptyString | null): LabUpdateCoreBuilder;
+  pi_id(value?: string | null): LabUpdateCoreBuilder;
+  delivery_dir(value?: NonEmptyString | null): LabUpdateCoreBuilder;
   /**
-   * Builds a new `LabUpdateWithMembers`.
+   * Builds a new `LabUpdateCore`.
    *
    * # Errors
    *
    * If a required field has not been initialized.
    */
-  build(): LabUpdateWithMembers;
+  build(): LabUpdateCore;
 }
-export class LabUpdateWithMembersError {
+export class LabUpdateCoreError {
+  private constructor();
+  free(): void;
+  error(): string;
+}
+export class LabUpdateError {
   private constructor();
   free(): void;
   error(): string;
@@ -272,11 +264,6 @@ export class NewCommitteeApproval {
   private constructor();
   free(): void;
   static new(): NewCommitteeApprovalBuilder;
-  get sample_id(): string;
-  set sample_id(value: string | null | undefined);
-  institution_id: string;
-  committee_type: ComplianceCommitteeType;
-  compliance_identifier: NonEmptyString;
 }
 /**
  * Builder for [`NewCommitteeApproval`](struct.NewCommitteeApproval.html).
@@ -306,8 +293,6 @@ export class NewInstitution {
   private constructor();
   free(): void;
   static new(): NewInstitutionBuilder;
-  id: string;
-  name: NonEmptyString;
 }
 /**
  * Builder for [`NewInstitution`](struct.NewInstitution.html).
@@ -335,10 +320,6 @@ export class NewLab {
   private constructor();
   free(): void;
   static new(): NewLabBuilder;
-  name: NonEmptyString;
-  pi_id: string;
-  delivery_dir: NonEmptyString;
-  member_ids: string[];
 }
 /**
  * Builder for [`NewLab`](struct.NewLab.html).
@@ -416,65 +397,29 @@ export class Pagination {
 export class Person {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly email: string;
-  readonly orcid: string;
-  readonly institution: Institution;
-  readonly roles: any[];
+  id(): string;
+  link(): string;
+  name(): string;
+  email(): string;
+  orcid(): string;
+  institution(): Institution;
+  roles(): any[];
 }
-export class PersonData {
+export class PersonCore {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly email: string;
-  readonly orcid: string;
-  readonly institution: Institution;
+  id(): string;
+  link(): string;
+  name(): string;
+  email(): string;
+  orcid(): string;
+  institution(): Institution;
 }
-export class PersonDataUpdate {
+export class PersonHandle {
   private constructor();
   free(): void;
-  static new(): PersonDataUpdateBuilder;
-  id: string;
-  get name(): NonEmptyString | undefined;
-  set name(value: NonEmptyString | null | undefined);
-  get email(): string;
-  set email(value: string | null | undefined);
-  get ms_user_id(): string;
-  set ms_user_id(value: string | null | undefined);
-  get orcid(): NonEmptyString | undefined;
-  set orcid(value: NonEmptyString | null | undefined);
-  get institution_id(): string;
-  set institution_id(value: string | null | undefined);
-}
-/**
- * Builder for [`PersonDataUpdate`](struct.PersonDataUpdate.html).
- */
-export class PersonDataUpdateBuilder {
-  private constructor();
-  free(): void;
-  id(value: string): PersonDataUpdateBuilder;
-  name(value?: NonEmptyString | null): PersonDataUpdateBuilder;
-  email(value?: string | null): PersonDataUpdateBuilder;
-  ms_user_id(value?: string | null): PersonDataUpdateBuilder;
-  orcid(value?: NonEmptyString | null): PersonDataUpdateBuilder;
-  institution_id(value?: string | null): PersonDataUpdateBuilder;
-  /**
-   * Builds a new `PersonDataUpdate`.
-   *
-   * # Errors
-   *
-   * If a required field has not been initialized.
-   */
-  build(): PersonDataUpdate;
-}
-export class PersonDataUpdateError {
-  private constructor();
-  free(): void;
-  error(): string;
+  id(): string;
+  link(): string;
 }
 export class PersonOrdering {
   private constructor();
@@ -516,28 +461,27 @@ export class PersonQuery {
   order_by: PersonOrdering[];
   pagination: Pagination;
 }
-export class PersonReference {
-  private constructor();
-  free(): void;
-  readonly id: string;
-  readonly link: string;
-}
 export class PersonSummary {
   private constructor();
   free(): void;
-  readonly id: string;
-  readonly link: string;
-  readonly name: string;
-  readonly email: string;
-  readonly orcid: string;
+  id(): string;
+  link(): string;
+  name(): string;
+  email(): string;
+  orcid(): string;
 }
 export class PersonUpdate {
   private constructor();
   free(): void;
+  grant_roles(): any[];
+  revoke_roles(): any[];
+  id(): string;
+  name(): NonEmptyString | undefined;
+  email(): string;
+  ms_user_id(): string;
+  orcid(): NonEmptyString | undefined;
+  institution_id(): string;
   static new(): PersonUpdateBuilder;
-  data_update: PersonDataUpdate;
-  add_roles: any[];
-  remove_roles: any[];
 }
 /**
  * Builder for [`PersonUpdate`](struct.PersonUpdate.html).
@@ -545,9 +489,9 @@ export class PersonUpdate {
 export class PersonUpdateBuilder {
   private constructor();
   free(): void;
-  data_update(value: PersonDataUpdate): PersonUpdateBuilder;
-  add_roles(value: any[]): PersonUpdateBuilder;
-  remove_roles(value: any[]): PersonUpdateBuilder;
+  grant_roles(value: any[]): PersonUpdateBuilder;
+  revoke_roles(value: any[]): PersonUpdateBuilder;
+  core(value: PersonUpdateCore): PersonUpdateBuilder;
   /**
    * Builds a new `PersonUpdate`.
    *
@@ -556,6 +500,43 @@ export class PersonUpdateBuilder {
    * If a required field has not been initialized.
    */
   build(): PersonUpdate;
+}
+export class PersonUpdateCore {
+  private constructor();
+  free(): void;
+  id(): string;
+  name(): NonEmptyString | undefined;
+  email(): string;
+  ms_user_id(): string;
+  orcid(): NonEmptyString | undefined;
+  institution_id(): string;
+  static new(): PersonUpdateCoreBuilder;
+}
+/**
+ * Builder for [`PersonUpdateCore`](struct.PersonUpdateCore.html).
+ */
+export class PersonUpdateCoreBuilder {
+  private constructor();
+  free(): void;
+  id(value: string): PersonUpdateCoreBuilder;
+  name(value?: NonEmptyString | null): PersonUpdateCoreBuilder;
+  email(value?: string | null): PersonUpdateCoreBuilder;
+  ms_user_id(value?: string | null): PersonUpdateCoreBuilder;
+  orcid(value?: NonEmptyString | null): PersonUpdateCoreBuilder;
+  institution_id(value?: string | null): PersonUpdateCoreBuilder;
+  /**
+   * Builds a new `PersonUpdateCore`.
+   *
+   * # Errors
+   *
+   * If a required field has not been initialized.
+   */
+  build(): PersonUpdateCore;
+}
+export class PersonUpdateCoreError {
+  private constructor();
+  free(): void;
+  error(): string;
 }
 export class PersonUpdateError {
   private constructor();

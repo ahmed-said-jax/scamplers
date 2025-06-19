@@ -30,22 +30,27 @@ pub enum ComplianceCommitteeType {
     Iacuc,
 }
 
-#[cfg_attr(feature = "backend", backend_insertion(committee_approval))]
+#[cfg_attr(
+    feature = "backend",
+    backend_insertion(committee_approval),
+    derive(bon::Builder)
+)]
+#[cfg_attr(feature = "backend", builder(on(NonEmptyString, into)))]
 #[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewCommitteeApproval {
     #[serde(default)]
-    pub sample_id: Option<Uuid>,
-    pub institution_id: Uuid,
-    pub committee_type: ComplianceCommitteeType,
+    sample_id: Option<Uuid>,
+    institution_id: Uuid,
+    committee_type: ComplianceCommitteeType,
     #[cfg_attr(feature = "backend", garde(dive))]
-    pub compliance_identifier: NonEmptyString,
+    compliance_identifier: NonEmptyString,
 }
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
 #[cfg_attr(feature = "typescript", frontend_with_getters)]
-mod read_committee_approval {
+mod with_committee_approval_getters {
     use super::ComplianceCommitteeType;
-    use crate::model::institution::InstitutionSummary;
+    use crate::model::institution::InstitutionHandle;
     #[cfg(feature = "typescript")]
     use scamplers_macros::frontend_response;
     #[cfg(feature = "backend")]
@@ -55,77 +60,87 @@ mod read_committee_approval {
     #[cfg_attr(feature = "typescript", frontend_response)]
     pub struct CommitteeApproval {
         #[cfg_attr(feature = "backend", diesel(embed))]
-        institution: InstitutionSummary,
+        institution: InstitutionHandle,
         committee_type: ComplianceCommitteeType,
         compliance_identifier: String,
     }
 }
-pub use read_committee_approval::*;
+pub use with_committee_approval_getters::*;
 
 #[cfg_attr(feature = "backend", backend_insertion(sample_metadata))]
 pub struct NewSampleMetadata {
     #[cfg_attr(feature = "backend", garde(dive))]
-    pub readable_id: NonEmptyString,
+    pub(super) readable_id: NonEmptyString,
     #[cfg_attr(feature = "backend", garde(dive))]
-    pub name: NonEmptyString,
-    pub submitted_by: Uuid,
-    pub lab_id: Uuid,
+    pub(super) name: NonEmptyString,
+    pub(super) submitted_by: Uuid,
+    pub(super) lab_id: Uuid,
     #[cfg_attr(feature = "backend", valuable(skip))]
-    pub received_at: OffsetDateTime,
+    pub(super) received_at: OffsetDateTime,
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
-    pub species: Vec<Species>,
-    #[cfg_attr(feature = "backend", garde(dive))]
-    pub tissue: NonEmptyString,
+    pub(super) species: Vec<Species>,
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(flatten))]
-    pub committee_approvals: Vec<NewCommitteeApproval>,
+    pub(super) committee_approvals: Vec<NewCommitteeApproval>,
     #[cfg_attr(feature = "backend", garde(dive))]
-    pub notes: Option<Vec<NonEmptyString>>,
+    pub(super) notes: Option<Vec<NonEmptyString>>,
     #[cfg_attr(feature = "backend", valuable(skip))]
-    pub returned_at: Option<OffsetDateTime>,
-    pub returned_by: Option<Uuid>,
+    pub(super) returned_at: Option<OffsetDateTime>,
+    pub(super) returned_by: Option<Uuid>,
+}
+impl NewSampleMetadata {
+    pub fn committee_approvals(&mut self, sample_id: Uuid) -> &[NewCommitteeApproval] {
+        for approval in &mut self.committee_approvals {
+            approval.sample_id = Some(sample_id);
+        }
+
+        &self.committee_approvals
+    }
 }
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
-mod read_sample_metadata {
+mod with_sample_metadata_getters {
     use crate::model::{
-        lab::LabSummary,
-        person::PersonSummary,
+        lab::LabHandle,
+        person::PersonHandle,
         sample_metadata::{CommitteeApproval, Species},
     };
     use time::OffsetDateTime;
+    use uuid::Uuid;
 
     #[cfg(feature = "backend")]
     use {scamplers_macros::backend_selection, scamplers_schema::sample_metadata};
 
     #[cfg_attr(feature = "backend", backend_selection(sample_metadata))]
     pub struct SampleMetadataSummary {
+        #[cfg_attr(feature = "backend", diesel(column_name = id))]
+        metadata_id: Uuid,
         name: String,
         #[cfg_attr(feature = "backend", valuable(skip))]
         received_at: OffsetDateTime,
         species: Vec<Option<Species>>,
-        tissue: String,
         notes: Option<Vec<Option<String>>>,
         #[cfg_attr(feature = "backend", valuable(skip))]
         returned_at: Option<OffsetDateTime>,
     }
 
     #[cfg_attr(feature = "backend", backend_selection(sample_metadata))]
-    pub struct SampleMetadataData {
+    pub struct SampleMetadataCore {
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         summary: SampleMetadataSummary,
         #[cfg_attr(feature = "backend", diesel(embed))]
-        submitted_by: PersonSummary,
+        submitted_by: PersonHandle,
         #[cfg_attr(feature = "backend", diesel(embed))]
-        lab: LabSummary,
+        lab: LabHandle,
         #[cfg_attr(feature = "backend", diesel(embed))]
-        returned_by: Option<PersonSummary>,
+        returned_by: Option<PersonHandle>,
     }
 
-    #[cfg_attr(feature = "backend", derive(serde::Serialize))]
+    #[cfg_attr(feature = "backend", derive(serde::Serialize, bon::Builder))]
     pub struct SampleMetadata {
         #[cfg_attr(feature = "backend", serde(flatten))]
-        data: SampleMetadataData,
+        core: SampleMetadataCore,
+        #[cfg_attr(feature = "backend", builder(default))]
         committee_approvals: Vec<CommitteeApproval>,
     }
 }
-pub use read_sample_metadata::*;
+pub use with_sample_metadata_getters::*;

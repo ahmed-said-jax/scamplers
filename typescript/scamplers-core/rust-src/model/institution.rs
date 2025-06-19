@@ -2,24 +2,29 @@ use crate::{model::Pagination, string::NonEmptyString};
 #[cfg(feature = "typescript")]
 use scamplers_macros::{
     frontend_insertion, frontend_ordering, frontend_ordinal_columns_enum, frontend_query_request,
-    frontend_response, frontend_with_getters,
+    frontend_with_getters,
 };
 use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
         backend_insertion, backend_ordering, backend_ordinal_columns_enum, backend_query_request,
-        backend_selection, backend_with_getters,
+        backend_with_getters,
     },
     scamplers_schema::institution,
 };
 
-#[cfg_attr(feature = "backend", backend_insertion(institution), derive(Clone))]
+#[cfg_attr(
+    feature = "backend",
+    backend_insertion(institution),
+    derive(Clone, bon::Builder)
+)]
+#[cfg_attr(feature = "backend", builder(on(NonEmptyString, into)))]
 #[cfg_attr(feature = "typescript", frontend_insertion)]
 pub struct NewInstitution {
-    pub id: Uuid,
+    id: Uuid,
     #[cfg_attr(feature = "backend", garde(dive))]
-    pub name: NonEmptyString,
+    name: NonEmptyString,
 }
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
@@ -33,71 +38,21 @@ mod read {
 
     #[cfg_attr(feature = "backend", backend_selection(institution))]
     #[cfg_attr(feature = "typescript", frontend_response)]
-    pub struct InstitutionReference {
+    pub struct InstitutionHandle {
         id: Uuid,
         link: String,
     }
 
     #[cfg_attr(feature = "backend", backend_selection(institution))]
     #[cfg_attr(feature = "typescript", frontend_response)]
-    pub struct InstitutionSummary {
+    pub struct Institution {
         #[serde(flatten)]
         #[cfg_attr(feature = "backend", diesel(embed))]
-        reference: InstitutionReference,
+        handle: InstitutionHandle,
         name: String,
     }
 }
 pub use read::*;
-
-#[cfg_attr(
-    feature = "backend",
-    backend_selection(institution),
-    serde(transparent)
-)]
-#[cfg_attr(feature = "typescript", frontend_response)]
-pub struct Institution(#[cfg_attr(feature = "backend", diesel(embed))] InstitutionSummary);
-
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-impl Institution {
-    #[cfg(feature = "backend")]
-    #[must_use]
-    pub fn id(&self) -> &Uuid {
-        self.0.id()
-    }
-
-    #[cfg(feature = "typescript")]
-    #[wasm_bindgen(getter)]
-    #[must_use]
-    pub fn id(&self) -> Uuid {
-        self.0.id()
-    }
-
-    #[cfg(feature = "backend")]
-    #[must_use]
-    pub fn link(&self) -> &str {
-        self.0.link()
-    }
-
-    #[cfg(feature = "typescript")]
-    #[wasm_bindgen(getter)]
-    #[must_use]
-    pub fn link(&self) -> String {
-        self.0.link()
-    }
-
-    #[cfg(feature = "backend")]
-    #[must_use]
-    pub fn name(&self) -> &str {
-        self.0.name()
-    }
-
-    #[cfg(feature = "typescript")]
-    #[wasm_bindgen(getter)]
-    #[must_use]
-    pub fn name(&self) -> String {
-        self.0.name()
-    }
-}
 
 #[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]
 #[cfg_attr(feature = "typescript", frontend_ordinal_columns_enum)]

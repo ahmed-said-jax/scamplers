@@ -5,7 +5,7 @@ use axum::{
 use scamplers_core::{
     endpoint::Endpoint,
     model::{
-        institution::{Institution, InstitutionQuery, InstitutionSummary, NewInstitution},
+        institution::{Institution, InstitutionQuery, NewInstitution},
         lab::{Lab, LabQuery, LabSummary, NewLab},
         person::{NewPerson, Person, PersonQuery, PersonSummary},
     },
@@ -32,8 +32,8 @@ pub(super) fn router() -> Router<AppState> {
             get(by_id::<Institution>),
         )
         .route(
-            &Endpoint::<InstitutionQuery, InstitutionSummary>::route(),
-            post(by_query::<InstitutionSummary>),
+            &Endpoint::<InstitutionQuery, Institution>::route(),
+            post(by_query::<Institution>),
         )
         .route(
             &Endpoint::<NewPerson, Person>::route(),

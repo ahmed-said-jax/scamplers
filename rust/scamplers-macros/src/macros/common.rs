@@ -92,7 +92,7 @@ fn create_getter(
 
     if wasm {
         method = quote! {
-            #[wasm_bindgen(getter)]
+            #[wasm_bindgen]
             #method
         }
     }

@@ -6,8 +6,12 @@ create table specimen (
     metadata_id uuid not null references sample_metadata on delete restrict on update restrict,
     type text not null,
     embedded_in text,
-    preserved_with text,
-    notes text []
+    fixative text,
+    frozen bool not null default false,
+    cryopreserved bool not null default false,
+    storage_buffer text,
+
+    constraint not_both_frozen_and_cryopreserved check (not (cryopreserved and frozen))
 );
 
 create table specimen_measurement (
