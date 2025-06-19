@@ -1,11 +1,14 @@
-use crate::string::NonEmptyString;
+use crate::{model::Pagination, string::NonEmptyString};
 #[cfg(feature = "typescript")]
 use scamplers_macros::{frontend_enum, frontend_insertion, frontend_with_getters};
 use time::OffsetDateTime;
 use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{backend_db_enum, backend_insertion, backend_with_getters},
+    scamplers_macros::{
+        backend_db_enum, backend_insertion, backend_ordering, backend_ordinal_columns_enum,
+        backend_query_request, backend_with_getters,
+    },
     scamplers_schema::{committee_approval, sample_metadata},
 };
 
@@ -132,3 +135,31 @@ mod with_sample_metadata_getters {
     }
 }
 pub use with_sample_metadata_getters::*;
+
+#[cfg_attr(feature = "backend", backend_ordinal_columns_enum)]
+pub enum SampleMetadataOrdinalColumn {
+    #[cfg_attr(feature = "backend", default)]
+    Name,
+    ReceivedAt,
+}
+
+#[cfg_attr(feature = "backend", backend_ordering)]
+pub struct SampleMetadataOrdering {
+    column: SampleMetadataOrdinalColumn,
+    descending: bool,
+}
+
+#[cfg_attr(feature = "backend", backend_query_request)]
+pub struct SampleMetadataQuery {
+    pub ids: Vec<Uuid>,
+    pub name: Option<String>,
+    pub tissue: Option<String>,
+    #[cfg_attr(feature = "backend", valuable(skip))]
+    pub received_before: Option<OffsetDateTime>,
+    #[cfg_attr(feature = "backend", valuable(skip))]
+    pub received_after: Option<OffsetDateTime>,
+    #[cfg_attr(feature = "backend", serde(default))]
+    pub species: Vec<Species>,
+    pub order_by: Vec<SampleMetadataOrdering>,
+    pub pagination: Pagination,
+}
