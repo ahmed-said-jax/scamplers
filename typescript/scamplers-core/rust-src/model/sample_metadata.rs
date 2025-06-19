@@ -33,7 +33,7 @@ pub enum ComplianceCommitteeType {
 #[cfg_attr(
     feature = "backend",
     backend_insertion(committee_approval),
-    derive(bon::Builder)
+    derive(bon::Builder, Clone)
 )]
 #[cfg_attr(feature = "backend", builder(on(NonEmptyString, into)))]
 #[cfg_attr(feature = "typescript", frontend_insertion)]
@@ -67,7 +67,7 @@ mod with_committee_approval_getters {
 }
 pub use with_committee_approval_getters::*;
 
-#[cfg_attr(feature = "backend", backend_insertion(sample_metadata))]
+#[cfg_attr(feature = "backend", backend_insertion(sample_metadata), derive(Clone))]
 pub struct NewSampleMetadata {
     #[cfg_attr(feature = "backend", garde(dive))]
     pub(super) readable_id: NonEmptyString,
@@ -112,7 +112,7 @@ mod with_sample_metadata_getters {
 
     #[cfg_attr(feature = "backend", backend_selection(sample_metadata))]
     pub struct SampleMetadataSummary {
-        #[cfg_attr(feature = "backend", diesel(column_name = id))]
+        #[cfg_attr(feature = "backend", diesel(column_name = id), serde(skip))]
         metadata_id: Uuid,
         name: String,
         #[cfg_attr(feature = "backend", valuable(skip))]

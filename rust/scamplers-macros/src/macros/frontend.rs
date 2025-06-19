@@ -32,7 +32,7 @@ fn wasm_builder(input: TokenStream, with_default: bool) -> TokenStream {
         #[builder_struct_attr(wasm_bindgen::prelude::wasm_bindgen(getter_with_clone))]
         #[builder_impl_attr(wasm_bindgen::prelude::wasm_bindgen)]
         #[builder_field_attr(wasm_bindgen::prelude::wasm_bindgen(readonly))]
-        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone, setter)]
+        #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone)]
         #struct_item
 
         #[wasm_bindgen::prelude::wasm_bindgen(getter_with_clone)]

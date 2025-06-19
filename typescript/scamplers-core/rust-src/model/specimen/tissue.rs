@@ -1,4 +1,4 @@
-use crate::{model::specimen::core::NewSpecimenCore, string::NonEmptyString};
+use crate::{model::specimen::common::NewSpecimenCommon, string::NonEmptyString};
 #[cfg(feature = "typescript")]
 use scamplers_macros::frontend_enum;
 #[cfg(feature = "backend")]
@@ -15,20 +15,6 @@ pub enum TissueType {
     Tissue,
 }
 
-#[cfg_attr(feature = "backend", backend_insertion(specimen))]
-pub struct NewTissueCore {
-    #[cfg_attr(
-        feature = "backend",
-        diesel(skip_insertion),
-        serde(flatten),
-        garde(dive)
-    )]
-    core: NewSpecimenCore,
-    #[cfg_attr(feature = "backend", serde(skip))]
-    type_: TissueType,
-    storage_buffer: Option<NonEmptyString>,
-}
-
 #[cfg_attr(feature = "backend", backend_db_enum)]
 pub enum TissueFixative {
     DithiobisSuccinimidylropionate,
@@ -37,14 +23,20 @@ pub enum TissueFixative {
 #[cfg_attr(feature = "backend", backend_insertion(specimen))]
 pub struct NewFixedTissue {
     #[cfg_attr(feature = "backend", diesel(embed), serde(flatten), garde(dive))]
-    core: NewTissueCore,
+    pub(super) common: NewSpecimenCommon,
+    #[cfg_attr(feature = "backend", serde(skip))]
+    type_: TissueType,
+    storage_buffer: Option<NonEmptyString>,
     fixative: TissueFixative,
 }
 
 #[cfg_attr(feature = "backend", backend_insertion(specimen))]
 pub struct NewFrozenTissue {
     #[cfg_attr(feature = "backend", diesel(embed), serde(flatten), garde(dive))]
-    pub core: NewTissueCore,
+    pub(super) common: NewSpecimenCommon,
+    #[cfg_attr(feature = "backend", serde(skip))]
+    type_: TissueType,
+    storage_buffer: Option<NonEmptyString>,
     #[cfg_attr(
         feature = "backend",
         serde(skip, default = "crate::util::default_true")
@@ -55,7 +47,10 @@ pub struct NewFrozenTissue {
 #[cfg_attr(feature = "backend", backend_insertion(specimen))]
 pub struct NewCryoPreservedTissue {
     #[cfg_attr(feature = "backend", diesel(embed), serde(flatten), garde(dive))]
-    pub core: NewTissueCore,
+    pub(super) common: NewSpecimenCommon,
+    #[cfg_attr(feature = "backend", serde(skip))]
+    type_: TissueType,
+    storage_buffer: Option<NonEmptyString>,
     #[cfg_attr(
         feature = "backend",
         serde(skip, default = "crate::util::default_true")

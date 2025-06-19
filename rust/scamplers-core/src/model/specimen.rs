@@ -1,20 +1,39 @@
-use crate::model::specimen::{block::NewBlock, core::MeasurementData, tissue::NewTissue};
+#[cfg(feature = "backend")]
+use crate::model::{sample_metadata::NewSampleMetadata, specimen::common::NewSpecimenCommon};
+use crate::{
+    model::specimen::{block::NewBlock, tissue::NewTissue},
+    string::NonEmptyString,
+};
+use time::OffsetDateTime;
 use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{backend_insertion, backend_with_getters},
+    scamplers_macros::{backend_db_json, backend_insertion, backend_with_getters},
     scamplers_schema::specimen_measurement,
 };
 
 pub mod block;
-mod core;
+mod common;
 pub mod tissue;
 
-#[cfg_attr(feature = "backend", derive(serde::Deserialize))]
-#[cfg_attr(feature = "backend", serde(rename_all = "lowercase", tag = "type"))]
-pub enum NewSpecimen {
-    Block(NewBlock),
-    Tissue(NewTissue),
+#[cfg_attr(feature = "backend", backend_db_json, serde(rename_all = "UPPERCASE"))]
+pub enum MeasurementData {
+    Rin {
+        #[cfg_attr(feature = "backend", valuable(skip))]
+        measured_at: OffsetDateTime,
+        #[cfg_attr(feature = "backend", garde(dive))]
+        instrument_name: NonEmptyString, // This should be an enum
+        #[cfg_attr(feature = "backend", garde(range(min = 1.0, max = 10.0)))]
+        value: f32,
+    },
+    Dv200 {
+        #[cfg_attr(feature = "backend", valuable(skip))]
+        measured_at: OffsetDateTime,
+        #[cfg_attr(feature = "backend", garde(dive))]
+        instrument_name: NonEmptyString, // This should be a different enum
+        #[cfg_attr(feature = "backend", garde(range(min = 0.0, max = 1.0)))]
+        value: f32,
+    },
 }
 
 #[cfg_attr(
@@ -23,6 +42,7 @@ pub enum NewSpecimen {
     derive(bon::Builder)
 )]
 pub struct NewSpecimenMeasurement {
+    #[cfg_attr(feature = "backend", serde(default))]
     specimen_id: Uuid,
     measured_by: Uuid,
     #[cfg_attr(
@@ -32,6 +52,51 @@ pub struct NewSpecimenMeasurement {
         serde(flatten)
     )]
     data: MeasurementData,
+}
+
+#[cfg_attr(feature = "backend", derive(serde::Deserialize))]
+#[cfg_attr(feature = "backend", serde(rename_all = "lowercase", tag = "type"))]
+pub enum NewSpecimen {
+    Block(NewBlock),
+    Tissue(NewTissue),
+}
+
+#[cfg(feature = "backend")]
+impl NewSpecimen {
+    fn common(&mut self) -> &mut NewSpecimenCommon {
+        match self {
+            Self::Block(b) => match b {
+                NewBlock::Fixed(b) => &mut b.common,
+                NewBlock::Frozen(b) => &mut b.common,
+            },
+
+            Self::Tissue(t) => match t {
+                NewTissue::Cryopreserved(t) => &mut t.common,
+                NewTissue::Fixed(t) => &mut t.common,
+                NewTissue::Frozen(t) => &mut t.common,
+            },
+        }
+    }
+
+    pub fn metadata(&mut self) -> NewSampleMetadata {
+        self.common().metadata.clone()
+    }
+
+    pub fn set_metadata_id(&mut self, metadata_id: Uuid) {
+        let current = &mut self.common().metadata_id;
+        *current = metadata_id;
+    }
+
+    #[must_use]
+    pub fn measurements(mut self, id: Uuid) -> Vec<NewSpecimenMeasurement> {
+        let mut measurements = self.common().measurements.drain(..);
+
+        for mut m in &mut measurements {
+            m.specimen_id = id;
+        }
+
+        measurements.collect()
+    }
 }
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
@@ -76,7 +141,7 @@ mod with_getters {
     }
 
     #[cfg_attr(feature = "backend", backend_selection(specimen_measurement))]
-    struct SpecimenMeasurement {
+    pub struct SpecimenMeasurement {
         #[cfg_attr(feature = "backend", diesel(embed))]
         measured_by: PersonHandle,
         data: MeasurementData,

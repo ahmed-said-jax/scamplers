@@ -1,9 +1,9 @@
-use crate::model::specimen::core::NewSpecimenCore;
+use crate::model::specimen::common::NewSpecimenCommon;
 #[cfg(feature = "backend")]
 use crate::{
     model::{
         sample_metadata::{NewCommitteeApproval, Species},
-        specimen::MeasurementData,
+        specimen::NewSpecimenMeasurement,
     },
     string::NonEmptyString,
 };
@@ -27,18 +27,6 @@ pub enum BlockType {
     Block,
 }
 
-#[cfg_attr(feature = "backend", backend_insertion(specimen))]
-pub struct NewBlockCore {
-    #[cfg_attr(
-        feature = "backend",
-        diesel(skip_insertion),
-        serde(flatten),
-        garde(dive)
-    )]
-    core: NewSpecimenCore,
-    type_: BlockType,
-}
-
 #[cfg_attr(feature = "backend", backend_db_enum)]
 pub enum FixedBlockEmbeddingMatrix {
     Paraffin,
@@ -52,7 +40,9 @@ pub enum BlockFixative {
 #[cfg_attr(feature = "backend", backend_insertion(specimen))]
 pub struct NewFixedBlock {
     #[cfg_attr(feature = "backend", diesel(embed), serde(flatten), garde(dive))]
-    core: NewBlockCore,
+    pub(super) common: NewSpecimenCommon,
+    #[cfg_attr(feature = "backend", serde(skip))]
+    type_: BlockType,
     embedded_in: FixedBlockEmbeddingMatrix,
     fixative: BlockFixative,
 }
@@ -72,29 +62,28 @@ impl NewFixedBlock {
         notes: Option<Vec<NonEmptyString>>,
         returned_at: Option<OffsetDateTime>,
         returned_by: Option<Uuid>,
-        #[builder(default)] measurements: Vec<MeasurementData>,
+        #[builder(default)] measurements: Vec<NewSpecimenMeasurement>,
     ) -> Self {
         use crate::model::sample_metadata::NewSampleMetadata;
 
         Self {
-            core: NewBlockCore {
-                core: NewSpecimenCore {
-                    metadata: NewSampleMetadata {
-                        readable_id,
-                        name,
-                        submitted_by,
-                        lab_id,
-                        received_at,
-                        species,
-                        committee_approvals,
-                        notes,
-                        returned_at,
-                        returned_by,
-                    },
-                    measurements,
+            common: NewSpecimenCommon {
+                metadata: NewSampleMetadata {
+                    readable_id,
+                    name,
+                    submitted_by,
+                    lab_id,
+                    received_at,
+                    species,
+                    committee_approvals,
+                    notes,
+                    returned_at,
+                    returned_by,
                 },
-                type_: BlockType::Block,
+                metadata_id: Default::default(),
+                measurements,
             },
+            type_: BlockType::Block,
             embedded_in: FixedBlockEmbeddingMatrix::Paraffin,
             fixative: BlockFixative::FormaldehydeDerivative,
         }
@@ -111,7 +100,9 @@ pub enum FrozenBlockEmbeddingMatrix {
 #[cfg_attr(feature = "backend", backend_insertion(specimen))]
 pub struct NewFrozenBlock {
     #[cfg_attr(feature = "backend", diesel(embed), serde(flatten), garde(dive))]
-    core: NewBlockCore,
+    pub(super) common: NewSpecimenCommon,
+    #[cfg_attr(feature = "backend", serde(skip))]
+    type_: BlockType,
     embedded_in: FrozenBlockEmbeddingMatrix,
     fixative: Option<BlockFixative>,
     #[cfg_attr(
@@ -136,31 +127,30 @@ impl NewFrozenBlock {
         notes: Option<Vec<NonEmptyString>>,
         returned_at: Option<OffsetDateTime>,
         returned_by: Option<Uuid>,
-        #[builder(default)] measurements: Vec<MeasurementData>,
+        #[builder(default)] measurements: Vec<NewSpecimenMeasurement>,
         embedded_in: FrozenBlockEmbeddingMatrix,
         fixative: Option<BlockFixative>,
     ) -> Self {
         use crate::model::sample_metadata::NewSampleMetadata;
 
         Self {
-            core: NewBlockCore {
-                core: NewSpecimenCore {
-                    metadata: NewSampleMetadata {
-                        readable_id,
-                        name,
-                        submitted_by,
-                        lab_id,
-                        received_at,
-                        species,
-                        committee_approvals,
-                        notes,
-                        returned_at,
-                        returned_by,
-                    },
-                    measurements,
+            common: NewSpecimenCommon {
+                metadata: NewSampleMetadata {
+                    readable_id,
+                    name,
+                    submitted_by,
+                    lab_id,
+                    received_at,
+                    species,
+                    committee_approvals,
+                    notes,
+                    returned_at,
+                    returned_by,
                 },
-                type_: BlockType::Block,
+                metadata_id: Default::default(),
+                measurements,
             },
+            type_: BlockType::Block,
             embedded_in,
             fixative,
             frozen: true,
