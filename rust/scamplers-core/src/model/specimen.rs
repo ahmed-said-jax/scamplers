@@ -54,7 +54,7 @@ pub struct NewSpecimenMeasurement {
     data: MeasurementData,
 }
 
-#[cfg_attr(feature = "backend", derive(serde::Deserialize))]
+#[cfg_attr(feature = "backend", derive(serde::Deserialize, Debug))]
 #[cfg_attr(feature = "backend", serde(rename_all = "lowercase", tag = "type"))]
 pub enum NewSpecimen {
     Block(NewBlock),
@@ -101,13 +101,11 @@ impl NewSpecimen {
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
 mod with_getters {
+    use crate::model::sample_metadata::SampleMetadata;
     use crate::model::{
-        person::PersonHandle,
-        sample_metadata::{SampleMetadata, SampleMetadataSummary},
-        specimen::MeasurementData,
+        person::PersonHandle, sample_metadata::SampleMetadataSummary, specimen::MeasurementData,
     };
     use uuid::Uuid;
-
     #[cfg(feature = "backend")]
     use {
         scamplers_macros::backend_selection,
@@ -121,7 +119,7 @@ mod with_getters {
     }
 
     #[cfg_attr(feature = "backend", backend_selection(specimen))]
-    pub struct SpecimenCore {
+    pub struct SpecimenData {
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         handle: SpecimenHandle,
         type_: String,
@@ -135,9 +133,9 @@ mod with_getters {
     #[cfg_attr(feature = "backend", backend_selection(specimen))]
     pub struct SpecimenSummary {
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
-        core: SpecimenCore,
-        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         metadata: SampleMetadataSummary,
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
+        data: SpecimenData,
     }
 
     #[cfg_attr(feature = "backend", backend_selection(specimen_measurement))]
@@ -147,13 +145,97 @@ mod with_getters {
         data: MeasurementData,
     }
 
-    #[cfg_attr(feature = "backend", derive(serde::Serialize, bon::Builder))]
-    pub struct Specimen {
-        #[cfg_attr(feature = "backend", serde(flatten))]
-        core: SpecimenCore,
-        #[cfg_attr(feature = "backend", serde(flatten))]
+    #[cfg_attr(feature = "backend", backend_selection(specimen))]
+    pub struct SpecimenCore {
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         metadata: SampleMetadata,
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
+        data: SpecimenData,
+    }
+    impl SpecimenCore {
+        #[must_use]
+        pub fn consume(self) -> (SampleMetadata, SpecimenData) {
+            (self.metadata, self.data)
+        }
+    }
+
+    #[cfg_attr(feature = "backend", derive(serde::Serialize))]
+    pub struct Specimen {
+        core: SpecimenCore,
         measurements: Vec<SpecimenMeasurement>,
+    }
+
+    #[cfg(feature = "backend")]
+    #[bon::bon]
+    impl Specimen {
+        #[builder]
+        pub fn new(
+            metadata: SampleMetadata,
+            data: SpecimenData,
+            measurements: Vec<SpecimenMeasurement>,
+        ) -> Self {
+            Self {
+                core: SpecimenCore { metadata, data },
+                measurements,
+            }
+        }
     }
 }
 pub use with_getters::*;
+
+#[cfg(all(feature = "backend", test))]
+mod tests {
+
+    use pretty_assertions::assert_eq;
+    use serde_json::{Value, json};
+    use time::OffsetDateTime;
+    use uuid::Uuid;
+
+    use crate::model::specimen::{NewSpecimen, block::NewBlock};
+
+    #[test]
+    fn deserialize_specimen() {
+        let uuid = Uuid::now_v7();
+        let received_at = OffsetDateTime::now_utc();
+        let frozen_embedding_matrix = "carboxymethyl_cellulose";
+
+        let mut fixed_block = json!({
+          "readable_id": "id",
+          "lab_id": uuid,
+          "name": "krabby_patty",
+          "submitted_by": uuid,
+          "received_at": received_at,
+          "species": ["homo_sapiens"],
+          "type": "block",
+          "preservation": "fixed",
+          "embedded_in": frozen_embedding_matrix,
+          "fixative": "formaldehyde_derivative"
+        });
+
+        let deserialize = |json_val| serde_json::from_value::<NewSpecimen>(json_val);
+
+        let err = deserialize(fixed_block.clone()).unwrap_err();
+        assert_eq!(err.classify(), serde_json::error::Category::Data);
+
+        fixed_block["embedded_in"] = Value::String("paraffin".to_string());
+        let specimen = deserialize(fixed_block.clone()).unwrap();
+        let NewSpecimen::Block(NewBlock::Fixed(_)) = specimen else {
+            panic!("expected frozen block, got {specimen:?}");
+        };
+
+        let mut frozen_block = fixed_block;
+        frozen_block["preservation"] = Value::String("frozen".to_string());
+        frozen_block["embedded_in"] = Value::String(frozen_embedding_matrix.to_string());
+        frozen_block["fixative"] = Value::Null;
+        let specimen = deserialize(frozen_block.clone()).unwrap();
+        let NewSpecimen::Block(NewBlock::Frozen(_)) = specimen else {
+            panic!("expected frozen block, got {specimen:?}");
+        };
+
+        let mut tissue = frozen_block;
+        tissue["preservation"] = Value::String("fixed".to_string());
+        tissue["type"] = Value::String("tissue".to_string());
+        let err = deserialize(tissue.clone()).unwrap_err();
+        assert_eq!(err.classify(), serde_json::error::Category::Data);
+    }
+}

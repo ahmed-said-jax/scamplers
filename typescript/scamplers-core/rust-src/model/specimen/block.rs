@@ -158,7 +158,7 @@ impl NewFrozenBlock {
     }
 }
 
-#[cfg_attr(feature = "backend", derive(serde::Deserialize))]
+#[cfg_attr(feature = "backend", derive(serde::Deserialize, Debug))]
 #[cfg_attr(
     feature = "backend",
     serde(rename_all = "snake_case", tag = "preservation")

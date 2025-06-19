@@ -35,10 +35,6 @@ impl Default for Pagination {
     }
 }
 
-pub trait IsUpdate {
-    fn is_update(&self) -> bool;
-}
-
 #[cfg(feature = "typescript")]
 #[wasm_bindgen]
 impl Pagination {
@@ -47,6 +43,10 @@ impl Pagination {
     pub fn new(limit: i64, offset: i64) -> Self {
         Self { limit, offset }
     }
+}
+
+pub trait IsUpdate {
+    fn is_update(&self) -> bool;
 }
 
 trait DefaultOrdering {

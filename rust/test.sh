@@ -8,4 +8,4 @@ function cleanup_docker() {
 }
 trap cleanup_docker EXIT
 
-cargo test --package scamplers-backend "$@"
+cargo test --workspace "$@"

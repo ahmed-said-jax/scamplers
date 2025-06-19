@@ -6,6 +6,7 @@ use crate::model::{
     institution::{Institution, InstitutionQuery, NewInstitution},
     lab::{Lab, LabQuery, LabSummary, NewLab},
     person::{NewPerson, Person, PersonQuery, PersonSummary},
+    specimen::NewSpecimen,
 };
 
 pub struct Endpoint<Req, Resp>(PhantomData<Req>, PhantomData<Resp>);
@@ -75,5 +76,13 @@ impl Endpoint<LabQuery, LabSummary> {
     #[must_use]
     pub fn route() -> String {
         format!("{LABS}/{SEARCH_SUFFIX}")
+    }
+}
+
+const SPECIMENS: &str = "/specimens";
+impl Endpoint<NewSpecimen, NewSpecimen> {
+    #[must_use]
+    pub fn route() -> String {
+        SPECIMENS.to_string()
     }
 }

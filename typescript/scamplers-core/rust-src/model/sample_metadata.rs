@@ -79,7 +79,7 @@ pub struct NewSampleMetadata {
     pub(super) received_at: OffsetDateTime,
     #[cfg_attr(feature = "backend", garde(length(min = 1)))]
     pub(super) species: Vec<Species>,
-    #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(flatten))]
+    #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     pub(super) committee_approvals: Vec<NewCommitteeApproval>,
     #[cfg_attr(feature = "backend", garde(dive))]
     pub(super) notes: Option<Vec<NonEmptyString>>,
@@ -99,11 +99,7 @@ impl NewSampleMetadata {
 
 #[cfg_attr(feature = "backend", backend_with_getters)]
 mod with_sample_metadata_getters {
-    use crate::model::{
-        lab::LabHandle,
-        person::PersonHandle,
-        sample_metadata::{CommitteeApproval, Species},
-    };
+    use crate::model::{lab::LabHandle, person::PersonHandle, sample_metadata::Species};
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -112,8 +108,8 @@ mod with_sample_metadata_getters {
 
     #[cfg_attr(feature = "backend", backend_selection(sample_metadata))]
     pub struct SampleMetadataSummary {
-        #[cfg_attr(feature = "backend", diesel(column_name = id), serde(skip))]
-        metadata_id: Uuid,
+        #[cfg_attr(feature = "backend", serde(skip))]
+        id: Uuid,
         name: String,
         #[cfg_attr(feature = "backend", valuable(skip))]
         received_at: OffsetDateTime,
@@ -124,7 +120,7 @@ mod with_sample_metadata_getters {
     }
 
     #[cfg_attr(feature = "backend", backend_selection(sample_metadata))]
-    pub struct SampleMetadataCore {
+    pub struct SampleMetadata {
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         summary: SampleMetadataSummary,
         #[cfg_attr(feature = "backend", diesel(embed))]
@@ -133,14 +129,6 @@ mod with_sample_metadata_getters {
         lab: LabHandle,
         #[cfg_attr(feature = "backend", diesel(embed))]
         returned_by: Option<PersonHandle>,
-    }
-
-    #[cfg_attr(feature = "backend", derive(serde::Serialize, bon::Builder))]
-    pub struct SampleMetadata {
-        #[cfg_attr(feature = "backend", serde(flatten))]
-        core: SampleMetadataCore,
-        #[cfg_attr(feature = "backend", builder(default))]
-        committee_approvals: Vec<CommitteeApproval>,
     }
 }
 pub use with_sample_metadata_getters::*;
