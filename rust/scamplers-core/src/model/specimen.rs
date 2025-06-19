@@ -37,7 +37,9 @@ pub struct NewSpecimenMeasurement {
 #[cfg_attr(feature = "backend", backend_with_getters)]
 mod with_getters {
     use crate::model::{
-        person::PersonHandle, sample_metadata::SampleMetadataSummary, specimen::MeasurementData,
+        person::PersonHandle,
+        sample_metadata::{SampleMetadata, SampleMetadataSummary},
+        specimen::MeasurementData,
     };
     use uuid::Uuid;
 
@@ -54,17 +56,23 @@ mod with_getters {
     }
 
     #[cfg_attr(feature = "backend", backend_selection(specimen))]
-    pub struct SpecimenSummary {
+    pub struct SpecimenCore {
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         handle: SpecimenHandle,
-        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
-        metadata: SampleMetadataSummary,
         type_: String,
         embedded_in: Option<String>,
         fixative: Option<String>,
         frozen: bool,
         cryopreserved: bool,
         storage_buffer: Option<String>,
+    }
+
+    #[cfg_attr(feature = "backend", backend_selection(specimen))]
+    pub struct SpecimenSummary {
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
+        core: SpecimenCore,
+        #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
+        metadata: SampleMetadataSummary,
     }
 
     #[cfg_attr(feature = "backend", backend_selection(specimen_measurement))]
@@ -77,7 +85,9 @@ mod with_getters {
     #[cfg_attr(feature = "backend", derive(serde::Serialize, bon::Builder))]
     pub struct Specimen {
         #[cfg_attr(feature = "backend", serde(flatten))]
-        summary: SpecimenSummary,
+        core: SpecimenCore,
+        #[cfg_attr(feature = "backend", serde(flatten))]
+        metadata: SampleMetadata,
         measurements: Vec<SpecimenMeasurement>,
     }
 }
