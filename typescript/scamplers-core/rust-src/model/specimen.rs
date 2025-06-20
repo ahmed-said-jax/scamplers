@@ -145,40 +145,18 @@ mod with_getters {
         data: MeasurementData,
     }
 
-    #[cfg_attr(feature = "backend", backend_selection(specimen))]
+    #[cfg_attr(feature = "backend", backend_selection(specimen), derive(bon::Builder))]
     pub struct SpecimenCore {
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         metadata: SampleMetadata,
         #[cfg_attr(feature = "backend", diesel(embed), serde(flatten))]
         data: SpecimenData,
     }
-    impl SpecimenCore {
-        #[must_use]
-        pub fn consume(self) -> (SampleMetadata, SpecimenData) {
-            (self.metadata, self.data)
-        }
-    }
 
-    #[cfg_attr(feature = "backend", derive(serde::Serialize))]
+    #[cfg_attr(feature = "backend", derive(serde::Serialize, bon::Builder))]
     pub struct Specimen {
         core: SpecimenCore,
         measurements: Vec<SpecimenMeasurement>,
-    }
-
-    #[cfg(feature = "backend")]
-    #[bon::bon]
-    impl Specimen {
-        #[builder]
-        pub fn new(
-            metadata: SampleMetadata,
-            data: SpecimenData,
-            measurements: Vec<SpecimenMeasurement>,
-        ) -> Self {
-            Self {
-                core: SpecimenCore { metadata, data },
-                measurements,
-            }
-        }
     }
 }
 pub use with_getters::*;

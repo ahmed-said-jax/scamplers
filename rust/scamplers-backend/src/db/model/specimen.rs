@@ -87,9 +87,13 @@ impl Write for NewSpecimen {
         let new_measurements = self.measurements(*data.id());
         let measurements = new_measurements.write(db_conn).await?;
 
-        Ok(Specimen::builder()
+        let specimen_core = SpecimenCore::builder()
             .metadata(metadata)
             .data(data)
+            .build();
+
+        Ok(Specimen::builder()
+            .core(specimen_core)
             .measurements(measurements)
             .build())
     }
@@ -107,18 +111,16 @@ impl FetchById for Specimen {
         id: &Self::Id,
         db_conn: &mut AsyncPgConnection,
     ) -> db::error::Result<Self> {
-        let (metadata, data) = core_query_base()
+        let specimen_core = core_query_base()
             .select(SpecimenCore::as_select())
             .filter(id_col.eq(id))
             .first(db_conn)
-            .await?
-            .consume();
+            .await?;
 
-        let measurements = specimen::table::fetch_relatives(data.id(), db_conn).await?;
+        let measurements = specimen::table::fetch_relatives(specimen_core.id(), db_conn).await?;
 
         Ok(Specimen::builder()
-            .metadata(metadata)
-            .data(data)
+            .core(specimen_core)
             .measurements(measurements)
             .build())
     }
