@@ -3,6 +3,15 @@ use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {scamplers_macros::backend_insertion, scamplers_schema::specimen};
 
+#[cfg(feature = "backend")]
+pub(super) fn is_true(value: &bool, _: &()) -> garde::Result {
+    if *value {
+        Ok(())
+    } else {
+        Err(garde::Error::new("value must be true"))
+    }
+}
+
 #[cfg_attr(feature = "backend", backend_insertion(specimen))]
 pub struct NewSpecimenCommon {
     #[cfg_attr(

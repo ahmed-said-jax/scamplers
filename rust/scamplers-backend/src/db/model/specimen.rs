@@ -1,16 +1,25 @@
 use crate::db::{
     self,
-    model::{FetchById, FetchRelatives, Write, sample_metadata},
+    model::{AsDieselFilter, FetchById, FetchRelatives, Write, sample_metadata},
+    util::{AsIlike, BoxedDieselExpression, NewBoxedDieselExpression},
 };
-use diesel::prelude::*;
+use diesel::{dsl::AssumeNotNull, prelude::*};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use scamplers_core::model::specimen::{
-    NewSpecimen, NewSpecimenMeasurement, Specimen, SpecimenCore, SpecimenData, SpecimenMeasurement,
-    block::NewBlock, tissue::NewTissue,
+    BlockEmbeddingMatrix, Fixative, NewSpecimen, NewSpecimenMeasurement, Specimen, SpecimenCore,
+    SpecimenData, SpecimenMeasurement, SpecimenQuery, block::NewBlock, tissue::NewTissue,
 };
 use scamplers_schema::{
     person,
-    specimen::{self, id as id_col},
+    sample_metadata::{
+        name as name_col, notes as notes_col, received_at as received_at_col,
+        species as species_col,
+    },
+    specimen::{
+        self, cryopreserved as cryopreserved_col, embedded_in as embedding_col,
+        fixative as fixative_col, frozen as frozen_col, id as id_col, storage_buffer as buffer_col,
+        type_ as type_col,
+    },
     specimen_measurement,
 };
 use uuid::Uuid;
@@ -123,5 +132,95 @@ impl FetchById for Specimen {
             .core(specimen_core)
             .measurements(measurements)
             .build())
+    }
+}
+
+impl<QueryExpression> AsDieselFilter<QueryExpression> for SpecimenQuery
+where
+    id_col: SelectableExpression<QueryExpression>,
+    name_col: SelectableExpression<QueryExpression>,
+    received_at_col: SelectableExpression<QueryExpression>,
+    species_col: SelectableExpression<QueryExpression>,
+    AssumeNotNull<notes_col>: SelectableExpression<QueryExpression>,
+    type_col: SelectableExpression<QueryExpression>,
+    AssumeNotNull<embedding_col>: SelectableExpression<QueryExpression>,
+    AssumeNotNull<fixative_col>: SelectableExpression<QueryExpression>,
+    AssumeNotNull<buffer_col>: SelectableExpression<QueryExpression>,
+    frozen_col: SelectableExpression<QueryExpression>,
+    cryopreserved_col: SelectableExpression<QueryExpression>,
+{
+    fn as_diesel_filter<'a>(
+        &'a self,
+    ) -> Option<db::util::BoxedDieselExpression<'a, QueryExpression>>
+    where
+        QueryExpression: 'a,
+    {
+        let Self {
+            ids,
+            metadata,
+            type_,
+            embedded_in,
+            fixative,
+            storage_buffer,
+            frozen,
+            cryopreserved,
+            ..
+        } = self;
+
+        let mut query = BoxedDieselExpression::new_expression();
+
+        if !ids.is_empty() {
+            query = query.and_condition(id_col.eq_any(ids));
+        }
+
+        if let Some(metadata) = metadata {
+            if let Some(metadata_query) = metadata.as_diesel_filter() {
+                query = query.and_condition(metadata_query);
+            }
+        }
+
+        if let Some(type_) = type_ {
+            query = query.and_condition(type_col.eq(type_));
+        }
+
+        if let Some(embedded_in) = embedded_in {
+            match embedded_in {
+                BlockEmbeddingMatrix::Fixed(e) => {
+                    query = query.and_condition(embedding_col.assume_not_null().eq(e));
+                }
+                BlockEmbeddingMatrix::Frozen(e) => {
+                    query = query.and_condition(embedding_col.assume_not_null().eq(e));
+                }
+            }
+        }
+
+        if let Some(fixative) = fixative {
+            match fixative {
+                Fixative::Block(f) => {
+                    query = query.and_condition(fixative_col.assume_not_null().eq(f));
+                }
+                Fixative::Tissue(f) => {
+                    query = query.and_condition(fixative_col.assume_not_null().eq(f));
+                }
+            }
+        }
+
+        if let Some(storage_buffer) = storage_buffer {
+            query = query.and_condition(
+                buffer_col
+                    .assume_not_null()
+                    .ilike(storage_buffer.as_ilike()),
+            );
+        }
+
+        if let Some(frozen) = frozen {
+            query = query.and_condition(frozen_col.eq(frozen));
+        }
+
+        if let Some(cryopreserved) = cryopreserved {
+            query = query.and_condition(cryopreserved_col.eq(cryopreserved));
+        }
+
+        query.build()
     }
 }

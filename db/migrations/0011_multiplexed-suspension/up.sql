@@ -4,7 +4,7 @@ create table multiplexed_suspension (
     name text not null,
     readable_id text unique not null,
     pooled_at timestamptz not null,
-    notes text []
+    notes text
 );
 
 create table multiplexed_suspension_measurement (

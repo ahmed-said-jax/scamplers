@@ -1,4 +1,4 @@
-use crate::{model::Pagination, string::NonEmptyString};
+use crate::string::NonEmptyString;
 #[cfg(feature = "typescript")]
 use scamplers_macros::{frontend_enum, frontend_insertion, frontend_with_getters};
 use time::OffsetDateTime;
@@ -6,8 +6,8 @@ use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
     scamplers_macros::{
-        backend_db_enum, backend_insertion, backend_ordering, backend_ordinal_columns_enum,
-        backend_query_request, backend_with_getters,
+        backend_db_enum, backend_insertion, backend_ordinal_columns_enum, backend_query_request,
+        backend_with_getters,
     },
     scamplers_schema::{committee_approval, sample_metadata},
 };
@@ -85,7 +85,7 @@ pub struct NewSampleMetadata {
     #[cfg_attr(feature = "backend", diesel(skip_insertion), serde(default))]
     pub(super) committee_approvals: Vec<NewCommitteeApproval>,
     #[cfg_attr(feature = "backend", garde(dive))]
-    pub(super) notes: Option<Vec<NonEmptyString>>,
+    pub(super) notes: Option<NonEmptyString>,
     #[cfg_attr(feature = "backend", valuable(skip))]
     pub(super) returned_at: Option<OffsetDateTime>,
     pub(super) returned_by: Option<Uuid>,
@@ -117,7 +117,7 @@ mod with_sample_metadata_getters {
         #[cfg_attr(feature = "backend", valuable(skip))]
         received_at: OffsetDateTime,
         species: Vec<Option<Species>>,
-        notes: Option<Vec<Option<String>>>,
+        notes: Option<String>,
         #[cfg_attr(feature = "backend", valuable(skip))]
         returned_at: Option<OffsetDateTime>,
     }
@@ -143,23 +143,13 @@ pub enum SampleMetadataOrdinalColumn {
     ReceivedAt,
 }
 
-#[cfg_attr(feature = "backend", backend_ordering)]
-pub struct SampleMetadataOrdering {
-    column: SampleMetadataOrdinalColumn,
-    descending: bool,
-}
-
 #[cfg_attr(feature = "backend", backend_query_request)]
 pub struct SampleMetadataQuery {
-    pub ids: Vec<Uuid>,
     pub name: Option<String>,
-    pub tissue: Option<String>,
     #[cfg_attr(feature = "backend", valuable(skip))]
     pub received_before: Option<OffsetDateTime>,
     #[cfg_attr(feature = "backend", valuable(skip))]
     pub received_after: Option<OffsetDateTime>,
-    #[cfg_attr(feature = "backend", serde(default))]
     pub species: Vec<Species>,
-    pub order_by: Vec<SampleMetadataOrdering>,
-    pub pagination: Pagination,
+    pub notes: Option<String>,
 }

@@ -458,6 +458,10 @@ export class PersonQuery {
   set name(value: string | null | undefined);
   get email(): string;
   set email(value: string | null | undefined);
+  get orcid(): string;
+  set orcid(value: string | null | undefined);
+  get ms_user_id(): string;
+  set ms_user_id(value: string | null | undefined);
   order_by: PersonOrdering[];
   pagination: Pagination;
 }

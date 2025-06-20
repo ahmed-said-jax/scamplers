@@ -7,7 +7,7 @@ create table cdna (
     gems_id uuid references gems on delete restrict on update restrict not null,
     n_amplification_cycles integer not null,
     storage_location text,
-    notes text []
+    notes text
 );
 
 create table cdna_measurement (

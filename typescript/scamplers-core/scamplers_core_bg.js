@@ -253,11 +253,11 @@ function __wbg_adapter_40(arg0, arg1) {
 }
 
 function __wbg_adapter_43(arg0, arg1, arg2) {
-    wasm.closure125_externref_shim(arg0, arg1, arg2);
+    wasm.closure123_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_366(arg0, arg1, arg2, arg3) {
-    wasm.closure237_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_370(arg0, arg1, arg2, arg3) {
+    wasm.closure235_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 /**
@@ -3058,6 +3058,40 @@ export class PersonQuery {
         wasm.__wbg_set_personquery_email(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * @returns {string}
+     */
+    get orcid() {
+        const ret = wasm.__wbg_get_personquery_orcid(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set orcid(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personquery_orcid(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @returns {string}
+     */
+    get ms_user_id() {
+        const ret = wasm.__wbg_get_personquery_ms_user_id(this.__wbg_ptr);
+        var v1 = getCachedStringFromWasm0(ret[0], ret[1]);
+        if (ret[0] !== 0) { wasm.__wbindgen_free(ret[0], ret[1], 1); }
+        return v1;
+    }
+    /**
+     * @param {string | null} [arg0]
+     */
+    set ms_user_id(arg0) {
+        var ptr0 = isLikeNone(arg0) ? 0 : passStringToWasm0(arg0, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_personquery_ms_user_id(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * @returns {PersonOrdering[]}
      */
     get order_by() {
@@ -3753,7 +3787,7 @@ export function __wbg_new_23a2665fac83c611(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return __wbg_adapter_366(a, state0.b, arg0, arg1);
+                return __wbg_adapter_370(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -3996,13 +4030,13 @@ export function __wbindgen_cb_drop(arg0) {
     return ret;
 };
 
-export function __wbindgen_closure_wrapper799(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 107, __wbg_adapter_40);
+export function __wbindgen_closure_wrapper801(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 105, __wbg_adapter_40);
     return ret;
 };
 
-export function __wbindgen_closure_wrapper854(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 126, __wbg_adapter_43);
+export function __wbindgen_closure_wrapper856(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 124, __wbg_adapter_43);
     return ret;
 };
 

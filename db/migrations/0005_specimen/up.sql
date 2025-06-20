@@ -1,5 +1,3 @@
--- `type`, `embedding_matrix`, and `preservation_method` are constrained by Rust enums and will be validated to make
--- sense together
 create table specimen (
     id uuid primary key default uuidv7(),
     link text generated always as ('/samples/' || id) stored not null,

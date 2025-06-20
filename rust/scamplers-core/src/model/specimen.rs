@@ -1,14 +1,27 @@
 #[cfg(feature = "backend")]
 use crate::model::{sample_metadata::NewSampleMetadata, specimen::common::NewSpecimenCommon};
 use crate::{
-    model::specimen::{block::NewBlock, tissue::NewTissue},
+    model::{
+        Pagination,
+        sample_metadata::{SampleMetadataOrdinalColumn, SampleMetadataQuery},
+        specimen::{
+            block::{
+                BlockFixative, BlockType, FixedBlockEmbeddingMatrix, FrozenBlockEmbeddingMatrix,
+                NewBlock,
+            },
+            tissue::{NewTissue, TissueFixative, TissueType},
+        },
+    },
     string::NonEmptyString,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
 #[cfg(feature = "backend")]
 use {
-    scamplers_macros::{backend_db_json, backend_insertion, backend_with_getters},
+    scamplers_macros::{
+        backend_db_enum, backend_db_json, backend_insertion, backend_ordering,
+        backend_query_request, backend_with_getters,
+    },
     scamplers_schema::specimen_measurement,
 };
 
@@ -160,6 +173,55 @@ mod with_getters {
     }
 }
 pub use with_getters::*;
+
+#[cfg_attr(feature = "backend", backend_db_enum)]
+#[cfg_attr(feature = "backend", serde(untagged))]
+pub enum SpecimenType {
+    Block(BlockType),
+    Tissue(TissueType),
+}
+
+#[cfg_attr(
+    feature = "backend",
+    derive(serde::Deserialize, valuable::Valuable, Debug)
+)]
+#[cfg_attr(feature = "backend", serde(untagged))]
+pub enum BlockEmbeddingMatrix {
+    Fixed(FixedBlockEmbeddingMatrix),
+    Frozen(FrozenBlockEmbeddingMatrix),
+}
+
+#[cfg_attr(
+    feature = "backend",
+    derive(serde::Deserialize, valuable::Valuable, Debug)
+)]
+#[cfg_attr(feature = "backend", serde(untagged))]
+pub enum Fixative {
+    Block(BlockFixative),
+    Tissue(TissueFixative),
+}
+
+#[cfg_attr(feature = "backend", backend_ordering)]
+pub struct SpecimenOrdering {
+    column: SampleMetadataOrdinalColumn,
+    descending: bool,
+}
+
+#[cfg_attr(feature = "backend", backend_query_request)]
+pub struct SpecimenQuery {
+    pub ids: Vec<Uuid>,
+    #[cfg_attr(feature = "backend", serde(flatten))]
+    pub metadata: Option<SampleMetadataQuery>,
+    #[cfg_attr(feature = "backend", serde(alias = "type"))]
+    pub type_: Option<SpecimenType>,
+    pub embedded_in: Option<BlockEmbeddingMatrix>,
+    pub fixative: Option<Fixative>,
+    pub storage_buffer: Option<String>,
+    pub frozen: Option<bool>,
+    pub cryopreserved: Option<bool>,
+    pub order_by: Vec<SpecimenOrdering>,
+    pub pagination: Pagination,
+}
 
 #[cfg(all(feature = "backend", test))]
 mod tests {

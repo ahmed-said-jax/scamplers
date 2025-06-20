@@ -19,7 +19,7 @@ create table suspension (
     lysis_duration_min real,
     target_cell_recovery real not null, -- validated on Rust side
     target_reads_per_cell integer not null, -- validated on Rust side
-    notes text [],
+    notes text,
 
     -- a derived suspension must not have its own metadata
     constraint has_metadata check (is_derived = (metadata_id is null)),

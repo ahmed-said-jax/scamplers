@@ -3,6 +3,7 @@ use crate::{model::specimen::common::NewSpecimenCommon, string::NonEmptyString};
 use scamplers_macros::frontend_enum;
 #[cfg(feature = "backend")]
 use {
+    super::common::is_true,
     scamplers_macros::{backend_db_enum, backend_insertion},
     scamplers_schema::specimen,
 };
@@ -37,10 +38,7 @@ pub struct NewFrozenTissue {
     #[cfg_attr(feature = "backend", serde(skip))]
     type_: TissueType,
     storage_buffer: Option<NonEmptyString>,
-    #[cfg_attr(
-        feature = "backend",
-        serde(skip, default = "crate::util::default_true")
-    )]
+    #[cfg_attr(feature = "backend", garde(custom(is_true)))]
     pub frozen: bool,
 }
 
@@ -51,10 +49,7 @@ pub struct NewCryoPreservedTissue {
     #[cfg_attr(feature = "backend", serde(skip))]
     type_: TissueType,
     storage_buffer: Option<NonEmptyString>,
-    #[cfg_attr(
-        feature = "backend",
-        serde(skip, default = "crate::util::default_true")
-    )]
+    #[cfg_attr(feature = "backend", garde(custom(is_true)))]
     pub cryopreserved: bool,
 }
 

@@ -8,7 +8,8 @@ create table chromium_library (
     number_of_sample_index_pcr_cycles integer not null, -- validated on Rust side
     target_reads_per_cell integer not null,
     prepared_at timestamptz not null,
-    notes text [], constraint has_index check ((single_index_set_name is null) != (dual_index_set_name is null))
+    notes text,
+    constraint has_index check ((single_index_set_name is null) != (dual_index_set_name is null))
 );
 
 create table chromium_library_measurement (

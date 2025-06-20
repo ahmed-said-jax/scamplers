@@ -1,22 +1,19 @@
 use crate::model::specimen::common::NewSpecimenCommon;
-#[cfg(feature = "backend")]
-use crate::{
-    model::{
-        sample_metadata::{NewCommitteeApproval, Species},
-        specimen::NewSpecimenMeasurement,
-    },
-    string::NonEmptyString,
-};
 #[cfg(feature = "typescript")]
 use scamplers_macros::frontend_enum;
 #[cfg(feature = "backend")]
-use time::OffsetDateTime;
-#[cfg(feature = "backend")]
-use uuid::Uuid;
-#[cfg(feature = "backend")]
 use {
+    crate::{
+        model::{
+            sample_metadata::{NewCommitteeApproval, Species},
+            specimen::{NewSpecimenMeasurement, common::is_true},
+        },
+        string::NonEmptyString,
+    },
     scamplers_macros::{backend_db_enum, backend_insertion},
     scamplers_schema::specimen,
+    time::OffsetDateTime,
+    uuid::Uuid,
 };
 
 #[cfg_attr(feature = "backend", backend_db_enum)]
@@ -59,7 +56,7 @@ impl NewFixedBlock {
         received_at: OffsetDateTime,
         species: Vec<Species>,
         #[builder(default)] committee_approvals: Vec<NewCommitteeApproval>,
-        notes: Option<Vec<NonEmptyString>>,
+        notes: Option<NonEmptyString>,
         returned_at: Option<OffsetDateTime>,
         returned_by: Option<Uuid>,
         #[builder(default)] measurements: Vec<NewSpecimenMeasurement>,
@@ -105,10 +102,7 @@ pub struct NewFrozenBlock {
     type_: BlockType,
     embedded_in: FrozenBlockEmbeddingMatrix,
     fixative: Option<BlockFixative>,
-    #[cfg_attr(
-        feature = "backend",
-        serde(skip, default = "crate::util::default_true")
-    )]
+    #[cfg_attr(feature = "backend", garde(custom(is_true)))]
     frozen: bool,
 }
 
@@ -124,7 +118,7 @@ impl NewFrozenBlock {
         received_at: OffsetDateTime,
         species: Vec<Species>,
         #[builder(default)] committee_approvals: Vec<NewCommitteeApproval>,
-        notes: Option<Vec<NonEmptyString>>,
+        notes: Option<NonEmptyString>,
         returned_at: Option<OffsetDateTime>,
         returned_by: Option<Uuid>,
         #[builder(default)] measurements: Vec<NewSpecimenMeasurement>,

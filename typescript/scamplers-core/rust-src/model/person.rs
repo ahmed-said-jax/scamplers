@@ -240,6 +240,8 @@ pub struct PersonQuery {
     pub ids: Vec<Uuid>,
     pub name: Option<String>,
     pub email: Option<String>,
+    pub orcid: Option<String>,
+    pub ms_user_id: Option<Uuid>,
     pub order_by: Vec<PersonOrdering>,
     pub pagination: Pagination,
 }

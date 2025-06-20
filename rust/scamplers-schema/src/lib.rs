@@ -16,7 +16,7 @@ diesel::table! {
         gems_id -> Uuid,
         n_amplification_cycles -> Int4,
         storage_location -> Nullable<Text>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 
@@ -53,7 +53,7 @@ diesel::table! {
         multiplexed_suspension_id -> Uuid,
         suspension_volume_loaded -> Jsonb,
         buffer_volume_loaded -> Jsonb,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 
@@ -77,7 +77,7 @@ diesel::table! {
         number_of_sample_index_pcr_cycles -> Int4,
         target_reads_per_cell -> Int4,
         prepared_at -> Timestamptz,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 
@@ -106,7 +106,7 @@ diesel::table! {
         run_at -> Timestamptz,
         run_by -> Uuid,
         succeeded -> Bool,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 
@@ -211,7 +211,7 @@ diesel::table! {
         name -> Text,
         readable_id -> Text,
         pooled_at -> Timestamptz,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 
@@ -265,7 +265,7 @@ diesel::table! {
         lab_id -> Uuid,
         received_at -> Timestamptz,
         species -> Array<Nullable<Text>>,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
         returned_at -> Nullable<Timestamptz>,
         returned_by -> Nullable<Uuid>,
     }
@@ -278,7 +278,7 @@ diesel::table! {
         readable_id -> Text,
         begun_at -> Timestamptz,
         finished_at -> Timestamptz,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 
@@ -330,7 +330,7 @@ diesel::table! {
         lysis_duration_min -> Nullable<Float4>,
         target_cell_recovery -> Float4,
         target_reads_per_cell -> Int4,
-        notes -> Nullable<Array<Nullable<Text>>>,
+        notes -> Nullable<Text>,
     }
 }
 

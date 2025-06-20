@@ -21,19 +21,20 @@ pub(super) fn impl_query_request_default(input: TokenStream) -> TokenStream {
     let struct_item = parse_macro_input!(input as ItemStruct);
     let ItemStruct { ident, fields, .. } = &struct_item;
 
-    let non_ordering_fields = fields
-        .iter()
-        .filter_map(|f| f.ident.as_ref())
-        .filter(|i| *i != "order_by")
-        .map(|i| quote! {#i: Default::default()});
+    let mut field_defaults = Vec::new();
+    for f in fields.iter().filter_map(|f| f.ident.as_ref()) {
+        if f == "order_by" {
+            field_defaults.push(quote! {order_by: crate::model::DefaultOrdering::default()});
+        } else {
+            field_defaults.push(quote! {#f: Default::default()});
+        }
+    }
 
     let output = quote! {
-        // We're relying on the fact that every query struct has a field called order_by and that there's a trait called DefaultOrdering in the crate
         impl Default for #ident {
             fn default() -> Self {
                 Self {
-                    #(#non_ordering_fields),*,
-                    order_by: crate::model::DefaultOrdering::default(),
+                    #(#field_defaults),*,
                 }
             }
         }

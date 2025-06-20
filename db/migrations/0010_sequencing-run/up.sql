@@ -4,5 +4,5 @@ create table sequencing_run (
     readable_id text unique not null,
     begun_at timestamptz not null,
     finished_at timestamptz not null,
-    notes text []
+    notes text
 );

@@ -23,7 +23,10 @@ use scamplers_schema::{
     institution,
     person::{
         self,
-        dsl::{email as email_col, id as id_col, ms_user_id as ms_user_id_col, name as name_col},
+        dsl::{
+            email as email_col, id as id_col, ms_user_id as ms_user_id_col, name as name_col,
+            orcid as orcid_col,
+        },
     },
 };
 use uuid::Uuid;
@@ -43,13 +46,20 @@ where
     id_col: SelectableExpression<QuerySource>,
     name_col: SelectableExpression<QuerySource>,
     AssumeNotNull<email_col>: SelectableExpression<QuerySource>,
+    AssumeNotNull<orcid_col>: SelectableExpression<QuerySource>,
+    AssumeNotNull<ms_user_id_col>: SelectableExpression<QuerySource>,
 {
     fn as_diesel_filter<'a>(&'a self) -> Option<BoxedDieselExpression<'a, QuerySource>>
     where
         QuerySource: 'a,
     {
         let Self {
-            ids, name, email, ..
+            ids,
+            name,
+            email,
+            orcid,
+            ms_user_id,
+            ..
         } = self;
 
         let mut query = BoxedDieselExpression::new_expression();
@@ -64,6 +74,14 @@ where
 
         if let Some(email) = email {
             query = query.and_condition(email_col.assume_not_null().ilike(email.as_ilike()));
+        }
+
+        if let Some(orcid) = orcid {
+            query = query.and_condition(orcid_col.assume_not_null().ilike(orcid.as_ilike()));
+        }
+
+        if let Some(ms_user_id) = ms_user_id {
+            query = query.and_condition(ms_user_id_col.assume_not_null().eq(ms_user_id));
         }
 
         query.build()

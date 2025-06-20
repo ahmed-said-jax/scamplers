@@ -6,7 +6,7 @@ create table sample_metadata (
     lab_id uuid references lab on delete restrict on update restrict not null,
     received_at timestamptz not null,
     species text [] not null,
-    notes text [],
+    notes text,
     returned_at timestamptz,
     returned_by uuid references person on delete restrict on update restrict
 );

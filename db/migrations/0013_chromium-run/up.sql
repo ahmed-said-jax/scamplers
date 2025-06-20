@@ -6,7 +6,7 @@ create table chromium_run (
     run_at timestamptz not null,
     run_by uuid references person on delete restrict on update restrict not null,
     succeeded boolean not null,
-    notes text []
+    notes text
 );
 
 create table gems (
@@ -24,7 +24,7 @@ create table chip_loading (
     multiplexed_suspension_id uuid references multiplexed_suspension on delete restrict on update restrict,
     suspension_volume_loaded jsonb not null,
     buffer_volume_loaded jsonb not null,
-    notes text [],
+    notes text,
     primary key (gems_id, suspension_id, multiplexed_suspension_id),
 
     constraint has_suspension check ((suspension_id is null) != (multiplexed_suspension_id is null))
